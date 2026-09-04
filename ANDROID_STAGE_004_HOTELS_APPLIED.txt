@@ -1,0 +1,3 @@
+Kepler Android Stage 004 applied
+Scope: shared hotel catalog, hotel detail, room-category contracts and native hotel UI.
+Backend remains https://iumrah.app and the same HOTELS/BOOKINGS data surface used by iOS and iumrah Business.

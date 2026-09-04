@@ -8,6 +8,8 @@ import com.iumrah.beta.core.security.SecureJsonStore
 import com.iumrah.beta.core.settings.AppSettingsStore
 import com.iumrah.beta.data.account.IumrahAccountService
 import com.iumrah.beta.data.account.IumrahAccountStore
+import com.iumrah.beta.data.hotel.HotelCatalogService
+import com.iumrah.beta.data.hotel.RemotePackageEngineClient
 
 class IumrahAppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -17,6 +19,8 @@ class IumrahAppContainer(context: Context) {
     val deviceIdentity = IumrahAccountDeviceIdentity(appContext, secureStore)
     val accountService = IumrahAccountService(apiClient, deviceIdentity)
     val accountStore = IumrahAccountStore(accountService, secureStore)
+    val hotelCatalogService = HotelCatalogService(apiClient)
+    val packageEngine = RemotePackageEngineClient(apiClient)
     val settingsStore = AppSettingsStore(appContext)
     val chromeStore = AppChromeStore()
 }

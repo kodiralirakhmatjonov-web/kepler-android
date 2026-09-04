@@ -54,7 +54,11 @@ import com.iumrah.beta.core.navigation.AppRoute
 import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.account.IumrahAccountStore
+import com.iumrah.beta.data.hotel.HotelCatalogService
+import com.iumrah.beta.data.hotel.RemotePackageEngineClient
 import com.iumrah.beta.ui.home.HomeScreen
+import com.iumrah.beta.ui.hotels.HotelDetailScreen
+import com.iumrah.beta.ui.hotels.HotelsScreen
 import com.iumrah.beta.ui.placeholder.StagePlaceholderScreen
 
 @Composable
@@ -63,6 +67,8 @@ fun AppShell(
     chrome: AppChromeStore,
     chromeState: AppChromeState,
     accountStore: IumrahAccountStore,
+    hotelCatalog: HotelCatalogService,
+    packageEngine: RemotePackageEngineClient,
 ) {
     val hapticView = LocalView.current
     BackHandler(enabled = chromeState.route != AppRoute.Root) { chrome.back() }
@@ -77,13 +83,13 @@ fun AppShell(
             when (route) {
                 AppRoute.Root -> when (tab) {
                     AppTab.HOME -> HomeScreen(language, chrome)
-                    AppTab.HOTELS -> StagePlaceholderScreen(L10n.text("hotels_title", language), L10n.text("hotels_subtitle", language))
+                    AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, chrome)
                     AppTab.BOOKING -> StagePlaceholderScreen(L10n.text("tab_booking", language), L10n.text("booking_home_subtitle", language))
                     AppTab.CARE -> StagePlaceholderScreen(L10n.text("care_title", language), L10n.text("care_subtitle", language))
                     AppTab.ACCOUNT -> AccountRoot(accountStore, language)
                 }
                 AppRoute.TripBuilder -> StagePlaceholderScreen(L10n.text("trip_intro_title", language), L10n.text("trip_intro_body", language), chrome::back)
-                is AppRoute.HotelDetail -> StagePlaceholderScreen("Hotel", route.hotelId, chrome::back)
+                is AppRoute.HotelDetail -> HotelDetailScreen(route.hotelId, language, hotelCatalog, packageEngine, chrome::back)
                 AppRoute.Flights -> StagePlaceholderScreen("iumrah Flights", L10n.text("flight_search_hero", language), chrome::back)
             }
         }

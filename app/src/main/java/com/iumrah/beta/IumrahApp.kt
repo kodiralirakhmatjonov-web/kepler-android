@@ -67,6 +67,8 @@ fun IumrahApp() {
                     chrome = container.chromeStore,
                     chromeState = chrome,
                     accountStore = container.accountStore,
+                    hotelCatalog = container.hotelCatalogService,
+                    packageEngine = container.packageEngine,
                 )
             } else {
                 OnboardingFlow(
