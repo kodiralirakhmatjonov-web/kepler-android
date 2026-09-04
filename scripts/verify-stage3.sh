@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+test -f scripts/verify-stage2.sh || { echo 'STOP: Stage 003 requires Stage 002 verifier; repair/update 003 prerequisites first.'; exit 2; }
+bash scripts/verify-stage2.sh
+
+test -f ANDROID_STAGE_003_SHELL_MOTION_APPLIED.txt
+test -f app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
+test -f app/src/main/java/com/iumrah/beta/core/localization/L10n.kt
+test -f app/src/main/java/com/iumrah/beta/ui/onboarding/OnboardingFlow.kt
+test -f app/src/main/java/com/iumrah/beta/ui/home/HomeScreen.kt
+test -f app/src/main/java/com/iumrah/beta/ui/shell/AppShell.kt
+
+grep -q 'const val PressedScale = 0.985f' app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
+grep -q 'const val CardPressedScale = 0.978f' app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
+grep -q 'durationMillis = 820' app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
+grep -q 'replace("%@", "%s")' app/src/main/java/com/iumrah/beta/core/localization/L10n.kt
+grep -q 'packageMarkupRate: BigDecimal = BigDecimal("0.20")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
+
+echo 'Stage 003 shell/motion structural checks passed.'

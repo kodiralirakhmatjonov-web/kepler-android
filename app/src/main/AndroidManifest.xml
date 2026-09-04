@@ -3,6 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".IumrahApplication"
         android:allowBackup="false"
         android:label="iumrah Beta"
         android:supportsRtl="true"

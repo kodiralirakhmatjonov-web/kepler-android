@@ -1,0 +1,3 @@
+Kepler Android Stage 003 prerequisite repair.
+Restores Stage 002 account/API/security files when Stage 003 was uploaded directly after Stage 001.
+Does not create a separate Android business database.

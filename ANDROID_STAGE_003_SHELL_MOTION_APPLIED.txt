@@ -1,0 +1,4 @@
+Kepler Android Stage 003 applied
+Scope: native Compose shell, onboarding, Home, localization, design + motion system
+Source of truth: beta-iumrah-app-main 7.zip
+Pricing invariant: Android test package markup remains 20%; all other pricing semantics unchanged.

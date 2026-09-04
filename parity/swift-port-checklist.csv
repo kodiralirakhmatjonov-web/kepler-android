@@ -12,7 +12,7 @@ beta-iumrah-app-main/Sources/AppShell/IumrahEmailVerificationView.swift,AppShell
 beta-iumrah-app-main/Sources/AppShell/IumrahPasswordRecoveryView.swift,AppShell,pending,
 beta-iumrah-app-main/Sources/AppShell/ProfileSettingsView.swift,AppShell,pending,
 beta-iumrah-app-main/Sources/AppShell/SidebarDrawerView.swift,AppShell,pending,
-beta-iumrah-app-main/Sources/Core/AppConfig.swift,Core,pending,
+beta-iumrah-app-main/Sources/Core/AppConfig.swift,Core,ported-stage1,app/src/main/java/com/iumrah/beta/core/config/AppConfig.kt
 beta-iumrah-app-main/Sources/Core/AppLocalization.swift,Core,pending,
 beta-iumrah-app-main/Sources/Core/BookingDraftBuilder.swift,Core,pending,
 beta-iumrah-app-main/Sources/Core/BookingItineraryPlanner.swift,Core,pending,
@@ -21,8 +21,8 @@ beta-iumrah-app-main/Sources/Core/Components/IumrahSiriOrb.swift,Core,pending,
 beta-iumrah-app-main/Sources/Core/Components/IumrahSystemGlow.swift,Core,pending,
 beta-iumrah-app-main/Sources/Core/DesignSystem.swift,Core,pending,
 beta-iumrah-app-main/Sources/Core/FlowCopy.swift,Core,pending,
-beta-iumrah-app-main/Sources/Core/IumrahAccountSecurityIdentity.swift,Core,pending,
-beta-iumrah-app-main/Sources/Core/IumrahClientIdentity.swift,Core,pending,
+beta-iumrah-app-main/Sources/Core/IumrahAccountSecurityIdentity.swift,Core,ported-stage2,app/src/main/java/com/iumrah/beta/core/security/IumrahAccountDeviceIdentity.kt
+beta-iumrah-app-main/Sources/Core/IumrahClientIdentity.swift,Core,ported-stage2,legacy identity intentionally absent; permanent iumrah ID account model preserved
 beta-iumrah-app-main/Sources/Core/TripStayPlanner.swift,Core,ported-stage1,
 beta-iumrah-app-main/Sources/FlightEngine/FlightBotChallengeCenter.swift,FlightEngine,pending,
 beta-iumrah-app-main/Sources/FlightEngine/FlightBotDeviceAdapter.swift,FlightEngine,pending,
@@ -46,17 +46,17 @@ beta-iumrah-app-main/Sources/HotelPricing/HotelPriceModels.swift,HotelPricing,pe
 beta-iumrah-app-main/Sources/HotelPricing/HotelPriceProvider.swift,HotelPricing,pending,
 beta-iumrah-app-main/Sources/HotelPricing/HotelPriceTextParser.swift,HotelPricing,pending,
 beta-iumrah-app-main/Sources/Models/AirportModels.swift,Models,pending,
-beta-iumrah-app-main/Sources/Models/BookingModels.swift,Models,pending,
+beta-iumrah-app-main/Sources/Models/BookingModels.swift,Models,partial-stage2,account/trip decode subset in app/src/main/java/com/iumrah/beta/models/booking/BookingSharedModels.kt; booking creation/session models remain pending
 beta-iumrah-app-main/Sources/Models/FlightModels.swift,Models,pending,
 beta-iumrah-app-main/Sources/Models/GeneratorComponentModels.swift,Models,pending,
 beta-iumrah-app-main/Sources/Models/HotelModels.swift,Models,pending,
-beta-iumrah-app-main/Sources/Models/IumrahAccountModels.swift,Models,pending,
-beta-iumrah-app-main/Sources/Models/IumrahFriendsModels.swift,Models,pending,
-beta-iumrah-app-main/Sources/Models/IumrahSecurityConfirmationModels.swift,Models,pending,
+beta-iumrah-app-main/Sources/Models/IumrahAccountModels.swift,Models,ported-stage2,app/src/main/java/com/iumrah/beta/models/account/IumrahAccountModels.kt
+beta-iumrah-app-main/Sources/Models/IumrahFriendsModels.swift,Models,ported-stage2,app/src/main/java/com/iumrah/beta/models/account/IumrahFriendsModels.kt
+beta-iumrah-app-main/Sources/Models/IumrahSecurityConfirmationModels.swift,Models,ported-stage2,app/src/main/java/com/iumrah/beta/models/account/IumrahSecurityConfirmationModels.kt
 beta-iumrah-app-main/Sources/Models/PackageEngineModels.swift,Models,pending,
 beta-iumrah-app-main/Sources/Models/ServerPackageSearchModels.swift,Models,pending,
 beta-iumrah-app-main/Sources/Models/TripModels.swift,Models,pending,
-beta-iumrah-app-main/Sources/Networking/APIClient.swift,Networking,pending,
+beta-iumrah-app-main/Sources/Networking/APIClient.swift,Networking,ported-stage2,app/src/main/java/com/iumrah/beta/core/network/APIClient.kt
 beta-iumrah-app-main/Sources/Services/AirportSearchService.swift,Services,pending,
 beta-iumrah-app-main/Sources/Services/BookingService.swift,Services,pending,
 beta-iumrah-app-main/Sources/Services/ChatService.swift,Services,pending,
@@ -66,7 +66,7 @@ beta-iumrah-app-main/Sources/Services/FlightFareCalendarService.swift,Services,p
 beta-iumrah-app-main/Sources/Services/FlightSearchService.swift,Services,pending,
 beta-iumrah-app-main/Sources/Services/HotelCatalogService.swift,Services,pending,
 beta-iumrah-app-main/Sources/Services/IgnavFlightInventoryProvider.swift,Services,pending,
-beta-iumrah-app-main/Sources/Services/IumrahAccountService.swift,Services,pending,
+beta-iumrah-app-main/Sources/Services/IumrahAccountService.swift,Services,ported-stage2,app/src/main/java/com/iumrah/beta/data/account/IumrahAccountService.kt
 beta-iumrah-app-main/Sources/Services/IumrahConnectivityMonitor.swift,Services,pending,
 beta-iumrah-app-main/Sources/Services/LocalFXRateService.swift,Services,pending,
 beta-iumrah-app-main/Sources/Services/LocalPackagePricingEngine.swift,Services,ported-stage1,
@@ -77,8 +77,8 @@ beta-iumrah-app-main/Sources/Services/RealFlightPackageSearchService.swift,Servi
 beta-iumrah-app-main/Sources/Services/RemotePackageEngineClient.swift,Services,pending,
 beta-iumrah-app-main/Sources/State/BookingStore.swift,State,pending,
 beta-iumrah-app-main/Sources/State/BookingStoreESIMCompatibility.swift,State,pending,
-beta-iumrah-app-main/Sources/State/IumrahAccountStore.swift,State,pending,
-beta-iumrah-app-main/Sources/State/IumrahAccountStoreLoginCompatibility.swift,State,pending,
+beta-iumrah-app-main/Sources/State/IumrahAccountStore.swift,State,ported-stage2,app/src/main/java/com/iumrah/beta/data/account/IumrahAccountStore.kt
+beta-iumrah-app-main/Sources/State/IumrahAccountStoreLoginCompatibility.swift,State,ported-stage2,compatibility overload unnecessary in Kotlin; identifier login is canonical
 beta-iumrah-app-main/Sources/State/JourneyStore.swift,State,pending,
 beta-iumrah-app-main/Sources/Umrah Flow/Components/AdvisorVoiceGradient.swift,Umrah Flow,pending,
 beta-iumrah-app-main/Sources/Umrah Flow/Components/SafaDuaSheet.swift,Umrah Flow,pending,

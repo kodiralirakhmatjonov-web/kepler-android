@@ -1,0 +1,196 @@
+package com.iumrah.beta.ui.shell
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Hotel
+import androidx.compose.material.icons.rounded.Luggage
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.iumrah.beta.core.design.IumrahHaptics
+import com.iumrah.beta.core.design.IumrahMotion
+import com.iumrah.beta.core.localization.L10n
+import com.iumrah.beta.core.navigation.AppChromeState
+import com.iumrah.beta.core.navigation.AppChromeStore
+import com.iumrah.beta.core.navigation.AppRoute
+import com.iumrah.beta.core.navigation.AppTab
+import com.iumrah.beta.core.settings.AppLanguage
+import com.iumrah.beta.data.account.IumrahAccountStore
+import com.iumrah.beta.ui.home.HomeScreen
+import com.iumrah.beta.ui.placeholder.StagePlaceholderScreen
+
+@Composable
+fun AppShell(
+    language: AppLanguage,
+    chrome: AppChromeStore,
+    chromeState: AppChromeState,
+    accountStore: IumrahAccountStore,
+) {
+    val hapticView = LocalView.current
+    BackHandler(enabled = chromeState.route != AppRoute.Root) { chrome.back() }
+
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        AnimatedContent(
+            targetState = chromeState.route to chromeState.currentTab,
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = { rootTransform() },
+            label = "iumrah-root-navigation",
+        ) { (route, tab) ->
+            when (route) {
+                AppRoute.Root -> when (tab) {
+                    AppTab.HOME -> HomeScreen(language, chrome)
+                    AppTab.HOTELS -> StagePlaceholderScreen(L10n.text("hotels_title", language), L10n.text("hotels_subtitle", language))
+                    AppTab.BOOKING -> StagePlaceholderScreen(L10n.text("tab_booking", language), L10n.text("booking_home_subtitle", language))
+                    AppTab.CARE -> StagePlaceholderScreen(L10n.text("care_title", language), L10n.text("care_subtitle", language))
+                    AppTab.ACCOUNT -> AccountRoot(accountStore, language)
+                }
+                AppRoute.TripBuilder -> StagePlaceholderScreen(L10n.text("trip_intro_title", language), L10n.text("trip_intro_body", language), chrome::back)
+                is AppRoute.HotelDetail -> StagePlaceholderScreen("Hotel", route.hotelId, chrome::back)
+                AppRoute.Flights -> StagePlaceholderScreen("iumrah Flights", L10n.text("flight_search_hero", language), chrome::back)
+            }
+        }
+
+        if (!chromeState.isImmersive && chromeState.route == AppRoute.Root) {
+            IumrahBottomBar(
+                language = language,
+                selected = chromeState.currentTab,
+                onSelect = {
+                    if (it != chromeState.currentTab) IumrahHaptics.selection(hapticView)
+                    chrome.navigate(it)
+                },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
+    }
+}
+
+private fun rootTransform(): ContentTransform =
+    (fadeIn(IumrahMotion.rootFade) + scaleIn(IumrahMotion.content, initialScale = .985f))
+        .togetherWith(fadeOut(IumrahMotion.fastFade) + scaleOut(IumrahMotion.content, targetScale = 1.015f))
+
+@Composable
+private fun IumrahBottomBar(
+    language: AppLanguage,
+    selected: AppTab,
+    onSelect: (AppTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val items = listOf(
+        Triple(AppTab.HOME, Icons.Rounded.Home, L10n.text("tab_home", language)),
+        Triple(AppTab.HOTELS, Icons.Rounded.Hotel, L10n.text("tab_hotels", language)),
+        Triple(AppTab.BOOKING, Icons.Rounded.Luggage, L10n.text("tab_booking", language)),
+        Triple(AppTab.CARE, Icons.Rounded.Favorite, L10n.text("tab_care", language)),
+        Triple(AppTab.ACCOUNT, Icons.Rounded.AccountCircle, L10n.text("profile_placeholder", language)),
+    )
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = .97f))
+            .navigationBarsPadding()
+            .height(74.dp)
+            .padding(horizontal = 8.dp, vertical = 7.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        items.forEach { (tab, icon, label) ->
+            BottomTabItem(tab == selected, icon, label) { onSelect(tab) }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.BottomTabItem(
+    selected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) .91f else if (selected) 1f else .97f,
+        animationSpec = IumrahMotion.tab,
+        label = "tab-scale",
+    )
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .height(58.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(RoundedCornerShape(21.dp))
+            .background(if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
+            .clickable(interactionSource = source, indication = null, onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) .96f else .50f),
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) .90f else .48f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun AccountRoot(accountStore: IumrahAccountStore, language: AppLanguage) {
+    val state by accountStore.state.collectAsState()
+    Column(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(start = 20.dp, end = 20.dp, top = 54.dp, bottom = 112.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Text(L10n.text("profile_placeholder", language), style = MaterialTheme.typography.headlineLarge)
+        val profile = state.account
+        if (profile == null) {
+            Text(L10n.text("profile_subtitle_empty", language), color = MaterialTheme.colorScheme.onBackground.copy(alpha = .58f))
+        } else {
+            Text(listOf(profile.firstName, profile.lastName).filter { it.isNotBlank() }.joinToString(" "), style = MaterialTheme.typography.titleLarge)
+            Text(profile.iumrahID, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
+        }
+    }
+}

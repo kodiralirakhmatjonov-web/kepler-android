@@ -1,0 +1,4 @@
+iumrah Android Stage 2 / 10
+Account/API/security parity foundation ported from the current SwiftUI source.
+Same https://iumrah.app backend. No Android-specific business database.
+Android test package markup remains 20%.
