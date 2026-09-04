@@ -1,0 +1,6 @@
+iumrah Android native port — Stage 1/10
+Source: beta-iumrah-app-main 7.zip
+Foundation: Kotlin + Jetpack Compose
+Backend: https://iumrah.app
+Database policy: no Android-specific database; same iumrah backend/DB contracts as iOS + Business.
+Pricing exception for this Android test build: package markup 20%.
