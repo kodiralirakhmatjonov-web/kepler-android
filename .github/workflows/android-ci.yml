@@ -1,1 +1,139 @@
+name: iumrah Android CI
 
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'iumrah-android-update-*.zip'
+  workflow_dispatch:
+    inputs:
+      run_release_build:
+        description: 'Also build release APK (unsigned/test artifact)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  apply-update:
+    if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract Android update safely
+        shell: python
+        run: |
+          import pathlib
+          import shutil
+          import sys
+          import zipfile
+
+          root = pathlib.Path('.').resolve()
+          archives = sorted(root.glob('iumrah-android-update-*.zip'))
+          if not archives:
+              print('No iumrah Android update ZIP found.')
+              sys.exit(0)
+
+          protected_prefixes = (
+              '.git/',
+              '.github/workflows/',
+              'signing/',
+              'keystore/',
+          )
+
+          for archive in archives:
+              print(f'Applying {archive.name}')
+              with zipfile.ZipFile(archive) as z:
+                  for member in z.infolist():
+                      name = member.filename.replace('\\', '/')
+                      target = (root / name).resolve()
+                      if root not in target.parents and target != root:
+                          raise RuntimeError(f'Unsafe ZIP path: {member.filename}')
+                      if any(name.startswith(prefix) for prefix in protected_prefixes):
+                          print(f'Skipping protected path: {name}')
+                          continue
+                      if member.is_dir():
+                          target.mkdir(parents=True, exist_ok=True)
+                          continue
+                      target.parent.mkdir(parents=True, exist_ok=True)
+                      with z.open(member) as source, open(target, 'wb') as destination:
+                          shutil.copyfileobj(source, destination)
+              archive.unlink()
+
+      - name: Validate repository after patch
+        run: |
+          set -euo pipefail
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+          test -f app/src/main/AndroidManifest.xml
+          test -f scripts/verify-stage1.sh
+          bash scripts/verify-stage1.sh
+
+      - name: Commit applied files
+        run: |
+          set -euo pipefail
+          git config user.name "iumrah-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Apply iumrah Android update [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+  build:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android API 37
+        run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
+
+      - name: Gradle 9.6
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Structural checks
+        run: bash scripts/verify-stage1.sh
+
+      - name: Unit tests
+        run: gradle --stacktrace :app:testDebugUnitTest
+
+      - name: Build debug APK
+        run: gradle --stacktrace :app:assembleDebug
+
+      - name: Build release APK
+        if: ${{ inputs.run_release_build }}
+        run: gradle --stacktrace :app:assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: iumrah-android-apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
