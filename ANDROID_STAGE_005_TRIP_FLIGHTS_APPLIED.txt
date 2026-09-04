@@ -1,0 +1,4 @@
+Kepler Android stage 005 applied.
+Scope: trip builder, hotel-selection handoff, Ignav complete-journey flight search, fare calendar/search contracts, native flight selection motion.
+Source of truth: beta-iumrah-app-main 7.zip.
+Pricing exception for Android test build remains package markup 20%.

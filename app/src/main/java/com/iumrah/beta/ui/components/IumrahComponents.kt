@@ -1,5 +1,6 @@
 package com.iumrah.beta.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,6 +41,7 @@ fun IumrahPressable(
     pressedScale: Float = IumrahMotion.CardPressedScale,
     cornerRadius: Dp = 30.dp,
     background: Color = MaterialTheme.colorScheme.surface,
+    pressedBackgroundAlpha: Float = 1f,
     shadowElevation: Dp = 0.dp,
     content: @Composable () -> Unit,
 ) {
@@ -50,6 +52,11 @@ fun IumrahPressable(
         animationSpec = IumrahMotion.press,
         label = "iumrah-press-scale",
     )
+    val animatedBackground by animateColorAsState(
+        targetValue = if (pressed && enabled) background.copy(alpha = background.alpha * pressedBackgroundAlpha) else background,
+        animationSpec = IumrahMotion.fastColor,
+        label = "iumrah-press-background",
+    )
     Box(
         modifier = modifier
             .graphicsLayer {
@@ -58,7 +65,7 @@ fun IumrahPressable(
             }
             .then(if (shadowElevation > 0.dp) Modifier.shadow(shadowElevation, RoundedCornerShape(cornerRadius), clip = false) else Modifier)
             .clip(RoundedCornerShape(cornerRadius))
-            .background(background)
+            .background(animatedBackground)
             .clickable(
                 interactionSource = source,
                 indication = null,
@@ -84,6 +91,8 @@ fun IumrahPrimaryButton(
         pressedScale = IumrahMotion.PressedScale,
         cornerRadius = 28.dp,
         background = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        pressedBackgroundAlpha = .82f,
+        shadowElevation = if (enabled) 7.dp else 0.dp,
     ) {
         Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) {
             Text(
@@ -108,6 +117,7 @@ fun IumrahSecondaryButton(
         pressedScale = IumrahMotion.PressedScale,
         cornerRadius = 27.dp,
         background = MaterialTheme.colorScheme.surfaceVariant,
+        pressedBackgroundAlpha = .72f,
     ) {
         Box(Modifier.fillMaxWidth().height(54.dp), contentAlignment = Alignment.Center) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)

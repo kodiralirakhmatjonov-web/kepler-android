@@ -2,6 +2,7 @@ package com.iumrah.beta.ui.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -47,11 +49,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -68,7 +72,9 @@ import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.ui.components.IumrahPill
 import com.iumrah.beta.ui.components.IumrahPressable
+import com.iumrah.beta.ui.components.IumrahRootPageHeader
 import com.iumrah.beta.ui.media.LoopingRawVideo
+import kotlin.math.absoluteValue
 import kotlinx.coroutines.delay
 
 @Composable
@@ -80,17 +86,15 @@ fun HomeScreen(language: AppLanguage, chrome: AppChromeStore) {
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            Row(Modifier.fillMaxWidth().height(40.dp), verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painterResource(if (androidx.compose.foundation.isSystemInDarkTheme()) R.drawable.iumrah_header_wordmark_light else R.drawable.iumrah_header_wordmark_dark),
-                    contentDescription = "iumrah",
-                    modifier = Modifier.fillMaxWidth(0.34f).height(28.dp),
-                    contentScale = ContentScale.Fit,
-                )
-            }
+            IumrahRootPageHeader(
+                title = L10n.text("tab_home", language),
+                chrome = chrome,
+                usesBrandLogo = true,
+            )
         }
         item { HomeHero(language = language, onBuild = chrome::startNewTrip) }
         item { EmotionalPrompt(language = language, onOpen = { showStory = true }) }
+        item { HomeVideoCarousel() }
         item {
             HomeImageCard(
                 drawable = R.drawable.iumrah_flights_home_card,
@@ -230,6 +234,75 @@ private fun CareCard(language: AppLanguage, onClick: () -> Unit) {
 private val storyResources = listOf("home_story_01", "home_story_03", "home_story_04", "home_story_05", "home_story_07", "home_story_08")
 
 @Composable
+private fun HomeVideoCarousel() {
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val carouselHeight = (screenHeight * .72f).coerceIn(460.dp, 680.dp)
+    val pager = rememberPagerState(pageCount = { storyResources.size })
+    var muted by remember { mutableStateOf(true) }
+    val hapticView = LocalView.current
+
+    Box(Modifier.fillMaxWidth().height(carouselHeight), contentAlignment = Alignment.BottomCenter) {
+        HorizontalPager(
+            state = pager,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 4.dp),
+            pageSpacing = 12.dp,
+            beyondViewportPageCount = 1,
+        ) { index ->
+            val offset = ((pager.currentPage - index) + pager.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
+            val cardScale = 1f - (.015f * offset)
+            val cardAlpha = 1f - (.10f * offset)
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { scaleX = cardScale; scaleY = cardScale; alpha = cardAlpha }
+                    .clip(RoundedCornerShape(34.dp))
+                    .background(Color.Black),
+            ) {
+                LoopingRawVideo(
+                    resourceName = storyResources[index],
+                    modifier = Modifier.fillMaxSize(),
+                    play = pager.currentPage == index,
+                    muted = muted,
+                    fallback = {
+                        Image(
+                            painterResource(R.drawable.iumrah_makkah_background),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                    },
+                )
+                IumrahPressable(
+                    onClick = {
+                        muted = !muted
+                        IumrahHaptics.soft(hapticView)
+                    },
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).size(42.dp),
+                    cornerRadius = 99.dp,
+                    background = Color.White.copy(alpha=.16f),
+                    pressedScale = .92f,
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(if (muted) Icons.Rounded.VolumeOff else Icons.Rounded.Speaker, contentDescription = null, tint = Color.White)
+                    }
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.padding(bottom = 14.dp).clip(RoundedCornerShape(99.dp)).background(Color.Black.copy(alpha=.28f)).padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            storyResources.indices.forEach { index ->
+                val width by animateFloatAsState(if (pager.currentPage == index) 18f else 6f, IumrahMotion.selection, label = "home-carousel-dot-$index")
+                Box(Modifier.width(width.dp).height(6.dp).clip(RoundedCornerShape(99.dp)).background(Color.White.copy(alpha = if (pager.currentPage == index) .96f else .46f)))
+            }
+        }
+    }
+}
+
+@Composable
 private fun EmotionalJourneyFullscreen(language: AppLanguage, onClose: () -> Unit) {
     val pager = rememberPagerState(pageCount = { storyResources.size })
     var muted by remember { mutableStateOf(false) }
@@ -272,7 +345,13 @@ private fun EmotionalJourneyFullscreen(language: AppLanguage, onClose: () -> Uni
             ) {
                 AnimatedVisibility(visible = captionVisible, enter = fadeIn(IumrahMotion.vapor), exit = fadeOut(IumrahMotion.fastFade)) {
                     val scale by animateFloatAsState(if (captionVisible) 1f else .985f, IumrahMotion.softReveal, label = "caption-scale")
-                    Column(Modifier.graphicsLayer { scaleX = scale; scaleY = scale; translationY = if (captionVisible) 0f else 14f }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val blur by animateDpAsState(if (captionVisible) 0.dp else 13.dp, IumrahMotion.vaporDp, label = "caption-blur")
+                    Column(
+                        Modifier
+                            .graphicsLayer { scaleX = scale; scaleY = scale; translationY = if (captionVisible) 0f else 14f }
+                            .blur(blur),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         Text(HomeEmotionalCopy.title(pager.currentPage, language), color = Color.White, style = MaterialTheme.typography.headlineMedium)
                         HomeEmotionalCopy.subtitle(pager.currentPage, language)?.let { Text(it, color = Color.White.copy(alpha=.82f), style = MaterialTheme.typography.bodyLarge) }
                     }

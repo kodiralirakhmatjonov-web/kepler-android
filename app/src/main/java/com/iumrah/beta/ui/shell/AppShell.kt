@@ -54,12 +54,19 @@ import com.iumrah.beta.core.navigation.AppRoute
 import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.account.IumrahAccountStore
+import com.iumrah.beta.data.flight.AirportSearchService
+import com.iumrah.beta.data.flight.IgnavFlightInventoryProvider
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.data.hotel.RemotePackageEngineClient
+import com.iumrah.beta.domain.journey.JourneyStore
+import com.iumrah.beta.ui.flights.FlightSearchScreen
+import com.iumrah.beta.ui.components.IumrahRootPageHeader
 import com.iumrah.beta.ui.home.HomeScreen
 import com.iumrah.beta.ui.hotels.HotelDetailScreen
 import com.iumrah.beta.ui.hotels.HotelsScreen
 import com.iumrah.beta.ui.placeholder.StagePlaceholderScreen
+import com.iumrah.beta.ui.trip.HotelSelectionScreen
+import com.iumrah.beta.ui.trip.TripBuilderScreen
 
 @Composable
 fun AppShell(
@@ -69,10 +76,16 @@ fun AppShell(
     accountStore: IumrahAccountStore,
     hotelCatalog: HotelCatalogService,
     packageEngine: RemotePackageEngineClient,
+    journey: JourneyStore,
+    airports: AirportSearchService,
+    flightInventory: IgnavFlightInventoryProvider,
 ) {
     val hapticView = LocalView.current
-    BackHandler(enabled = chromeState.route != AppRoute.Root) { chrome.back() }
+    BackHandler(enabled = chromeState.isSidebarOpen || chromeState.route != AppRoute.Root) {
+        if (chromeState.isSidebarOpen) chrome.closeSidebar() else chrome.back()
+    }
 
+    SidebarDrawerHost(open = chromeState.isSidebarOpen, language = language, chrome = chrome) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         AnimatedContent(
             targetState = chromeState.route to chromeState.currentTab,
@@ -84,13 +97,46 @@ fun AppShell(
                 AppRoute.Root -> when (tab) {
                     AppTab.HOME -> HomeScreen(language, chrome)
                     AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, chrome)
-                    AppTab.BOOKING -> StagePlaceholderScreen(L10n.text("tab_booking", language), L10n.text("booking_home_subtitle", language))
-                    AppTab.CARE -> StagePlaceholderScreen(L10n.text("care_title", language), L10n.text("care_subtitle", language))
-                    AppTab.ACCOUNT -> AccountRoot(accountStore, language)
+                    AppTab.BOOKING -> StagePlaceholderScreen(
+                        L10n.text("tab_booking", language),
+                        L10n.text("booking_home_subtitle", language),
+                    )
+                    AppTab.CARE -> StagePlaceholderScreen(
+                        L10n.text("care_title", language),
+                        L10n.text("care_subtitle", language),
+                    )
+                    AppTab.ACCOUNT -> AccountRoot(accountStore, language, chrome)
                 }
-                AppRoute.TripBuilder -> StagePlaceholderScreen(L10n.text("trip_intro_title", language), L10n.text("trip_intro_body", language), chrome::back)
-                is AppRoute.HotelDetail -> HotelDetailScreen(route.hotelId, language, hotelCatalog, packageEngine, chrome::back)
-                AppRoute.Flights -> StagePlaceholderScreen("iumrah Flights", L10n.text("flight_search_hero", language), chrome::back)
+
+                AppRoute.TripBuilder -> TripBuilderScreen(
+                    language = language,
+                    journey = journey,
+                    airports = airports,
+                    chrome = chrome,
+                )
+
+                AppRoute.HotelSelection -> HotelSelectionScreen(
+                    language = language,
+                    journey = journey,
+                    catalog = hotelCatalog,
+                    packageEngine = packageEngine,
+                    chrome = chrome,
+                )
+
+                is AppRoute.HotelDetail -> HotelDetailScreen(
+                    hotelId = route.hotelId,
+                    language = language,
+                    catalog = hotelCatalog,
+                    packageEngine = packageEngine,
+                    onBack = chrome::back,
+                )
+
+                AppRoute.Flights -> FlightSearchScreen(
+                    language = language,
+                    journey = journey,
+                    provider = flightInventory,
+                    chrome = chrome,
+                )
             }
         }
 
@@ -105,6 +151,7 @@ fun AppShell(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
+    }
     }
 }
 
@@ -184,18 +231,27 @@ private fun RowScope.BottomTabItem(
 }
 
 @Composable
-private fun AccountRoot(accountStore: IumrahAccountStore, language: AppLanguage) {
+private fun AccountRoot(accountStore: IumrahAccountStore, language: AppLanguage, chrome: AppChromeStore) {
     val state by accountStore.state.collectAsState()
     Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(start = 20.dp, end = 20.dp, top = 54.dp, bottom = 112.dp),
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(start = 20.dp, end = 20.dp, top = 54.dp, bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text(L10n.text("profile_placeholder", language), style = MaterialTheme.typography.headlineLarge)
+        IumrahRootPageHeader(L10n.text("profile_placeholder", language), chrome)
         val profile = state.account
         if (profile == null) {
-            Text(L10n.text("profile_subtitle_empty", language), color = MaterialTheme.colorScheme.onBackground.copy(alpha = .58f))
+            Text(
+                L10n.text("profile_subtitle_empty", language),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = .58f),
+            )
         } else {
-            Text(listOf(profile.firstName, profile.lastName).filter { it.isNotBlank() }.joinToString(" "), style = MaterialTheme.typography.titleLarge)
+            Text(
+                listOf(profile.firstName, profile.lastName).filter { it.isNotBlank() }.joinToString(" "),
+                style = MaterialTheme.typography.titleLarge,
+            )
             Text(profile.iumrahID, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
         }
     }

@@ -69,10 +69,14 @@ fun IumrahApp() {
                     accountStore = container.accountStore,
                     hotelCatalog = container.hotelCatalogService,
                     packageEngine = container.packageEngine,
+                    journey = container.journeyStore,
+                    airports = container.airportSearchService,
+                    flightInventory = container.flightInventoryProvider,
                 )
             } else {
                 OnboardingFlow(
                     language = settings.language,
+                    onLanguageChange = container.settingsStore::setLanguage,
                     onFinished = container.settingsStore::completeOnboarding,
                 )
             }

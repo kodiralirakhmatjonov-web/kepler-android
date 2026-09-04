@@ -2,8 +2,11 @@ package com.iumrah.beta.core.design
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 
 /**
  * Motion values are mapped from the SwiftUI source instead of Material defaults.
@@ -20,11 +23,15 @@ object IumrahMotion {
     val cinematic: SpringSpec<Float> = spring(dampingRatio = 0.84f, stiffness = 103f) // .62 / .84
     val cardFlip: SpringSpec<Float> = spring(dampingRatio = 0.84f, stiffness = 91f) // .66 / .84
     val selection: SpringSpec<Float> = spring(dampingRatio = 0.88f, stiffness = 584f) // .26 / .88
+    val selectionDp: SpringSpec<Dp> = spring(dampingRatio = 0.88f, stiffness = 584f)
+    val selectionColor: SpringSpec<Color> = spring(dampingRatio = 0.88f, stiffness = 584f)
     val content: SpringSpec<Float> = spring(dampingRatio = 0.90f, stiffness = 224f) // .42 / .90
 
     val fastFade = tween<Float>(durationMillis = 220)
+    val fastColor: TweenSpec<Color> = tween(durationMillis = 110)
     val rootFade = tween<Float>(durationMillis = 280)
     val vapor = tween<Float>(durationMillis = 820)
+    val vaporDp = tween<Dp>(durationMillis = 820)
     val pageSnap = tween<Float>(durationMillis = 240)
 }
 

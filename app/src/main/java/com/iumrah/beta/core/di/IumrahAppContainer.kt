@@ -8,8 +8,12 @@ import com.iumrah.beta.core.security.SecureJsonStore
 import com.iumrah.beta.core.settings.AppSettingsStore
 import com.iumrah.beta.data.account.IumrahAccountService
 import com.iumrah.beta.data.account.IumrahAccountStore
+import com.iumrah.beta.data.flight.AirportSearchService
+import com.iumrah.beta.data.flight.FlightFareCalendarService
+import com.iumrah.beta.data.flight.IgnavFlightInventoryProvider
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.data.hotel.RemotePackageEngineClient
+import com.iumrah.beta.domain.journey.JourneyStore
 
 class IumrahAppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -21,6 +25,10 @@ class IumrahAppContainer(context: Context) {
     val accountStore = IumrahAccountStore(accountService, secureStore)
     val hotelCatalogService = HotelCatalogService(apiClient)
     val packageEngine = RemotePackageEngineClient(apiClient)
+    val airportSearchService = AirportSearchService(apiClient)
+    val flightFareCalendarService = FlightFareCalendarService(apiClient)
+    val flightInventoryProvider = IgnavFlightInventoryProvider(apiClient)
+    val journeyStore = JourneyStore()
     val settingsStore = AppSettingsStore(appContext)
     val chromeStore = AppChromeStore()
 }

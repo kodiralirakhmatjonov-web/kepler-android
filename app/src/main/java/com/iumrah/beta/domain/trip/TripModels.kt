@@ -1,46 +1,39 @@
 package com.iumrah.beta.domain.trip
 
+import com.iumrah.beta.models.flight.Airport
+import com.iumrah.beta.models.flight.FlightSearchFilters
+import java.time.DayOfWeek
 import java.time.LocalDate
+import kotlinx.serialization.Serializable
 
-enum class PackageTier(val wireValue: String) {
-    ECONOMY("economy"),
-    STANDARD("standard"),
-    COMFORT("comfort"),
-    LUXURY("luxury"),
+enum class PackageTier(val wireValue: String) { ECONOMY("economy"), STANDARD("standard"), COMFORT("comfort"), LUXURY("luxury") }
+
+enum class DateFlexibility(val wireValue: String) {
+    EXACT("exact"), PLUS_MINUS_ONE("plusMinusOne"), PLUS_MINUS_TWO("plusMinusTwo"), WEEKEND("weekend");
+    val isFlexibleDayRange: Boolean get() = this == PLUS_MINUS_ONE || this == PLUS_MINUS_TWO
+    val isWeeklyDiscovery: Boolean get() = false
 }
 
-enum class JourneyScope(val wireValue: String) {
-    MAKKAH_ONLY("makkahOnly"),
-    MAKKAH_AND_MADINAH("makkahAndMadinah"),
-}
+enum class JourneyScope(val wireValue: String) { MAKKAH_ONLY("makkahOnly"), MAKKAH_AND_MADINAH("makkahAndMadinah") }
+enum class SaudiArrivalAirport(val iata: String) { JEDDAH("JED"), MADINAH("MED") }
+enum class FlightTripType(val wireValue: String) { ROUND_TRIP("roundTrip"), ONE_WAY("oneWay") }
 
-enum class SaudiArrivalAirport(val iata: String) {
-    JEDDAH("JED"),
-    MADINAH("MED"),
-}
-
-enum class FlightTripType(val wireValue: String) {
-    ROUND_TRIP("roundTrip"),
-    ONE_WAY("oneWay"),
-}
-
+@Serializable
 enum class FlightFareScope(val wireValue: String) {
-    PER_PASSENGER("perPassenger"),
-    TOTAL_PARTY("totalParty"),
-    UNKNOWN("unknown"),
+    PER_PASSENGER("perPassenger"), TOTAL_PARTY("totalParty"), UNKNOWN("unknown");
+    companion object {
+        fun fromWire(value: String): FlightFareScope = entries.firstOrNull { it.wireValue.equals(value, true) } ?: UNKNOWN
+    }
 }
 
-/**
- * Stage-1 port of the pricing-relevant TripDraft contract.
- * More UI/search fields are added during the model/API parity stage without
- * changing these pricing semantics.
- */
 data class TripDraft(
     val origin: String = "TAS",
+    val originAirport: Airport? = null,
     val arrivalAirport: SaudiArrivalAirport = SaudiArrivalAirport.JEDDAH,
-    val departureDate: LocalDate,
+    val departureDate: LocalDate = LocalDate.now().plusDays(21),
     val saudiArrivalDate: LocalDate? = null,
-    val returnDate: LocalDate,
+    val returnDate: LocalDate = LocalDate.now().plusDays(28),
+    val flexibility: DateFlexibility = DateFlexibility.EXACT,
     val adults: Int = 2,
     val children: Int = 0,
     val infants: Int = 0,
@@ -48,29 +41,46 @@ data class TripDraft(
     val hotelStars: Int = 4,
     val packageTier: PackageTier = PackageTier.STANDARD,
     val scope: JourneyScope = JourneyScope.MAKKAH_AND_MADINAH,
+    val flightFilters: FlightSearchFilters? = null,
     val flightTripType: FlightTripType? = null,
 ) {
     val travelerCount: Int get() = adults + children + infants
     val hotelStayStartDate: LocalDate get() = saudiArrivalDate ?: departureDate
+    val effectiveFlightFilters: FlightSearchFilters get() = flightFilters ?: FlightSearchFilters()
     val resolvedFlightTripType: FlightTripType get() = flightTripType ?: FlightTripType.ROUND_TRIP
     val isRoundTripFlight: Boolean get() = resolvedFlightTripType == FlightTripType.ROUND_TRIP
+    val isWeekendUmrah: Boolean get() = flexibility == DateFlexibility.WEEKEND
 
-    val originCode: String get() = origin.trim().uppercase()
+    val originCode: String get() = (originAirport?.iata ?: origin).trim().uppercase()
+    val outboundDestinationCode: String get() = if (isWeekendUmrah || scope != JourneyScope.MAKKAH_AND_MADINAH) "JED" else arrivalAirport.iata
+    val returnOriginCode: String get() = when {
+        isWeekendUmrah || scope != JourneyScope.MAKKAH_AND_MADINAH -> "JED"
+        arrivalAirport == SaudiArrivalAirport.MADINAH -> "JED"
+        else -> "MED"
+    }
 
-    val outboundDestinationCode: String
-        get() = if (scope == JourneyScope.MAKKAH_AND_MADINAH) arrivalAirport.iata else "JED"
+    fun withFlexibility(value: DateFlexibility, today: LocalDate = LocalDate.now()): TripDraft {
+        val normalized = if (value == DateFlexibility.PLUS_MINUS_ONE) DateFlexibility.PLUS_MINUS_TWO else value
+        return if (normalized == DateFlexibility.WEEKEND) copy(flexibility = normalized).applyWeekendWindow(today) else copy(flexibility = normalized)
+    }
 
-    val returnOriginCode: String
-        get() = when {
-            scope != JourneyScope.MAKKAH_AND_MADINAH -> "JED"
-            arrivalAirport == SaudiArrivalAirport.MADINAH -> "JED"
-            else -> "MED"
+    fun applyWeekendWindow(today: LocalDate = LocalDate.now()): TripDraft {
+        var reference = if (departureDate.isBefore(today)) today else departureDate
+        var friday = reference
+        while (friday.dayOfWeek != DayOfWeek.FRIDAY) friday = friday.plusDays(1)
+        if ((reference.dayOfWeek == DayOfWeek.SATURDAY || reference.dayOfWeek == DayOfWeek.SUNDAY)) {
+            val previousFriday = reference.minusDays(if (reference.dayOfWeek == DayOfWeek.SATURDAY) 1 else 2)
+            if (!previousFriday.isBefore(today)) friday = previousFriday
         }
+        return copy(
+            flexibility = DateFlexibility.WEEKEND,
+            scope = JourneyScope.MAKKAH_ONLY,
+            arrivalAirport = SaudiArrivalAirport.JEDDAH,
+            departureDate = friday,
+            saudiArrivalDate = null,
+            returnDate = friday.plusDays(3),
+        )
+    }
 
-    val canContinue: Boolean
-        get() = originCode.length == 3 &&
-            adults > 0 &&
-            travelerCount <= 9 &&
-            rooms > 0 &&
-            returnDate.isAfter(departureDate)
+    val canContinue: Boolean get() = originCode.matches(Regex("^[A-Z]{3}$")) && adults > 0 && travelerCount <= 9 && rooms > 0 && returnDate.isAfter(departureDate)
 }

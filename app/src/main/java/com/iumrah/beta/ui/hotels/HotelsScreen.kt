@@ -45,6 +45,7 @@ import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.models.hotel.HotelSummary
 import com.iumrah.beta.ui.components.IumrahPressable
+import com.iumrah.beta.ui.components.IumrahRootPageHeader
 import com.iumrah.beta.ui.components.IumrahSectionHeader
 
 @Composable
@@ -74,7 +75,7 @@ fun HotelsScreen(
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 116.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item { Text(L10n.text("tab_hotels", language), style = MaterialTheme.typography.headlineLarge) }
+        item { IumrahRootPageHeader(L10n.text("tab_hotels", language), chrome) }
         item { HotelsHero(language) }
         if (loading && makkah.isEmpty() && madinah.isEmpty()) {
             item { Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
