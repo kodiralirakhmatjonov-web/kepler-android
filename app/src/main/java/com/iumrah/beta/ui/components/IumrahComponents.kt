@@ -80,9 +80,9 @@ fun IumrahPressable(
 @Composable
 fun IumrahPrimaryButton(
     title: String,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    onClick: () -> Unit,
 ) {
     IumrahPressable(
         onClick = onClick,
@@ -108,8 +108,8 @@ fun IumrahPrimaryButton(
 @Composable
 fun IumrahSecondaryButton(
     title: String,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit,
 ) {
     IumrahPressable(
         onClick = onClick,

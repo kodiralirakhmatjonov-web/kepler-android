@@ -54,17 +54,30 @@ import com.iumrah.beta.core.navigation.AppRoute
 import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.account.IumrahAccountStore
+import com.iumrah.beta.data.account.IumrahAccountService
+import com.iumrah.beta.data.booking.BookingStore
+import com.iumrah.beta.data.chat.ChatService
+import com.iumrah.beta.data.notification.ClientNotificationStore
 import com.iumrah.beta.data.flight.AirportSearchService
 import com.iumrah.beta.data.flight.IgnavFlightInventoryProvider
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.data.hotel.RemotePackageEngineClient
 import com.iumrah.beta.domain.journey.JourneyStore
+import com.iumrah.beta.domain.pricing.PackageGenerator
 import com.iumrah.beta.ui.flights.FlightSearchScreen
+import com.iumrah.beta.ui.packageflow.FinalPackageScreen
+import com.iumrah.beta.ui.booking.BookingCheckoutScreen
+import com.iumrah.beta.ui.booking.BookingDetailScreen
+import com.iumrah.beta.ui.booking.BookingHotelChangeScreen
+import com.iumrah.beta.ui.booking.BookingsHomeScreen
+import com.iumrah.beta.ui.booking.PilgrimCheckoutScreen
+import com.iumrah.beta.ui.care.CareHomeScreen
+import com.iumrah.beta.ui.chat.BookingChatScreen
+import com.iumrah.beta.ui.notifications.NotificationsScreen
 import com.iumrah.beta.ui.components.IumrahRootPageHeader
 import com.iumrah.beta.ui.home.HomeScreen
 import com.iumrah.beta.ui.hotels.HotelDetailScreen
 import com.iumrah.beta.ui.hotels.HotelsScreen
-import com.iumrah.beta.ui.placeholder.StagePlaceholderScreen
 import com.iumrah.beta.ui.trip.HotelSelectionScreen
 import com.iumrah.beta.ui.trip.TripBuilderScreen
 
@@ -79,6 +92,11 @@ fun AppShell(
     journey: JourneyStore,
     airports: AirportSearchService,
     flightInventory: IgnavFlightInventoryProvider,
+    packageGenerator: PackageGenerator,
+    bookingStore: BookingStore,
+    accountService: IumrahAccountService,
+    chatService: ChatService,
+    notifications: ClientNotificationStore,
 ) {
     val hapticView = LocalView.current
     BackHandler(enabled = chromeState.isSidebarOpen || chromeState.route != AppRoute.Root) {
@@ -97,14 +115,8 @@ fun AppShell(
                 AppRoute.Root -> when (tab) {
                     AppTab.HOME -> HomeScreen(language, chrome)
                     AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, chrome)
-                    AppTab.BOOKING -> StagePlaceholderScreen(
-                        L10n.text("tab_booking", language),
-                        L10n.text("booking_home_subtitle", language),
-                    )
-                    AppTab.CARE -> StagePlaceholderScreen(
-                        L10n.text("care_title", language),
-                        L10n.text("care_subtitle", language),
-                    )
+                    AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, chrome)
+                    AppTab.CARE -> CareHomeScreen(language, bookingStore, chrome)
                     AppTab.ACCOUNT -> AccountRoot(accountStore, language, chrome)
                 }
 
@@ -135,8 +147,17 @@ fun AppShell(
                     language = language,
                     journey = journey,
                     provider = flightInventory,
+                    generator = packageGenerator,
                     chrome = chrome,
                 )
+
+                AppRoute.FinalPackage -> FinalPackageScreen(language, journey, chrome)
+                AppRoute.BookingCheckout -> BookingCheckoutScreen(language, journey, bookingStore, accountStore, chrome)
+                is AppRoute.BookingDetail -> BookingDetailScreen(route.bookingID, language, bookingStore, chrome)
+                is AppRoute.BookingHotelChange -> BookingHotelChangeScreen(route.bookingID, route.role, language, bookingStore, hotelCatalog, packageEngine, chrome)
+                is AppRoute.PilgrimCheckout -> PilgrimCheckoutScreen(route.bookingID, language, bookingStore, accountStore, accountService, chrome)
+                is AppRoute.BookingChat -> BookingChatScreen(route.bookingID, language, bookingStore, chatService, chrome)
+                AppRoute.Notifications -> NotificationsScreen(language, notifications, accountStore, bookingStore, chrome)
             }
         }
 
@@ -254,5 +275,6 @@ private fun AccountRoot(accountStore: IumrahAccountStore, language: AppLanguage,
             )
             Text(profile.iumrahID, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
         }
+        com.iumrah.beta.ui.components.IumrahSecondaryButton("Notifications") { chrome.openNotifications() }
     }
 }

@@ -30,6 +30,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +47,7 @@ import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.flight.IgnavFlightInventoryProvider
 import com.iumrah.beta.domain.journey.JourneyStore
+import com.iumrah.beta.domain.pricing.PackageGenerator
 import com.iumrah.beta.models.flight.LiveFlightCandidate
 import com.iumrah.beta.models.flight.LiveFlightJourneyCandidate
 import com.iumrah.beta.ui.components.IumrahPill
@@ -50,12 +55,15 @@ import com.iumrah.beta.ui.components.IumrahPressable
 import com.iumrah.beta.ui.components.IumrahPrimaryButton
 import com.iumrah.beta.ui.media.LoopingRawVideo
 import java.time.ZoneId
+import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun FlightSearchScreen(language: AppLanguage, journey: JourneyStore, provider: IgnavFlightInventoryProvider, chrome: AppChromeStore) {
+fun FlightSearchScreen(language: AppLanguage, journey: JourneyStore, provider: IgnavFlightInventoryProvider, generator: PackageGenerator, chrome: AppChromeStore) {
     val state by journey.state.collectAsState()
     val hapticView = LocalView.current
+    val scope = rememberCoroutineScope()
+    var generating by remember { mutableStateOf(false) }
     LaunchedEffect(state.trip, state.flightResults.isEmpty()) {
         if (state.flightResults.isEmpty() && !state.isSearchingFlights && state.flightError == null) journey.searchFlights(provider)
     }
@@ -95,9 +103,16 @@ fun FlightSearchScreen(language: AppLanguage, journey: JourneyStore, provider: I
         if (selected != null) {
             item { SelectedReturn(selected, language) }
             item {
-                IumrahPrimaryButton(L10n.text("flight_view_package", language)) {
-                    // Stage 006 replaces this hand-off with FinalPackage generation.
+                IumrahPrimaryButton(if (generating) "Building package…" else L10n.text("flight_view_package", language), enabled = !generating) {
+                    generating = true
+                    journey.setPackageError(null)
+                    scope.launch {
+                        runCatching { generator.generate(state) }
+                            .onSuccess { quote -> journey.setQuote(quote); generating = false; IumrahHaptics.success(hapticView); chrome.openFinalPackage() }
+                            .onFailure { error -> generating = false; journey.setPackageError(error.message ?: "PACKAGE_GENERATION_FAILED") }
+                    }
                 }
+                state.packageError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         }
     }

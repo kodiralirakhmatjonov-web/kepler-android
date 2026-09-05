@@ -220,7 +220,7 @@ data class IumrahAccountTripDetailResponse(
 )
 
 @Serializable data class IumrahAccountLinkBookingRequest(val bookingID: String)
-@Serializable data class IumrahAccountLinkBookingResponse(val ok: Boolean, val pilgrimID: String, val bookingNumber: Int? = null)
+@Serializable data class IumrahAccountLinkBookingResponse(val ok: Boolean, val pilgrimID: String, val bookingNumber: Int? = null, val bookingDisplayNumber: String? = null)
 
 @Serializable
 data class IumrahAppleCredential(val identityToken: String, val nonce: String)

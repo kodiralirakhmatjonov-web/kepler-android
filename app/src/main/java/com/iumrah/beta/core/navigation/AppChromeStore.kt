@@ -12,6 +12,13 @@ sealed interface AppRoute {
     data object HotelSelection : AppRoute
     data class HotelDetail(val hotelId: String) : AppRoute
     data object Flights : AppRoute
+    data object FinalPackage : AppRoute
+    data object BookingCheckout : AppRoute
+    data class BookingDetail(val bookingID: String) : AppRoute
+    data class BookingHotelChange(val bookingID: String, val role: String) : AppRoute
+    data class PilgrimCheckout(val bookingID: String) : AppRoute
+    data class BookingChat(val bookingID: String) : AppRoute
+    data object Notifications : AppRoute
 }
 
 data class AppChromeState(
@@ -29,11 +36,17 @@ class AppChromeStore {
     fun navigate(tab: AppTab) {
         _state.update { it.copy(currentTab = tab, route = AppRoute.Root, backStack = emptyList(), isImmersive = false, isSidebarOpen = false) }
     }
-
     fun startNewTrip() = push(AppRoute.TripBuilder, tab = AppTab.BOOKING)
     fun openHotelSelection() = push(AppRoute.HotelSelection, tab = AppTab.BOOKING)
     fun openHotel(id: String) = push(AppRoute.HotelDetail(id), tab = AppTab.HOTELS)
-    fun openFlights() = push(AppRoute.Flights)
+    fun openFlights() = push(AppRoute.Flights, tab = AppTab.BOOKING)
+    fun openFinalPackage() = push(AppRoute.FinalPackage, tab = AppTab.BOOKING)
+    fun openBookingCheckout() = push(AppRoute.BookingCheckout, tab = AppTab.BOOKING)
+    fun openBookingDetail(id: String) = push(AppRoute.BookingDetail(id), tab = AppTab.BOOKING)
+    fun openBookingHotelChange(id: String, role: String) = push(AppRoute.BookingHotelChange(id, role), tab = AppTab.BOOKING)
+    fun openPilgrimCheckout(id: String) = push(AppRoute.PilgrimCheckout(id), tab = AppTab.BOOKING)
+    fun openBookingChat(id: String) = push(AppRoute.BookingChat(id), tab = AppTab.CARE)
+    fun openNotifications() = push(AppRoute.Notifications)
 
     private fun push(route: AppRoute, tab: AppTab? = null) {
         _state.update { current ->
@@ -59,4 +72,3 @@ class AppChromeStore {
     fun openSidebar() { _state.update { it.copy(isSidebarOpen = true) } }
     fun closeSidebar() { _state.update { it.copy(isSidebarOpen = false) } }
 }
-

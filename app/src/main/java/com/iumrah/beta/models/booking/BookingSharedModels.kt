@@ -1,5 +1,9 @@
 package com.iumrah.beta.models.booking
 
+import com.iumrah.beta.domain.pricing.GeneratorPricingSnapshot
+import com.iumrah.beta.models.hotel.HotelRoom
+import com.iumrah.beta.models.hotel.HotelSummary
+import com.iumrah.beta.models.hotel.IumrahRoomCategoryOption
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -9,6 +13,54 @@ enum class IumrahRoomCategory {
     @SerialName("TRIPLE") TRIPLE,
     @SerialName("QUADRUPLE") QUADRUPLE,
 }
+
+@Serializable
+data class BookingCreateEnvelope(val lang: String, val booking: BookingDraftRequest)
+
+@Serializable
+data class BookingDraftRequest(
+    val planId: String,
+    val totalUsd: Double,
+    val perPilgrimUsd: Double,
+    val input: BookingInput,
+    val route: BookingRoute,
+    val stay: BookingStay,
+    val selection: BookingSelection,
+    val customization: BookingCustomization,
+    val includedServices: List<String>,
+    val hotelNames: BookingHotelNames,
+    val flight: String,
+    val pilgrimProfile: BookingPilgrimProfile? = null,
+    val generatorTrace: BookingGeneratorTrace? = null,
+    val pricingSnapshot: GeneratorPricingSnapshot? = null,
+)
+
+@Serializable
+data class BookingInput(
+    val from: String,
+    val originCode: String,
+    val arrivalAirportCode: String,
+    val cabinClass: String,
+    val preferredPlan: String,
+    val startDate: String,
+    val endDate: String,
+    val flexibleDays: Int,
+    val hotelPreference: String,
+    val includeMadinah: Boolean,
+    val flightTripType: String,
+    val travelers: BookingTravelers,
+)
+
+@Serializable
+data class BookingSelection(
+    val flightId: String,
+    val makkahHotelId: String,
+    val madinahHotelId: String? = null,
+    val makkahRoomId: String? = null,
+    val makkahRoomCategory: IumrahRoomCategory? = null,
+    val madinahRoomId: String? = null,
+    val madinahRoomCategory: IumrahRoomCategory? = null,
+)
 
 @Serializable
 data class BookingGeneratorTrace(
@@ -102,6 +154,8 @@ data class BookingCustomization(
 
 @Serializable data class BookingHotelNames(val makkah: String, val madinah: String)
 
+@Serializable data class BookingCreateResponse(val booking: RemoteBooking, val accessToken: String? = null)
+
 @Serializable
 data class BookingInputRecord(
     val startDate: String,
@@ -126,7 +180,28 @@ data class BookingHotelSelectionSnapshot(
     val roomMaxGuests: Int? = null,
     val roomCategory: IumrahRoomCategory? = null,
     val roomSource: String? = null,
-)
+) {
+    companion object {
+        fun from(hotel: HotelSummary, room: HotelRoom?, category: IumrahRoomCategoryOption?, authoritativeRoomId: String? = null) =
+            BookingHotelSelectionSnapshot(
+                hotelId = hotel.id,
+                hotelName = hotel.name,
+                city = hotel.city,
+                coverImageURL = hotel.coverImageURL,
+                roomId = room?.id ?: authoritativeRoomId,
+                roomName = room?.name ?: category?.displayName,
+                roomBeds = room?.beds ?: category?.bedConfiguration,
+                roomSizeM2 = room?.sizeM2,
+                roomMaxGuests = room?.maxGuests ?: category?.maxGuests,
+                roomCategory = category?.category?.name?.let(IumrahRoomCategory::valueOf),
+                roomSource = when {
+                    category != null || authoritativeRoomId != null -> "iumrahPrimary"
+                    room != null -> "hotelInventory"
+                    else -> null
+                },
+            )
+    }
+}
 
 @Serializable
 data class RemoteBooking(
@@ -187,6 +262,7 @@ data class ClientESIMProfile(
     val hasActivationData: Boolean get() = lpaString.trim().isNotEmpty() || (smdpAddress.isNotEmpty() && activationCode.isNotEmpty())
 }
 
+@Serializable data class ClientESIMListResponse(val ok: Boolean, val bookingID: String, val esims: List<ClientESIMProfile>)
 @Serializable data class ClientBookingAssignment(val guide: BookingGuideSnapshot? = null)
 
 @Serializable
@@ -215,3 +291,106 @@ data class ClientTripSnapshot(
     val endDate: String? = null,
     val updatedAt: String? = null,
 )
+
+@Serializable data class ClientTripResponse(val ok: Boolean? = null, val trip: ClientTripSnapshot, val assignment: ClientBookingAssignment? = null, val esims: List<ClientESIMProfile>? = null)
+
+@Serializable
+data class StoredBookingSession(
+    val id: String,
+    val accessToken: String,
+    var booking: RemoteBooking,
+    var travelerName: String? = null,
+    var telegram: String? = null,
+    var whatsapp: String? = null,
+    var hotelSelection: BookingHotelSelectionSnapshot? = null,
+    var madinahHotelSelection: BookingHotelSelectionSnapshot? = null,
+    var guide: BookingGuideSnapshot? = null,
+    var ziyaratMakkahOverride: Boolean? = null,
+    var ziyaratMadinahOverride: Boolean? = null,
+    var esimOverride: Boolean? = null,
+    var pendingChangeConfirmation: Boolean? = null,
+    var operationStatus: String? = null,
+    var pilgrimID: String? = null,
+    var bookingNumber: Int? = null,
+    var bookingDisplayNumber: String? = null,
+) {
+    val displayBookingNumber: String get() = bookingDisplayNumber?.takeIf { it.isNotBlank() }
+        ?: bookingNumber?.takeIf { it > 0 }?.let { "#%04d".format(it) } ?: "#----"
+
+    val effectiveStatus: String get() = when ((operationStatus ?: booking.status).lowercase()) {
+        "new", "availability_check" -> "AVAILABILITY_CHECK"
+        "payment_pending" -> "PAYMENT_PENDING"
+        "paid", "booking_confirmed" -> "BOOKING_CONFIRMED"
+        "documents_ready", "ready_to_travel" -> "READY_TO_TRAVEL"
+        "in_trip" -> "IN_TRIP"
+        "completed" -> "COMPLETED"
+        "cancelled" -> "CANCELLED"
+        else -> booking.status
+    }
+}
+
+@Serializable data class BookingMutationResponse(val ok: Boolean? = null, val deleted: Boolean? = null, val updatedAt: String? = null)
+
+@Serializable
+data class BookingHotelUpdateRequest(
+    val role: String,
+    val hotelId: String,
+    val coverImageURL: String? = null,
+    val roomId: String? = null,
+    val roomName: String? = null,
+    val roomBeds: String? = null,
+    val roomSizeM2: Double? = null,
+    val roomMaxGuests: Int? = null,
+    val roomCategory: String? = null,
+    val roomSource: String? = null,
+) {
+    companion object {
+        fun from(role: String, hotel: HotelSummary, room: HotelRoom?, category: IumrahRoomCategoryOption?) = BookingHotelUpdateRequest(
+            role = role,
+            hotelId = hotel.id,
+            coverImageURL = hotel.coverImageURL,
+            roomId = room?.id,
+            roomName = room?.name ?: category?.displayName,
+            roomBeds = room?.beds ?: category?.bedConfiguration,
+            roomSizeM2 = room?.sizeM2,
+            roomMaxGuests = room?.maxGuests ?: category?.maxGuests,
+            roomCategory = category?.category?.name,
+            roomSource = if (category != null) "iumrahPrimary" else if (room != null) "hotelInventory" else null,
+        )
+    }
+}
+
+@Serializable data class BookingContactUpdateRequest(val telegram: String, val whatsapp: String)
+@Serializable data class BookingCustomizationUpdateRequest(val ziyaratMakkah: Boolean? = null, val ziyaratMadinah: Boolean? = null, val esim: Boolean? = null)
+
+@Serializable data class ChatListResponse(val ok: Boolean? = null, val bookingID: String? = null, val messages: List<ChatMessage>)
+@Serializable data class ChatMessagePostResponse(val ok: Boolean? = null, val message: ChatMessage)
+@Serializable
+data class ChatMessage(
+    val id: String,
+    val bookingID: String,
+    val senderType: String,
+    val senderName: String? = null,
+    val body: String,
+    val messageType: String? = null,
+    val attachmentID: String? = null,
+    val attachmentURL: String? = null,
+    val createdAt: String,
+    val readByStaff: Boolean? = null,
+)
+
+@Serializable
+data class BookingItineraryItem(
+    val id: String,
+    val bookingID: String,
+    val dateLocal: String,
+    val sortOrder: Int,
+    val title: String,
+    val subtitle: String,
+    val icon: String,
+    val location: String,
+    val notes: String,
+    val createdAt: String,
+    val updatedAt: String,
+)
+@Serializable data class BookingItineraryResponse(val ok: Boolean, val bookingID: String, val items: List<BookingItineraryItem>)

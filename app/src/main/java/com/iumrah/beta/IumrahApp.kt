@@ -72,6 +72,11 @@ fun IumrahApp() {
                     journey = container.journeyStore,
                     airports = container.airportSearchService,
                     flightInventory = container.flightInventoryProvider,
+                    packageGenerator = container.packageGenerator,
+                    bookingStore = container.bookingStore,
+                    accountService = container.accountService,
+                    chatService = container.chatService,
+                    notifications = container.notificationStore,
                 )
             } else {
                 OnboardingFlow(

@@ -1,11 +1,16 @@
 package com.iumrah.beta.domain.pricing
 
+import com.iumrah.beta.core.serialization.BigDecimalJsonSerializer
+import com.iumrah.beta.core.serialization.InstantIsoSerializer
+import com.iumrah.beta.core.serialization.LocalDateIsoSerializer
 import com.iumrah.beta.domain.trip.FlightFareScope
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class BookingTravelers(
     val adults: Int,
     val children: Int,
@@ -13,21 +18,23 @@ data class BookingTravelers(
     val rooms: Int,
 )
 
+@Serializable
 data class FlightOffer(
     val id: String,
-    val departureAt: Instant,
-    val totalPackagePrice: BigDecimal,
+    @Serializable(with = InstantIsoSerializer::class) val departureAt: Instant,
+    @Serializable(with = BigDecimalJsonSerializer::class) val totalPackagePrice: BigDecimal,
     val currency: String,
     val sourceLabel: String,
-    val fareAmount: BigDecimal? = null,
+    @Serializable(with = BigDecimalJsonSerializer::class) val fareAmount: BigDecimal? = null,
     val fareScope: FlightFareScope? = null,
-    val fareObservedAt: Instant? = null,
+    @Serializable(with = InstantIsoSerializer::class) val fareObservedAt: Instant? = null,
     val providerItineraryId: String? = null,
     val sourceCandidateId: String? = null,
 )
 
+@Serializable
 data class LocalHotelPriceComponent(
-    val nightlyUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val nightlyUsd: BigDecimal,
     val nights: Int,
     val rooms: Int,
     val hotelId: String,
@@ -40,19 +47,21 @@ data class LocalHotelPriceComponent(
             .multiply(BigDecimal.valueOf(maxOf(1, nights).toLong()))
 }
 
+@Serializable
 data class GeneratorPricingFare(
     val candidateId: String,
-    val amount: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val amount: BigDecimal,
     val currency: String,
     val fareScope: String,
     val providerId: String,
     val observedAt: String,
-    val travelDate: LocalDate,
-    val normalizedGroupUsd: BigDecimal,
+    @Serializable(with = LocalDateIsoSerializer::class) val travelDate: LocalDate,
+    @Serializable(with = BigDecimalJsonSerializer::class) val normalizedGroupUsd: BigDecimal,
 )
 
+@Serializable
 data class GeneratorPricingHotelInput(
-    val amountUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val amountUsd: BigDecimal,
     val unit: String,
     val nights: Int,
     val hotelId: String?,
@@ -60,12 +69,14 @@ data class GeneratorPricingHotelInput(
     val pricingMode: String?,
 )
 
+@Serializable
 data class GeneratorPricingComponent(
     val code: String,
     val label: String,
-    val supplierCostUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val supplierCostUsd: BigDecimal,
 )
 
+@Serializable
 data class GeneratorPricingContext(
     val tier: String,
     val tripType: String,
@@ -76,6 +87,7 @@ data class GeneratorPricingContext(
     val vehicleCount: Int,
 )
 
+@Serializable
 data class GeneratorPricingInputs(
     val journeyFare: GeneratorPricingFare? = null,
     val outbound: GeneratorPricingFare? = null,
@@ -84,20 +96,22 @@ data class GeneratorPricingInputs(
     val madinahHotel: GeneratorPricingHotelInput?,
 )
 
+@Serializable
 data class GeneratorPricingTotals(
-    val supplierCostUsd: BigDecimal,
-    val markupRate: BigDecimal,
-    val markupAmountUsd: BigDecimal,
-    val subtotalAfterMarkupUsd: BigDecimal,
-    val paymentFeeRate: BigDecimal,
-    val paymentFeeAmountUsd: BigDecimal,
-    val calculatedSellingPriceUsd: BigDecimal,
-    val publicPricePerPilgrimUsd: BigDecimal,
-    val publicTotalUsd: BigDecimal,
-    val roundingDifferenceUsd: BigDecimal,
-    val estimatedProfitUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val supplierCostUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val markupRate: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val markupAmountUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val subtotalAfterMarkupUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val paymentFeeRate: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val paymentFeeAmountUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val calculatedSellingPriceUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val publicPricePerPilgrimUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val publicTotalUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val roundingDifferenceUsd: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val estimatedProfitUsd: BigDecimal,
 )
 
+@Serializable
 data class GeneratorPricingSnapshot(
     val quoteId: String,
     val pricingVersion: String,
@@ -108,9 +122,10 @@ data class GeneratorPricingSnapshot(
     val totals: GeneratorPricingTotals,
 )
 
+@Serializable
 data class PackageQuote(
-    val totalPackagePrice: BigDecimal,
-    val pricePerPerson: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val totalPackagePrice: BigDecimal,
+    @Serializable(with = BigDecimalJsonSerializer::class) val pricePerPerson: BigDecimal,
     val currency: String,
     val isEstimated: Boolean,
     val quoteId: String? = null,

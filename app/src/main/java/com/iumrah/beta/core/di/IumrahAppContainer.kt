@@ -8,12 +8,16 @@ import com.iumrah.beta.core.security.SecureJsonStore
 import com.iumrah.beta.core.settings.AppSettingsStore
 import com.iumrah.beta.data.account.IumrahAccountService
 import com.iumrah.beta.data.account.IumrahAccountStore
-import com.iumrah.beta.data.flight.AirportSearchService
-import com.iumrah.beta.data.flight.FlightFareCalendarService
-import com.iumrah.beta.data.flight.IgnavFlightInventoryProvider
+import com.iumrah.beta.data.booking.BookingService
+import com.iumrah.beta.data.booking.BookingStore
+import com.iumrah.beta.data.chat.ChatService
+import com.iumrah.beta.data.flight.*
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.data.hotel.RemotePackageEngineClient
+import com.iumrah.beta.data.notification.ClientNotificationStore
+import com.iumrah.beta.data.pricing.LocalFXRateService
 import com.iumrah.beta.domain.journey.JourneyStore
+import com.iumrah.beta.domain.pricing.PackageGenerator
 
 class IumrahAppContainer(context: Context) {
     private val appContext = context.applicationContext
@@ -29,6 +33,12 @@ class IumrahAppContainer(context: Context) {
     val flightFareCalendarService = FlightFareCalendarService(apiClient)
     val flightInventoryProvider = IgnavFlightInventoryProvider(apiClient)
     val journeyStore = JourneyStore()
+    val fxRateService = LocalFXRateService()
+    val packageGenerator = PackageGenerator(fxRateService)
+    val bookingService = BookingService(apiClient)
+    val bookingStore = BookingStore(bookingService, accountStore, secureStore)
+    val chatService = ChatService(apiClient)
+    val notificationStore = ClientNotificationStore(appContext, apiClient)
     val settingsStore = AppSettingsStore(appContext)
     val chromeStore = AppChromeStore()
 }

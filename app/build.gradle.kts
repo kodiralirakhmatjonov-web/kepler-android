@@ -12,8 +12,8 @@ android {
         applicationId = "com.iumrah.beta"
         minSdk = 26
         targetSdk = 37
-        versionCode = 5
-        versionName = "0.5.0-stage5"
+        versionCode = 8
+        versionName = "0.8.0-stage8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

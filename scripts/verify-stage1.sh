@@ -21,7 +21,16 @@ fi
 
 echo 'Stage 1 structural parity checks passed.'
 
-if [[ -f ANDROID_STAGE_005_TRIP_FLIGHTS_APPLIED.txt ]]; then
+if [[ -f ANDROID_STAGE_008_CARE_NOTIFICATIONS_APPLIED.txt ]]; then
+  require_script scripts/verify-stage8.sh
+  bash scripts/verify-stage8.sh
+elif [[ -f ANDROID_STAGE_007_BOOKING_CHECKOUT_APPLIED.txt ]]; then
+  require_script scripts/verify-stage7.sh
+  bash scripts/verify-stage7.sh
+elif [[ -f ANDROID_STAGE_006_PACKAGE_GENERATOR_APPLIED.txt ]]; then
+  require_script scripts/verify-stage6.sh
+  bash scripts/verify-stage6.sh
+elif [[ -f ANDROID_STAGE_005_TRIP_FLIGHTS_APPLIED.txt ]]; then
   require_script scripts/verify-stage5.sh
   bash scripts/verify-stage5.sh
 elif [[ -f ANDROID_STAGE_004_HOTELS_APPLIED.txt ]]; then
