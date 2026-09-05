@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
@@ -33,7 +34,6 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Flight
-import androidx.compose.material.icons.rounded.Gift
 import androidx.compose.material.icons.rounded.Hotel
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Speaker
@@ -117,7 +117,7 @@ fun HomeScreen(language: AppLanguage, chrome: AppChromeStore) {
             HomeFeatureCard(
                 title = L10n.text("home_philosophy_title", language),
                 body = L10n.text("home_philosophy_body", language),
-                icon = Icons.Rounded.Gift,
+                icon = Icons.Rounded.Favorite,
                 onClick = {},
             )
         }
