@@ -23,7 +23,7 @@ fun BookingsHomeScreen(language: AppLanguage, bookingStore: BookingStore, chrome
     val state by bookingStore.state.collectAsState()
     LazyColumn(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 54.dp, bottom = 112.dp),
+        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { IumrahRootPageHeader(L10n.text("tab_booking", language), chrome) }

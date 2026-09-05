@@ -45,7 +45,7 @@ fun BookingCheckoutScreen(
     val canSubmit = quote != null && firstName.trim().isNotEmpty() && lastName.trim().isNotEmpty() && (telegram.trim().isNotEmpty() || whatsapp.trim().isNotEmpty()) && !busy
 
     Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(18.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(13.dp),
     ) {
         IumrahPressable(onClick = chrome::back, modifier = Modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back") } }

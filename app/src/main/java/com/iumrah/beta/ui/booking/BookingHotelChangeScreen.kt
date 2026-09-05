@@ -57,8 +57,8 @@ fun BookingHotelChangeScreen(
     }
 
     LazyColumn(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(18.dp, 18.dp, 18.dp, 44.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding(),
+        contentPadding = PaddingValues(24.dp, 10.dp, 24.dp, 44.dp),
         verticalArrangement = Arrangement.spacedBy(13.dp),
     ) {
         item {

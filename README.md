@@ -22,4 +22,6 @@ The CI workflow safely extracts the patch, removes the ZIP, commits, rebases and
 
 ## Stage
 
-Stage 1/10: foundation + pricing parity core.
+Stages 1–9 applied. Stage 9 establishes the Android Galaxy UI design foundation.
+
+Design baseline: `docs/IUMRAH_GALAXY_UI_STANDARD.md`.

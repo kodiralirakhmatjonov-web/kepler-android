@@ -85,8 +85,8 @@ fun HotelSelectionScreen(
     }
 
     LazyColumn(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 44.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding(),
+        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 10.dp, bottom = 44.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item { BackButton(chrome::back) }

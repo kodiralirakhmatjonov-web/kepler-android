@@ -67,7 +67,7 @@ fun PilgrimCheckoutScreen(
         if (headers.isNotEmpty()) runCatching { accountService.checkout(bookingID, headers) }.onSuccess { data = it }.onFailure { error = it.message }
     }
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         IumrahPressable(onClick = chrome::back, modifier = Modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back") } }
         Text("Pilgrim checkout", style = MaterialTheme.typography.headlineLarge)
         Text("Payment, pilgrim data and travel documents stay linked to this booking.", color = MaterialTheme.colorScheme.onBackground.copy(alpha=.55f))

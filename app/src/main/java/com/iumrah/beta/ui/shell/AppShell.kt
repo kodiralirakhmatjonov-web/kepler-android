@@ -5,8 +5,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -30,6 +28,7 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Hotel
 import androidx.compose.material.icons.rounded.Luggage
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -177,8 +176,7 @@ fun AppShell(
 }
 
 private fun rootTransform(): ContentTransform =
-    (fadeIn(IumrahMotion.rootFade) + scaleIn(IumrahMotion.content, initialScale = .985f))
-        .togetherWith(fadeOut(IumrahMotion.fastFade) + scaleOut(IumrahMotion.content, targetScale = 1.015f))
+    fadeIn(IumrahMotion.rootFade).togetherWith(fadeOut(IumrahMotion.fastFade))
 
 @Composable
 private fun IumrahBottomBar(
@@ -194,18 +192,25 @@ private fun IumrahBottomBar(
         Triple(AppTab.CARE, Icons.Rounded.Favorite, L10n.text("tab_care", language)),
         Triple(AppTab.ACCOUNT, Icons.Rounded.AccountCircle, L10n.text("profile_placeholder", language)),
     )
-    Row(
+
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = .97f))
-            .navigationBarsPadding()
-            .height(74.dp)
-            .padding(horizontal = 8.dp, vertical = 7.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
+            .background(MaterialTheme.colorScheme.surface)
+            .navigationBarsPadding(),
     ) {
-        items.forEach { (tab, icon, label) ->
-            BottomTabItem(tab == selected, icon, label) { onSelect(tab) }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .66f))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(70.dp)
+                .padding(horizontal = 6.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            items.forEach { (tab, icon, label) ->
+                BottomTabItem(tab == selected, icon, label) { onSelect(tab) }
+            }
         }
     }
 }
@@ -220,31 +225,38 @@ private fun RowScope.BottomTabItem(
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) .91f else if (selected) 1f else .97f,
+        targetValue = if (pressed) .92f else 1f,
         animationSpec = IumrahMotion.tab,
         label = "tab-scale",
     )
+
     Column(
         modifier = Modifier
             .weight(1f)
-            .height(58.dp)
+            .height(60.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(21.dp))
-            .background(if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
-            .clickable(interactionSource = source, indication = null, onClick = onClick)
-            .padding(vertical = 6.dp),
+            .clickable(interactionSource = source, indication = null, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            icon,
-            contentDescription = label,
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) .96f else .50f),
-        )
+        Box(
+            modifier = Modifier
+                .size(width = 42.dp, height = 30.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .background(if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) .96f else .48f),
+            )
+        }
         Text(
-            label,
+            text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) .90f else .48f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) .88f else .46f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -258,7 +270,7 @@ private fun AccountRoot(accountStore: IumrahAccountStore, language: AppLanguage,
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(start = 20.dp, end = 20.dp, top = 54.dp, bottom = 112.dp),
+            .padding(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 106.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         IumrahRootPageHeader(L10n.text("profile_placeholder", language), chrome)

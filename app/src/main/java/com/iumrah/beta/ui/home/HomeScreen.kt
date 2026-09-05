@@ -82,7 +82,7 @@ fun HomeScreen(language: AppLanguage, chrome: AppChromeStore) {
     var showStory by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 116.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {

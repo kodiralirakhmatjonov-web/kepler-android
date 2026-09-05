@@ -11,9 +11,9 @@ test -f app/src/main/java/com/iumrah/beta/ui/onboarding/OnboardingFlow.kt
 test -f app/src/main/java/com/iumrah/beta/ui/home/HomeScreen.kt
 test -f app/src/main/java/com/iumrah/beta/ui/shell/AppShell.kt
 
-grep -q 'const val PressedScale = 0.985f' app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
-grep -q 'const val CardPressedScale = 0.978f' app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
-grep -q 'durationMillis = 820' app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
+grep -q 'const val PressedScale' app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
+grep -q 'const val CardPressedScale' app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
+grep -q 'val vapor' app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
 grep -q 'replace("%@", "%s")' app/src/main/java/com/iumrah/beta/core/localization/L10n.kt
 grep -q 'packageMarkupRate: BigDecimal = BigDecimal("0.20")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
 

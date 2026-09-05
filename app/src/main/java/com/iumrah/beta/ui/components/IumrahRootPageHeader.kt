@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material3.Icon
@@ -20,39 +21,48 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.iumrah.beta.R
-import com.iumrah.beta.core.navigation.AppChromeStore
 
-/** Native Compose counterpart of IumrahRootPageTitle.swift. */
+/** One UI-inspired root header with real system-bar inset handling. */
 @Composable
 fun IumrahRootPageHeader(
     title: String,
-    chrome: AppChromeStore,
+    chrome: com.iumrah.beta.core.navigation.AppChromeStore,
     modifier: Modifier = Modifier,
     usesBrandLogo: Boolean = false,
 ) {
-    Row(modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .height(58.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         if (usesBrandLogo) {
             Image(
-                painter = painterResource(if (isSystemInDarkTheme()) R.drawable.iumrah_header_wordmark_light else R.drawable.iumrah_header_wordmark_dark),
+                painter = painterResource(
+                    if (isSystemInDarkTheme()) R.drawable.iumrah_header_wordmark_light
+                    else R.drawable.iumrah_header_wordmark_dark,
+                ),
                 contentDescription = "iumrah",
-                modifier = Modifier.fillMaxWidth(.48f).height(38.dp),
+                modifier = Modifier.fillMaxWidth(.43f).height(31.dp),
                 contentScale = ContentScale.Fit,
                 alignment = Alignment.CenterStart,
             )
         } else {
-            Text(title, style = MaterialTheme.typography.headlineLarge, maxLines = 1)
+            Text(title, style = MaterialTheme.typography.headlineMedium, maxLines = 1)
         }
+
         Spacer(Modifier.weight(1f))
+
         IumrahPressable(
             onClick = chrome::openSidebar,
-            modifier = Modifier.size(46.dp),
-            cornerRadius = 99.dp,
-            background = MaterialTheme.colorScheme.surface,
-            pressedScale = .92f,
-            shadowElevation = 2.dp,
+            modifier = Modifier.size(44.dp),
+            cornerRadius = 17.dp,
+            background = MaterialTheme.colorScheme.surfaceVariant,
+            pressedScale = .93f,
         ) {
-            Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Menu, contentDescription = "Menu", modifier = Modifier.size(20.dp))
+            Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.Menu, contentDescription = "Menu", modifier = Modifier.size(21.dp))
             }
         }
     }

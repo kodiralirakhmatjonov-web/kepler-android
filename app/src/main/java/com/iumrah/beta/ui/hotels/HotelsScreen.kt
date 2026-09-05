@@ -72,7 +72,7 @@ fun HotelsScreen(
 
     LazyColumn(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 116.dp),
+        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 112.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { IumrahRootPageHeader(L10n.text("tab_hotels", language), chrome) }

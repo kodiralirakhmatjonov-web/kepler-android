@@ -1,0 +1,3 @@
+ANDROID STAGE 009 APPLIED
+Galaxy / Samsung One UI-inspired design foundation, system insets, motion, root chrome and Trip Builder visual redesign.
+No backend, pricing, booking, hotel or flight business contracts changed.

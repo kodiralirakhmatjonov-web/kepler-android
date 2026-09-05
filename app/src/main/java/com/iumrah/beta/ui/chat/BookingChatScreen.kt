@@ -80,7 +80,7 @@ fun BookingChatScreen(bookingID: String, language: AppLanguage, bookingStore: Bo
     LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex) }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).graphicsLayer { scaleX = launchScale; scaleY = launchScale }) {
-        Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 18.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             IumrahPressable(onClick = chrome::back, modifier = Modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back") } }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,8 +76,8 @@ fun FlightSearchScreen(language: AppLanguage, journey: JourneyStore, provider: I
 
     val selected = state.selectedJourney
     LazyColumn(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 44.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding(),
+        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 10.dp, bottom = 44.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item { BackButton(chrome::back) }
@@ -119,8 +120,8 @@ fun FlightSearchScreen(language: AppLanguage, journey: JourneyStore, provider: I
 }
 
 @Composable private fun FlightLoading(language: AppLanguage, onBack: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        BackButton(onBack, Modifier.padding(18.dp).align(Alignment.TopStart))
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
+        BackButton(onBack, Modifier.padding(24.dp).align(Alignment.TopStart))
         Column(Modifier.align(Alignment.Center).padding(26.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Box(Modifier.size(220.dp).clip(RoundedCornerShape(42.dp)).background(MaterialTheme.colorScheme.surface)) {
                 LoopingRawVideo("flight_search", modifier = Modifier.fillMaxSize(), play = true, muted = true) {
