@@ -74,7 +74,21 @@ jobs:
           test -f app/build.gradle.kts
           test -f app/src/main/AndroidManifest.xml
           test -f scripts/verify-stage1.sh
-          bash scripts/verify-stage1.sh
+
+          highest=''
+          for n in 10 9 8 7 6 5 4 3 2 1; do
+            if [ -f "scripts/verify-stage${n}.sh" ]; then
+              highest="$n"
+              break
+            fi
+          done
+          test -n "$highest"
+          echo "Running highest repository verifier: Stage $highest"
+          bash "scripts/verify-stage${highest}.sh"
+
+          if [ -f scripts/verify-build-env.sh ]; then
+            bash scripts/verify-build-env.sh
+          fi
 
       - name: Commit applied files
         run: |
@@ -108,8 +122,11 @@ jobs:
       - name: Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android API 37
-        run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
+      - name: Install Android API 36
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Gradle 9.6
         uses: gradle/actions/setup-gradle@v4
@@ -117,7 +134,21 @@ jobs:
           gradle-version: '9.6.0'
 
       - name: Structural checks
-        run: bash scripts/verify-stage1.sh
+        run: |
+          set -euo pipefail
+          highest=''
+          for n in 10 9 8 7 6 5 4 3 2 1; do
+            if [ -f "scripts/verify-stage${n}.sh" ]; then
+              highest="$n"
+              break
+            fi
+          done
+          test -n "$highest"
+          echo "Running highest repository verifier: Stage $highest"
+          bash "scripts/verify-stage${highest}.sh"
+          if [ -f scripts/verify-build-env.sh ]; then
+            bash scripts/verify-build-env.sh
+          fi
 
       - name: Unit tests
         run: gradle --stacktrace :app:testDebugUnitTest
