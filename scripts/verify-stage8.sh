@@ -20,4 +20,14 @@ if find . -iname 'google-services.json' -o -iname '*keystore*' | grep -q .; then
  echo 'STOP: credentials/signing material must not be shipped in update'; exit 1
 fi
 grep -q 'BigDecimal("0.20")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
-echo 'Stage 008 care/notification checks passed.'
+
+# Stable API 36 dependency matrix: keep libraries below their API 37 compileSdk cutovers.
+grep -q 'compileSdk = 36' app/build.gradle.kts
+grep -q 'targetSdk = 36' app/build.gradle.kts
+grep -q 'androidx.compose:compose-bom:2026.06.01' app/build.gradle.kts
+grep -q 'androidx.core:core-ktx:1.17.0' app/build.gradle.kts
+grep -q 'io.coil-kt.coil3:coil-compose:3.5.0' app/build.gradle.kts
+grep -q 'io.coil-kt.coil3:coil-network-okhttp:3.5.0' app/build.gradle.kts
+test -s ANDROID_BUILD_HOTFIX_009_STABLE_API36_DEPS_APPLIED.txt
+
+echo 'Stage 008 care/notification + stable API 36 dependency checks passed.'

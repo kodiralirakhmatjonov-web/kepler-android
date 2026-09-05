@@ -1,0 +1,8 @@
+Kepler Android build verifier hotfix 009z
+
+Fix:
+- verify-build-env.sh no longer pins versionCode to 9.
+- Any positive versionCode is accepted, so normal release increments cannot break ZIP application.
+- compileSdk=36 and targetSdk=36 remain enforced.
+
+No application source, pricing, backend, UI, motion, or dependency versions changed.

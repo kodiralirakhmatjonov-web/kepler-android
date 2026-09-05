@@ -1,0 +1,10 @@
+Kepler Android build hotfix 009
+
+Purpose: keep compileSdk/targetSdk on stable Android 16 API 36 while using dependency releases whose AAR metadata is compatible with API 36.
+
+Pinned compatibility set:
+- Compose BOM 2026.06.01 (Compose 1.11.4 line)
+- AndroidX Core KTX 1.17.0
+- Coil 3.5.0
+
+No pricing, booking, backend, UI layout, motion constants, or business logic changed.

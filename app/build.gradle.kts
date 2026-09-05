@@ -12,8 +12,8 @@ android {
         applicationId = "com.iumrah.beta"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.8.1-stage8-buildfix"
+        versionCode = 10
+        versionName = "0.8.2-stage8-stable36"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -45,12 +45,12 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
+    val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
     implementation("androidx.activity:activity-compose:1.13.0")
-    implementation("androidx.core:core-ktx:1.19.0")
+    implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
@@ -67,8 +67,8 @@ dependencies {
     implementation(platform("com.squareup.okhttp3:okhttp-bom:5.3.0"))
     implementation("com.squareup.okhttp3:okhttp")
 
-    implementation("io.coil-kt.coil3:coil-compose:3.6.1")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.6.1")
+    implementation("io.coil-kt.coil3:coil-compose:3.5.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
 
     implementation("androidx.media3:media3-exoplayer:1.11.0")
     implementation("androidx.media3:media3-ui:1.11.0")
