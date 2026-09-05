@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "com.iumrah.beta"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.iumrah.beta"
         minSdk = 26
-        targetSdk = 37
-        versionCode = 8
-        versionName = "0.8.0-stage8"
+        targetSdk = 36
+        versionCode = 9
+        versionName = "0.8.1-stage8-buildfix"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

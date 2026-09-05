@@ -1,0 +1,6 @@
+Kepler Android build hotfix
+- compileSdk: 36
+- targetSdk: 36
+- build tools: 36.0.0 (CI)
+- reason: API 37 SDK platform package is not published in the stable SDK repository.
+- no business logic, pricing, backend contract, UI, or motion changes.
