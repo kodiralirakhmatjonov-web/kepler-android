@@ -1,0 +1,63 @@
+name: iumrah Emulator Live
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/iumrah-emulator-live.yml'
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - 'scripts/iumrah-live-dev.sh'
+      - 'scripts/iumrah-emulator-deploy.sh'
+  workflow_run:
+    workflows: ['iumrah Android CI']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iumrah-emulator-live
+  cancel-in-progress: true
+
+jobs:
+  deploy-to-local-emulator:
+    # workflow_run is used for ZIP updates because the existing patch bot commits
+    # extracted files with [skip ci]. Direct source pushes and manual dispatches
+    # are handled by the other two triggers above.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: [self-hosted, macOS, iumrah-emulator]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+          clean: true
+          persist-credentials: false
+
+      - name: Deploy iumrah to running emulator
+        shell: bash
+        env:
+          IUMRAH_APP_ID: com.iumrah.beta
+          IUMRAH_ACTIVITY: .MainActivity
+          IUMRAH_LIVE_NOTIFY: '0'
+        run: bash scripts/iumrah-emulator-deploy.sh deploy
+
+      - name: Upload emulator screenshot and build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iumrah-emulator-${{ github.run_number }}
+          path: artifacts/emulator-live/
+          if-no-files-found: warn
+          retention-days: 3
