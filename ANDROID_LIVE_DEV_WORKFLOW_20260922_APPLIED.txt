@@ -1,0 +1,10 @@
+iumrah Android live-development workflow applied on 2026-09-22.
+
+Adds:
+- scripts/iumrah-live-dev.sh
+- scripts/verify-live-dev.sh
+- IUMRAH_LIVE.command
+- docs/LIVE_DEVELOPMENT_MAC.md
+
+Mode: local file watcher + safe Git fast-forward polling + incremental Gradle :app:installDebug + ADB relaunch.
+No product/business logic changed.
