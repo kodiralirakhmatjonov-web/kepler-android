@@ -1,0 +1,10 @@
+Iumrah Android — iOS visual parity update (2026-09-22)
+
+Scope:
+- HomeScreen.kt rebuilt to follow the current iOS HomeDashboardView composition and media hierarchy.
+- FinalPackageScreen.kt rebuilt to follow the current iOS FinalPackageView composition.
+- Original iOS media assets used by those surfaces were copied into Android drawable-nodpi.
+
+No pricing, API, booking, authentication, repository workflow, or persistence logic was changed by this patch.
+Structural repository verifiers Stage 2 through Stage 9 and build-env checks pass in the supplied source tree.
+The source archive does not include a Gradle wrapper, so a full local Gradle Android build could not be executed in this environment.
