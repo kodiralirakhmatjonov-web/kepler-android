@@ -41,7 +41,7 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Restaurant
-import androidx.compose.material.icons.rounded.Sparkles
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -420,7 +420,7 @@ private fun PackageRecommendationCard(language: AppLanguage, tier: PackageTier) 
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Rounded.Sparkles, null, modifier = Modifier.size(15.dp), tint = Color(0xFF593B99))
+            Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(15.dp), tint = Color(0xFF593B99))
             Text(
                 finalText(language, "РЕКОМЕНДАЦИЯ IUMRAH", "IUMRAH RECOMMENDATION", "IUMRAH TAVSIYASI", "IUMRAH ТАВСИЯСИ"),
                 fontSize = 12.sp,

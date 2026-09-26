@@ -1,0 +1,3 @@
+Fixes Debug Build Kotlin compilation:
+- replace unavailable Icons.Rounded.Sparkles with Icons.Rounded.AutoAwesome
+- add missing androidx.compose.foundation.layout.size import in AppShell
