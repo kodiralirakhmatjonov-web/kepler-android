@@ -1,0 +1,165 @@
+name: iumrah Debug Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      clean_build:
+        description: 'Run Gradle clean before installing debug'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iumrah-debug-build
+  cancel-in-progress: false
+
+jobs:
+  build-install-debug:
+    runs-on: [self-hosted, macOS, iumrah-emulator]
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+          clean: true
+          persist-credentials: false
+
+      - name: Configure Java and Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SDK="$HOME/Library/Android/sdk"
+          [ -d "$SDK" ] || { echo "Android SDK not found: $SDK"; exit 1; }
+          [ -x "$SDK/platform-tools/adb" ] || { echo "adb not found in $SDK/platform-tools"; exit 1; }
+
+          JAVA=""
+          if [ -x /usr/libexec/java_home ]; then
+            JAVA="$(/usr/libexec/java_home -v 17 2>/dev/null || true)"
+          fi
+          if [ -z "$JAVA" ] || [ ! -x "$JAVA/bin/java" ]; then
+            for CANDIDATE in \
+              "/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+              "$HOME/Applications/Android Studio.app/Contents/jbr/Contents/Home"; do
+              if [ -x "$CANDIDATE/bin/java" ]; then
+                JAVA="$CANDIDATE"
+                break
+              fi
+            done
+          fi
+          [ -n "$JAVA" ] && [ -x "$JAVA/bin/java" ] || { echo "Java runtime not found"; exit 1; }
+
+          echo "JAVA_HOME=$JAVA" >> "$GITHUB_ENV"
+          echo "$JAVA/bin" >> "$GITHUB_PATH"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          printf 'sdk.dir=%s\n' "$SDK" > local.properties
+
+          "$JAVA/bin/java" -version
+          "$SDK/platform-tools/adb" start-server
+
+      - name: Find running Pixel emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          ADB="$ANDROID_SDK_ROOT/platform-tools/adb"
+          SERIAL="$($ADB devices | awk 'NR>1 && $2=="device" && $1 ~ /^emulator-/ {print $1; exit}')"
+          if [ -z "$SERIAL" ]; then
+            echo "No running Android emulator. Start Pixel 4a first."
+            $ADB devices
+            exit 1
+          fi
+          echo "IUMRAH_ADB_SERIAL=$SERIAL" >> "$GITHUB_ENV"
+          echo "Debug target: $SERIAL"
+
+      - name: Prepare Gradle 9.6.0
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -x "./gradlew" ]; then
+            echo "IUMRAH_GRADLE_BIN=$GITHUB_WORKSPACE/gradlew" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          VERSION="9.6.0"
+          TOOLS="$HOME/.iumrah-live-dev"
+          DIST="$TOOLS/gradle-$VERSION"
+          GRADLE="$DIST/bin/gradle"
+
+          if [ ! -x "$GRADLE" ]; then
+            mkdir -p "$TOOLS"
+            ZIP="$TOOLS/gradle-$VERSION-bin.zip"
+            SHA="$ZIP.sha256"
+            BASE="https://services.gradle.org/distributions/gradle-$VERSION-bin.zip"
+
+            curl -fL --retry 3 --connect-timeout 15 "$BASE" -o "$ZIP"
+            curl -fL --retry 3 --connect-timeout 15 "$BASE.sha256" -o "$SHA"
+
+            EXPECTED="$(tr -d '[:space:]' < "$SHA")"
+            ACTUAL="$(shasum -a 256 "$ZIP" | awk '{print $1}')"
+            [ "$EXPECTED" = "$ACTUAL" ] || { echo "Gradle checksum mismatch"; exit 1; }
+
+            rm -rf "$DIST"
+            unzip -q "$ZIP" -d "$TOOLS"
+            rm -f "$ZIP" "$SHA"
+          fi
+
+          [ -x "$GRADLE" ] || { echo "Gradle binary not found after setup"; exit 1; }
+          echo "IUMRAH_GRADLE_BIN=$GRADLE" >> "$GITHUB_ENV"
+          "$GRADLE" --version
+
+      - name: Build and install debug once
+        shell: bash
+        env:
+          APP_ID: com.iumrah.beta
+          ACTIVITY: .MainActivity
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/debug-build
+
+          GRADLE="$IUMRAH_GRADLE_BIN"
+          ADB="$ANDROID_SDK_ROOT/platform-tools/adb"
+          SERIAL="$IUMRAH_ADB_SERIAL"
+
+          if [ "${{ inputs.clean_build }}" = "true" ]; then
+            "$GRADLE" --daemon --console=plain clean
+          fi
+
+          set +e
+          "$GRADLE" --daemon --console=plain :app:installDebug 2>&1 | tee artifacts/debug-build/build-install.log
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          [ "$STATUS" -eq 0 ] || exit "$STATUS"
+
+          "$ADB" -s "$SERIAL" shell am force-stop "$APP_ID" >/dev/null 2>&1 || true
+          "$ADB" -s "$SERIAL" shell am start -n "$APP_ID/$ACTIVITY" >/dev/null 2>&1 || \
+            "$ADB" -s "$SERIAL" shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+
+          sleep 2
+          "$ADB" -s "$SERIAL" exec-out screencap -p > artifacts/debug-build/emulator.png 2>/dev/null || true
+          "$ADB" -s "$SERIAL" shell pm path "$APP_ID"
+
+          {
+            echo '## ✅ iumrah Debug installed'
+            echo
+            echo "- Device: \`$SERIAL\`"
+            echo "- Commit: \`${GITHUB_SHA::7}\`"
+            echo '- Live UI can now be used without rebuilding for supported Compose edits.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload debug build log and screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iumrah-debug-build-${{ github.run_number }}
+          path: artifacts/debug-build/
+          if-no-files-found: warn
+          retention-days: 3

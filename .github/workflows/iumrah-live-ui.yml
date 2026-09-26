@@ -1,0 +1,143 @@
+name: iumrah Live UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/src/main/java/com/iumrah/beta/ui/**/*.kt'
+      - 'app/src/main/java/com/iumrah/beta/core/design/**/*.kt'
+      - '.github/workflows/iumrah-live-ui.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iumrah-live-ui
+  cancel-in-progress: true
+
+jobs:
+  sync-compose-to-android-studio:
+    runs-on: [self-hosted, macOS, iumrah-emulator]
+    timeout-minutes: 5
+    env:
+      PROJECT_OVERRIDE: ${{ vars.IUMRAH_LOCAL_PROJECT_PATH }}
+      APP_ID: com.iumrah.beta
+
+    steps:
+      - name: Sync latest UI source into Android Studio project
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -n "${PROJECT_OVERRIDE:-}" ]; then
+            PROJECT_DIR="$PROJECT_OVERRIDE"
+          else
+            PROJECT_DIR="$HOME/Documents/GitHub/kepler-android"
+          fi
+
+          [ -d "$PROJECT_DIR/.git" ] || {
+            echo "Local Android Studio checkout not found: $PROJECT_DIR"
+            echo "Set repository variable IUMRAH_LOCAL_PROJECT_PATH if your project is elsewhere."
+            exit 1
+          }
+
+          BRANCH="$(git -C "$PROJECT_DIR" branch --show-current)"
+          [ "$BRANCH" = "main" ] || {
+            echo "Local Android Studio project is on branch '$BRANCH', expected 'main'."
+            exit 1
+          }
+
+          DIRTY="$(git -C "$PROJECT_DIR" status --porcelain --untracked-files=no)"
+          [ -z "$DIRTY" ] || {
+            echo "Local tracked changes exist. Live sync stopped to avoid overwriting your work."
+            printf '%s\n' "$DIRTY"
+            exit 1
+          }
+
+          OLD_SHA="$(git -C "$PROJECT_DIR" rev-parse HEAD)"
+
+          if ! git -C "$PROJECT_DIR" fetch origin main --quiet; then
+            PUBLIC_REMOTE="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+            git -C "$PROJECT_DIR" fetch "$PUBLIC_REMOTE" main --quiet
+          fi
+
+          TARGET_SHA="$(git -C "$PROJECT_DIR" rev-parse FETCH_HEAD)"
+          git -C "$PROJECT_DIR" merge --ff-only "$TARGET_SHA"
+          NEW_SHA="$(git -C "$PROJECT_DIR" rev-parse HEAD)"
+
+          if [ "$OLD_SHA" != "$NEW_SHA" ]; then
+            # Re-touch only changed UI Kotlin files. This creates a fresh filesystem
+            # event for Android Studio without changing Git content or invoking Gradle.
+            git -C "$PROJECT_DIR" diff --name-only "$OLD_SHA" "$NEW_SHA" -- \
+              'app/src/main/java/com/iumrah/beta/ui/**/*.kt' \
+              'app/src/main/java/com/iumrah/beta/core/design/**/*.kt' | \
+            while IFS= read -r FILE; do
+              [ -n "$FILE" ] || continue
+              [ -f "$PROJECT_DIR/$FILE" ] && touch "$PROJECT_DIR/$FILE"
+            done
+          fi
+
+          echo "IUMRAH_PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "IUMRAH_LIVE_SHA=$NEW_SHA" >> "$GITHUB_ENV"
+
+          {
+            echo '## ⚡ iumrah Live UI source synced'
+            echo
+            echo "- Local project: \`$PROJECT_DIR\`"
+            echo "- Commit: \`${NEW_SHA:0:7}\`"
+            echo '- Gradle build: **not run**'
+            echo '- APK reinstall: **not run**'
+            echo '- Android Studio Live Edit must be enabled in Automatic mode.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check Live Edit session
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="$HOME/Library/Android/sdk"
+          READY=1
+
+          if pgrep -f 'Android Studio' >/dev/null 2>&1; then
+            echo "Android Studio: running"
+          else
+            echo "::warning::Android Studio is not running. Source was synced, but Live Edit cannot apply it yet."
+            READY=0
+          fi
+
+          if [ -x "$SDK/platform-tools/adb" ]; then
+            ADB="$SDK/platform-tools/adb"
+            "$ADB" start-server >/dev/null 2>&1 || true
+            SERIAL="$($ADB devices | awk 'NR>1 && $2=="device" && $1 ~ /^emulator-/ {print $1; exit}')"
+            if [ -n "$SERIAL" ]; then
+              echo "Emulator: $SERIAL"
+              if "$ADB" -s "$SERIAL" shell pm path "$APP_ID" >/dev/null 2>&1; then
+                echo "iumrah debug package: installed"
+              else
+                echo "::warning::iumrah debug package is not installed. Run 'iumrah Debug Build' once."
+                READY=0
+              fi
+            else
+              echo "::warning::No running Android emulator detected."
+              READY=0
+            fi
+          else
+            echo "::warning::ADB not found at $SDK/platform-tools/adb"
+            READY=0
+          fi
+
+          if [ "$READY" -eq 1 ]; then
+            {
+              echo
+              echo '### Live session status'
+              echo '✅ Android Studio + emulator + installed debug app detected.'
+              echo 'Supported Compose function-body edits can be applied by Android Studio Live Edit without rebuilding the APK.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo
+              echo '### Live session status'
+              echo '⚠️ Source sync succeeded, but the active Live Edit session is not fully ready.'
+              echo 'Open Android Studio, start Pixel 4a, run Debug Build once, and enable Live Edit → Automatic.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
