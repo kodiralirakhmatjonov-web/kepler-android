@@ -3,6 +3,10 @@ package com.iumrah.beta.data.account
 object IumrahAccountRoutes {
     const val ACTIVATE = "/api/catalog/hotels/client/account/activate"
     const val LOGIN = "/api/package/client/account/login"
+    const val PHONE_LOGIN_START = "/api/package/client/account/login/sms/start"
+    const val PHONE_LOGIN_CONFIRM = "/api/package/client/account/login/sms/confirm"
+    const val REGISTER_EMAIL_START = "/api/package/client/account/register/email/start"
+    const val REGISTER_EMAIL_CONFIRM = "/api/package/client/account/register/email/confirm"
     const val SESSION = "/api/catalog/hotels/client/account/session"
     const val LOGOUT = "/api/catalog/hotels/client/account/logout"
     const val PROFILE = "/api/catalog/hotels/client/account/profile"

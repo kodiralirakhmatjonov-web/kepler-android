@@ -5,9 +5,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +17,8 @@ import com.iumrah.beta.models.account.IumrahSecurityConfirmation
 import com.iumrah.beta.models.booking.StoredBookingSession
 import com.iumrah.beta.ui.components.IumrahPrimaryButton
 import com.iumrah.beta.ui.components.IumrahSecondaryButton
+import com.iumrah.beta.ui.cupertino.CupertinoIcon
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -56,7 +55,7 @@ fun IumrahSecurityConfirmationPanel(session: StoredBookingSession, service: Book
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(17.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Lock, null) }
+            Box(Modifier.size(44.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(17.dp)), contentAlignment = Alignment.Center) { CupertinoIcon(CupertinoSymbol.Lock, null, Modifier.size(20.dp), MaterialTheme.colorScheme.onSurface) }
             Spacer(Modifier.width(12.dp))
             Column {
                 Text("iumrah Security", style = MaterialTheme.typography.titleLarge)
@@ -65,7 +64,7 @@ fun IumrahSecurityConfirmationPanel(session: StoredBookingSession, service: Book
         }
         if (status?.isConfirmed == true) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.CheckCircle, null)
+                CupertinoIcon(CupertinoSymbol.CheckCircle, null, Modifier.size(20.dp), MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.width(8.dp))
                 Text("Identity confirmed")
             }

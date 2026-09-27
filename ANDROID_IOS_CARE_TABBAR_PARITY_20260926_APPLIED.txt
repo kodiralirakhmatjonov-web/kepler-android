@@ -1,0 +1,10 @@
+Iumrah Android iOS parity update — 2026-09-26
+
+Ported from kepler-ios-main(7):
+- Sources/Views/Tabs/CareHomeView.swift
+- Sources/Views/RootView.swift native TabView
+
+Android changes:
+- CareHomeScreen now follows the iOS Care page hierarchy, geometry, copy, hero, actions, active-booking context, help topics and quick answers.
+- Root bottom navigation now mirrors the five iOS tabs and iOS 26 floating Liquid Glass geometry.
+- Care uses the existing iumrah_care_showcase.jpg asset, verified SHA-256-identical to iOS IumrahCareTeamHero/care-team-hero.jpeg.

@@ -70,6 +70,26 @@ class IumrahAccountStore(
         return response.account
     }
 
+    suspend fun startPhoneLogin(phone: String, locale: String = Locale.getDefault().toLanguageTag()): IumrahPhoneLoginStartResponse =
+        service.startPhoneLogin(phone, locale)
+
+    suspend fun confirmPhoneLogin(challengeID: String, code: String, locale: String = Locale.getDefault().toLanguageTag()): IumrahAccountProfile {
+        val response = service.confirmPhoneLogin(challengeID, code, locale)
+        setSession(response)
+        runCatching { service.registerCurrentSession(response.session.token, locale) }
+        return response.account
+    }
+
+    suspend fun startEmailRegistration(email: String, locale: String): IumrahEmailChallengeStartResponse =
+        service.startEmailRegistration(email, locale)
+
+    suspend fun confirmEmailRegistration(challengeID: String, code: String, password: String, firstName: String, lastName: String, locale: String): IumrahAccountProfile {
+        val response = service.confirmEmailRegistration(challengeID, code, password, firstName, lastName, locale)
+        setSession(response)
+        runCatching { service.registerCurrentSession(response.session.token, locale) }
+        return response.account
+    }
+
     suspend fun signInWithApple(credential: IumrahAppleCredential, locale: String): IumrahAccountProfile {
         val response = service.signInWithApple(credential, locale)
         setSession(response)

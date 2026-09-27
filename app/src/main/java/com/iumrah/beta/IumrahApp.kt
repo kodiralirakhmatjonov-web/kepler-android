@@ -77,6 +77,7 @@ fun IumrahApp() {
                     accountService = container.accountService,
                     chatService = container.chatService,
                     notifications = container.notificationStore,
+                    settingsStore = container.settingsStore,
                 )
             } else {
                 OnboardingFlow(

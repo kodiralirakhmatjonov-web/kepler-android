@@ -16,6 +16,21 @@ class IumrahAccountService(
     suspend fun login(identifier: String, password: String, locale: String): IumrahAccountAuthResponse =
         api.post(IumrahAccountRoutes.LOGIN, IumrahAccountLoginRequest(identifier, password, deviceIdentity.current(locale)))
 
+    suspend fun startPhoneLogin(phone: String, locale: String): IumrahPhoneLoginStartResponse =
+        api.post(IumrahAccountRoutes.PHONE_LOGIN_START, IumrahPhoneLoginStartRequest(phone, locale))
+
+    suspend fun confirmPhoneLogin(challengeID: String, code: String, locale: String): IumrahAccountAuthResponse =
+        api.post(IumrahAccountRoutes.PHONE_LOGIN_CONFIRM, IumrahPhoneLoginConfirmRequest(challengeID, code, deviceIdentity.current(locale)))
+
+    suspend fun startEmailRegistration(email: String, locale: String): IumrahEmailChallengeStartResponse =
+        api.post(IumrahAccountRoutes.REGISTER_EMAIL_START, IumrahEmailChallengeStartRequest(email, locale))
+
+    suspend fun confirmEmailRegistration(challengeID: String, code: String, password: String, firstName: String, lastName: String, locale: String): IumrahAccountAuthResponse =
+        api.post(
+            IumrahAccountRoutes.REGISTER_EMAIL_CONFIRM,
+            IumrahRegistrationEmailConfirmRequest(challengeID, code, password, firstName, lastName, deviceIdentity.current(locale)),
+        )
+
     suspend fun session(token: String): IumrahAccountProfile {
         val value: IumrahAccountSessionResponse = api.get(IumrahAccountRoutes.SESSION, headers = bearer(token))
         return value.account

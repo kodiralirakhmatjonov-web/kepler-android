@@ -56,6 +56,18 @@ data class IumrahClientDevice(
 @Serializable
 data class IumrahAccountLoginRequest(val identifier: String, val password: String, val device: IumrahClientDevice)
 
+@Serializable data class IumrahPhoneLoginStartRequest(val phone: String, val locale: String)
+@Serializable data class IumrahPhoneLoginStartResponse(val ok: Boolean, val challengeID: String, val expiresAt: String? = null, val debugCode: String? = null)
+@Serializable data class IumrahPhoneLoginConfirmRequest(val challengeID: String, val code: String, val device: IumrahClientDevice)
+@Serializable data class IumrahRegistrationEmailConfirmRequest(
+    val challengeID: String,
+    val code: String,
+    val password: String,
+    val firstName: String,
+    val lastName: String,
+    val device: IumrahClientDevice,
+)
+
 @Serializable
 data class IumrahAccountActivateRequest(val bookingID: String, val password: String)
 
@@ -184,6 +196,7 @@ data class IumrahSecuritySession(
 )
 
 @Serializable data class IumrahAppleConnectionStatus(val linked: Boolean, val linkedAt: String? = null)
+@Serializable data class IumrahGoogleConnectionStatus(val linked: Boolean, val linkedAt: String? = null)
 @Serializable data class IumrahVerifiedLoginEmail(val email: String, val verifiedAt: String)
 
 @Serializable
@@ -195,6 +208,7 @@ data class IumrahSecurityOverview(
     val primaryDeviceProtected: Boolean,
     val loginEmail: IumrahVerifiedLoginEmail? = null,
     val apple: IumrahAppleConnectionStatus,
+    val google: IumrahGoogleConnectionStatus? = null,
     val sessions: List<IumrahSecuritySession>,
 )
 

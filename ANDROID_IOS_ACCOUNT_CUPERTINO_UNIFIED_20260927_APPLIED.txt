@@ -1,0 +1,10 @@
+Iumrah Android unified iOS parity update
+Date: 2026-09-27
+Includes:
+- previous iOS Care + bottom tab bar parity update
+- full Account root and Account child navigation surfaces
+- local reusable Cupertino semantic icon layer for Compose
+- iOS launcher icon previews + Android launcher alias switching
+- SMS login and email registration Account backend routes matching iOS
+- dedicated Account KYC route
+No GitHub Actions workflow files are changed by this update.

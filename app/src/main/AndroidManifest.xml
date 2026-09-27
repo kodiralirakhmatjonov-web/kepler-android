@@ -6,16 +6,31 @@
     <application
         android:name=".IumrahApplication"
         android:allowBackup="false"
+        android:icon="@drawable/iumrah_app_icon"
         android:label="iumrah Beta"
         android:supportsRtl="true"
         android:theme="@style/Theme.Iumrah">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="true" />
+
+        <activity-alias android:name=".LauncherStandard" android:enabled="true" android:exported="true" android:icon="@drawable/iumrah_app_icon" android:label="iumrah" android:targetActivity=".MainActivity">
+            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherBlue" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_blue_preview" android:label="iumrah" android:targetActivity=".MainActivity">
+            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherCyan" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_cyan_preview" android:label="iumrah" android:targetActivity=".MainActivity">
+            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherDeep" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_deep_preview" android:label="iumrah" android:targetActivity=".MainActivity">
+            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherWorld" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_world_preview" android:label="iumrah" android:targetActivity=".MainActivity">
+            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".LauncherMakkah" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_makkah_preview" android:label="iumrah" android:targetActivity=".MainActivity">
+            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+        </activity-alias>
     </application>
 </manifest>

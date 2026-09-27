@@ -19,6 +19,14 @@ sealed interface AppRoute {
     data class PilgrimCheckout(val bookingID: String) : AppRoute
     data class BookingChat(val bookingID: String) : AppRoute
     data object Notifications : AppRoute
+    data object AccountTravelers : AppRoute
+    data class AccountPolicy(val kind: String) : AppRoute
+    data object AccountSecurity : AppRoute
+    data object AccountAppearance : AppRoute
+    data object AccountLanguage : AppRoute
+    data object AccountSignals : AppRoute
+    data object AccountProfileEditor : AppRoute
+    data class AccountKyc(val bookingID: String) : AppRoute
 }
 
 data class AppChromeState(
@@ -47,6 +55,14 @@ class AppChromeStore {
     fun openPilgrimCheckout(id: String) = push(AppRoute.PilgrimCheckout(id), tab = AppTab.BOOKING)
     fun openBookingChat(id: String) = push(AppRoute.BookingChat(id), tab = AppTab.CARE)
     fun openNotifications() = push(AppRoute.Notifications)
+    fun openAccountTravelers() = push(AppRoute.AccountTravelers, tab = AppTab.ACCOUNT)
+    fun openAccountPolicy(kind: String) = push(AppRoute.AccountPolicy(kind), tab = AppTab.ACCOUNT)
+    fun openAccountSecurity() = push(AppRoute.AccountSecurity, tab = AppTab.ACCOUNT)
+    fun openAccountAppearance() = push(AppRoute.AccountAppearance, tab = AppTab.ACCOUNT)
+    fun openAccountLanguage() = push(AppRoute.AccountLanguage, tab = AppTab.ACCOUNT)
+    fun openAccountSignals() = push(AppRoute.AccountSignals, tab = AppTab.ACCOUNT)
+    fun openAccountProfileEditor() = push(AppRoute.AccountProfileEditor, tab = AppTab.ACCOUNT)
+    fun openAccountKyc(id: String) = push(AppRoute.AccountKyc(id), tab = AppTab.ACCOUNT)
 
     private fun push(route: AppRoute, tab: AppTab? = null) {
         _state.update { current ->

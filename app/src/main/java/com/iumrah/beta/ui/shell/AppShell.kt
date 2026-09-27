@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -23,14 +24,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountCircle
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Hotel
-import androidx.compose.material.icons.rounded.Luggage
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,11 +33,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.iumrah.beta.core.design.IumrahHaptics
 import com.iumrah.beta.core.design.IumrahMotion
 import com.iumrah.beta.core.localization.L10n
@@ -53,6 +48,7 @@ import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.navigation.AppRoute
 import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppLanguage
+import com.iumrah.beta.core.settings.AppSettingsStore
 import com.iumrah.beta.data.account.IumrahAccountStore
 import com.iumrah.beta.data.account.IumrahAccountService
 import com.iumrah.beta.data.booking.BookingStore
@@ -72,9 +68,19 @@ import com.iumrah.beta.ui.booking.BookingHotelChangeScreen
 import com.iumrah.beta.ui.booking.BookingsHomeScreen
 import com.iumrah.beta.ui.booking.PilgrimCheckoutScreen
 import com.iumrah.beta.ui.care.CareHomeScreen
+import com.iumrah.beta.ui.account.AccountRootScreen
+import com.iumrah.beta.ui.account.AccountTravelersScreen
+import com.iumrah.beta.ui.account.AccountPolicyScreen
+import com.iumrah.beta.ui.account.AccountSecurityScreen
+import com.iumrah.beta.ui.account.AccountAppearanceScreen
+import com.iumrah.beta.ui.account.AccountLanguageScreen
+import com.iumrah.beta.ui.account.AccountSignalsScreen
+import com.iumrah.beta.ui.account.AccountProfileEditorScreen
+import com.iumrah.beta.ui.account.AccountKycScreen
+import com.iumrah.beta.ui.cupertino.CupertinoIcon
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 import com.iumrah.beta.ui.chat.BookingChatScreen
 import com.iumrah.beta.ui.notifications.NotificationsScreen
-import com.iumrah.beta.ui.components.IumrahRootPageHeader
 import com.iumrah.beta.ui.home.HomeScreen
 import com.iumrah.beta.ui.hotels.HotelDetailScreen
 import com.iumrah.beta.ui.hotels.HotelsScreen
@@ -97,6 +103,7 @@ fun AppShell(
     accountService: IumrahAccountService,
     chatService: ChatService,
     notifications: ClientNotificationStore,
+    settingsStore: AppSettingsStore,
 ) {
     val hapticView = LocalView.current
     BackHandler(enabled = chromeState.isSidebarOpen || chromeState.route != AppRoute.Root) {
@@ -116,8 +123,8 @@ fun AppShell(
                     AppTab.HOME -> HomeScreen(language, chrome)
                     AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, chrome)
                     AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, chrome)
-                    AppTab.CARE -> CareHomeScreen(language, bookingStore, chrome)
-                    AppTab.ACCOUNT -> AccountRoot(accountStore, language, chrome)
+                    AppTab.CARE -> CareHomeScreen(language, bookingStore, chatService, chrome)
+                    AppTab.ACCOUNT -> AccountRootScreen(language, accountStore, bookingStore, settingsStore, notifications, chrome)
                 }
 
                 AppRoute.TripBuilder -> TripBuilderScreen(
@@ -158,6 +165,14 @@ fun AppShell(
                 is AppRoute.PilgrimCheckout -> PilgrimCheckoutScreen(route.bookingID, language, bookingStore, accountStore, accountService, chrome)
                 is AppRoute.BookingChat -> BookingChatScreen(route.bookingID, language, bookingStore, chatService, chrome)
                 AppRoute.Notifications -> NotificationsScreen(language, notifications, accountStore, bookingStore, chrome)
+                AppRoute.AccountTravelers -> AccountTravelersScreen(language, accountStore, bookingStore, accountService, chrome)
+                is AppRoute.AccountPolicy -> AccountPolicyScreen(route.kind, language, chrome)
+                AppRoute.AccountSecurity -> AccountSecurityScreen(language, accountStore, chrome)
+                AppRoute.AccountAppearance -> AccountAppearanceScreen(language, settingsStore, chrome)
+                AppRoute.AccountLanguage -> AccountLanguageScreen(language, settingsStore, chrome)
+                AppRoute.AccountSignals -> AccountSignalsScreen(language, notifications, accountStore, chrome)
+                AppRoute.AccountProfileEditor -> AccountProfileEditorScreen(language, accountStore, chrome)
+                is AppRoute.AccountKyc -> AccountKycScreen(route.bookingID, language, bookingStore, chrome)
             }
         }
 
@@ -187,30 +202,60 @@ private fun IumrahBottomBar(
     modifier: Modifier = Modifier,
 ) {
     val items = listOf(
-        Triple(AppTab.HOME, Icons.Rounded.Home, L10n.text("tab_home", language)),
-        Triple(AppTab.HOTELS, Icons.Rounded.Hotel, L10n.text("tab_hotels", language)),
-        Triple(AppTab.BOOKING, Icons.Rounded.Luggage, L10n.text("tab_booking", language)),
-        Triple(AppTab.CARE, Icons.Rounded.Favorite, L10n.text("tab_care", language)),
-        Triple(AppTab.ACCOUNT, Icons.Rounded.AccountCircle, L10n.text("profile_placeholder", language)),
+        Triple(AppTab.HOME, CupertinoSymbol.Home, L10n.text("tab_home", language)),
+        Triple(AppTab.HOTELS, CupertinoSymbol.Hotel, L10n.text("tab_hotels", language)),
+        Triple(AppTab.BOOKING, CupertinoSymbol.Suitcase, L10n.text("tab_booking", language)),
+        Triple(AppTab.CARE, CupertinoSymbol.Heart, L10n.text("tab_care", language)),
+        Triple(AppTab.ACCOUNT, CupertinoSymbol.PersonCircle, "Account"),
     )
 
-    Column(
+    // iOS 26's native SwiftUI TabView is a compact Liquid Glass bar floating
+    // above content. Android mirrors that geometry here while keeping native
+    // Compose input/haptics and the same five top-level destinations.
+    val dark = MaterialTheme.colorScheme.background.red +
+        MaterialTheme.colorScheme.background.green +
+        MaterialTheme.colorScheme.background.blue < 1.5f
+    val glass = if (dark) Color(0xFF2C2C2E).copy(alpha = .90f) else Color.White.copy(alpha = .92f)
+    val border = if (dark) Color.White.copy(alpha = .12f) else Color.Black.copy(alpha = .10f)
+    val selectedTint = if (dark) Color(0xFF40C8E0) else Color(0xFF30B0C7)
+    val unselectedTint = if (dark) Color.White.copy(alpha = .62f) else Color.Black.copy(alpha = .54f)
+    val selectionFill = selectedTint.copy(alpha = if (dark) .17f else .12f)
+    val barShape = RoundedCornerShape(30.dp)
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .navigationBarsPadding(),
+            .navigationBarsPadding()
+            .padding(horizontal = 10.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .66f))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(70.dp)
-                .padding(horizontal = 6.dp, vertical = 5.dp),
+                .height(62.dp)
+                .shadow(
+                    elevation = 10.dp,
+                    shape = barShape,
+                    clip = false,
+                    ambientColor = Color.Black.copy(alpha = .12f),
+                    spotColor = Color.Black.copy(alpha = .12f),
+                )
+                .clip(barShape)
+                .background(glass)
+                .border(.7.dp, border, barShape)
+                .padding(horizontal = 5.dp, vertical = 5.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             items.forEach { (tab, icon, label) ->
-                BottomTabItem(tab == selected, icon, label) { onSelect(tab) }
+                BottomTabItem(
+                    selected = tab == selected,
+                    icon = icon,
+                    label = label,
+                    selectedTint = selectedTint,
+                    unselectedTint = unselectedTint,
+                    selectionFill = selectionFill,
+                ) { onSelect(tab) }
             }
         }
     }
@@ -219,8 +264,11 @@ private fun IumrahBottomBar(
 @Composable
 private fun RowScope.BottomTabItem(
     selected: Boolean,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: CupertinoSymbol,
     label: String,
+    selectedTint: Color,
+    unselectedTint: Color,
+    selectionFill: Color,
     onClick: () -> Unit,
 ) {
     val source = remember { MutableInteractionSource() }
@@ -230,64 +278,34 @@ private fun RowScope.BottomTabItem(
         animationSpec = IumrahMotion.tab,
         label = "tab-scale",
     )
+    val itemShape = RoundedCornerShape(22.dp)
 
     Column(
         modifier = Modifier
             .weight(1f)
-            .height(60.dp)
+            .height(52.dp)
+            .padding(horizontal = 1.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(itemShape)
+            .background(if (selected) selectionFill else Color.Transparent)
             .clickable(interactionSource = source, indication = null, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(width = 42.dp, height = 30.dp)
-                .clip(RoundedCornerShape(15.dp))
-                .background(if (selected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) .96f else .48f),
-            )
-        }
+        CupertinoIcon(
+            symbol = icon,
+            contentDescription = label,
+            modifier = Modifier.size(22.dp),
+            tint = if (selected) selectedTint else unselectedTint,
+        )
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) .88f else .46f),
+            fontSize = 10.sp,
+            lineHeight = 12.sp,
+            fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Medium,
+            color = if (selected) selectedTint else unselectedTint,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-    }
-}
-
-@Composable
-private fun AccountRoot(accountStore: IumrahAccountStore, language: AppLanguage, chrome: AppChromeStore) {
-    val state by accountStore.state.collectAsState()
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 106.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        IumrahRootPageHeader(L10n.text("profile_placeholder", language), chrome)
-        val profile = state.account
-        if (profile == null) {
-            Text(
-                L10n.text("profile_subtitle_empty", language),
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = .58f),
-            )
-        } else {
-            Text(
-                listOf(profile.firstName, profile.lastName).filter { it.isNotBlank() }.joinToString(" "),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Text(profile.iumrahID, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
-        }
-        com.iumrah.beta.ui.components.IumrahSecondaryButton("Notifications") { chrome.openNotifications() }
     }
 }

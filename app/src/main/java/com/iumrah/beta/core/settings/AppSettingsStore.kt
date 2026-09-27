@@ -1,6 +1,8 @@
 package com.iumrah.beta.core.settings
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.pm.PackageManager
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -39,6 +41,7 @@ data class AppSettingsState(
     val lastName: String = "",
     val telegram: String = "",
     val whatsapp: String = "",
+    val launcherIcon: String = "standard",
     val hasCompletedOnboarding: Boolean = false,
     val isLoaded: Boolean = false,
 ) {
@@ -67,6 +70,7 @@ class AppSettingsStore(private val context: Context) {
             lastName = values[Keys.LAST_NAME].orEmpty(),
             telegram = values[Keys.TELEGRAM].orEmpty(),
             whatsapp = values[Keys.WHATSAPP].orEmpty(),
+            launcherIcon = values[Keys.LAUNCHER_ICON] ?: "standard",
             hasCompletedOnboarding = values[Keys.ONBOARDING] == "true",
             isLoaded = true,
         )
@@ -75,6 +79,17 @@ class AppSettingsStore(private val context: Context) {
     fun setAppearance(value: AppAppearance) = persist(Keys.APPEARANCE, value.wireValue) { copy(appearance = value) }
     fun setLanguage(value: AppLanguage) = persist(Keys.LANGUAGE, value.code) { copy(language = value) }
     fun completeOnboarding() = persist(Keys.ONBOARDING, "true") { copy(hasCompletedOnboarding = true) }
+
+    fun setLauncherIcon(value: String) {
+        val normalized = value.lowercase().takeIf { it in LAUNCHER_ALIASES.keys } ?: "standard"
+        val packageManager = context.packageManager
+        LAUNCHER_ALIASES.forEach { (key, suffix) ->
+            val component = ComponentName(context.packageName, "${context.packageName}.$suffix")
+            val state = if (key == normalized) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            runCatching { packageManager.setComponentEnabledSetting(component, state, PackageManager.DONT_KILL_APP) }
+        }
+        persist(Keys.LAUNCHER_ICON, normalized) { copy(launcherIcon = normalized) }
+    }
 
     fun updateProfile(firstName: String, lastName: String, telegram: String, whatsapp: String) {
         _state.update { it.copy(firstName = firstName, lastName = lastName, telegram = telegram, whatsapp = whatsapp) }
@@ -100,6 +115,18 @@ class AppSettingsStore(private val context: Context) {
         val LAST_NAME = stringPreferencesKey("iumrah.profile.lastName")
         val TELEGRAM = stringPreferencesKey("iumrah.profile.telegram")
         val WHATSAPP = stringPreferencesKey("iumrah.profile.whatsapp")
+        val LAUNCHER_ICON = stringPreferencesKey("iumrah.launcherIcon")
         val ONBOARDING = stringPreferencesKey("iumrah.hasCompletedOnboarding.cinematic.v4")
+    }
+
+    companion object {
+        private val LAUNCHER_ALIASES = linkedMapOf(
+            "standard" to "LauncherStandard",
+            "blue" to "LauncherBlue",
+            "cyan" to "LauncherCyan",
+            "deep" to "LauncherDeep",
+            "world" to "LauncherWorld",
+            "makkah" to "LauncherMakkah",
+        )
     }
 }
