@@ -235,7 +235,7 @@ fun HotelsScreen(
                                 favoritePrefs.edit().putStringSet("hotel_ids", favorites).apply()
                             },
                             onShare = { shareHotel(context, hotel) },
-                            onOpen = { /* Hotel detail intentionally lands in v4. */ },
+                            onOpen = { chrome.openHotel(hotel.id) },
                         )
                     }
                 }
@@ -262,7 +262,7 @@ fun HotelsScreen(
                                 favoritePrefs.edit().putStringSet("hotel_ids", favorites).apply()
                             },
                             onShare = { shareHotel(context, hotel) },
-                            onOpen = { /* Hotel detail intentionally lands in v4. */ },
+                            onOpen = { chrome.openHotel(hotel.id) },
                         )
                     }
                 }
@@ -834,7 +834,7 @@ private fun StorefrontInfoCard(message: String) {
 }
 
 @Composable
-private fun HotelCareShowcaseCard(language: AppLanguage, onClick: () -> Unit) {
+fun HotelCareShowcaseCard(language: AppLanguage, onClick: () -> Unit) {
     val shape = RoundedCornerShape(34.dp)
     Column(
         Modifier
@@ -864,7 +864,7 @@ private fun HotelCareShowcaseCard(language: AppLanguage, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HotelCareContactSheet(language: AppLanguage, onDismiss: () -> Unit) {
+fun HotelCareContactSheet(language: AppLanguage, onDismiss: () -> Unit) {
     val context = LocalContext.current
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.background) {
         Column(

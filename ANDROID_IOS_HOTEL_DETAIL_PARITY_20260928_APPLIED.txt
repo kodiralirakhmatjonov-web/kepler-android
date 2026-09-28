@@ -1,0 +1,15 @@
+Iumrah Android v4 — iOS Hotel Detail parity patch
+
+Base expectation:
+- v1+v2+v3 unified Care/Account/Hotels/Cupertino patch already applied
+- v3 debug compile fix already applied
+
+Included:
+- Hotel card opens HotelDetail route
+- HotelDetail screen ported from iOS HotelDetailView
+- same live backend services are reused for hotel detail, room categories, and hotel-first packages
+- shared Hotels Care showcase/contact sheet reused inside HotelDetail
+- Cupertino semantic icons only; no Material Icons introduced
+- AppShell route wiring updated for the full HotelDetail dependencies
+
+No workflow, Gradle, manifest, dependency, or resource changes are included in this overlay.

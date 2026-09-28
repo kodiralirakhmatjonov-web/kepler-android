@@ -154,7 +154,9 @@ fun AppShell(
                     language = language,
                     catalog = hotelCatalog,
                     packageEngine = packageEngine,
+                    journey = journey,
                     onBack = chrome::back,
+                    onOpenConfigurator = { chrome.openFinalPackage() },
                 )
 
                 AppRoute.Flights -> FlightSearchScreen(
