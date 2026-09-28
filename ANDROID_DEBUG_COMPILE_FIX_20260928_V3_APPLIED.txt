@@ -1,0 +1,3 @@
+Compile fix for GitHub Actions run 98592413891:
+- Opts HotelsScreen into ExperimentalMaterial3Api for ModalBottomSheet.
+- Adds Compose runtime setValue import required by delegated drag state in AppShell.
