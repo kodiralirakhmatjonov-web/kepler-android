@@ -1,12 +1,17 @@
 package com.iumrah.beta.data.hotel
 
 import com.iumrah.beta.core.network.APIClient
+import com.iumrah.beta.domain.pricing.PackageQuote
 import com.iumrah.beta.models.hotel.HotelDetail
 import com.iumrah.beta.models.hotel.HotelDetailResponse
 import com.iumrah.beta.models.hotel.HotelSummary
 import com.iumrah.beta.models.hotel.HotelsResponse
 import com.iumrah.beta.models.hotel.StorefrontFlightBoardResponse
+import com.iumrah.beta.models.hotel.StorefrontPackageEnvelope
+import com.iumrah.beta.models.hotel.StorefrontPackageSnapshot
 import com.iumrah.beta.models.hotel.StorefrontPackagesEnvelope
+import com.iumrah.beta.models.hotel.StorefrontFlightLeg
+import kotlinx.serialization.Serializable
 
 class HotelCatalogService(private val api: APIClient) {
     suspend fun listHotels(city: String): List<HotelSummary> =
@@ -32,4 +37,97 @@ class HotelCatalogService(private val api: APIClient) {
             ),
             timeoutSeconds = 25,
         )
+
+    suspend fun storefrontPackage(id: String): StorefrontPackageSnapshot =
+        api.get<StorefrontPackageEnvelope>(
+            "/api/storefront/packages/$id",
+            timeoutSeconds = 15,
+        ).`package`
+
+    suspend fun storefrontPackageQuote(
+        snapshot: StorefrontPackageSnapshot,
+        outbound: StorefrontFlightLeg,
+        inbound: StorefrontFlightLeg,
+        outboundOfferId: String,
+        inboundOfferId: String,
+        adults: Int,
+        children: Int,
+        infants: Int,
+        rooms: Int,
+        makkahLunch: Boolean,
+        makkahDinner: Boolean,
+        madinahDinner: Boolean,
+        transferVehicle: String?,
+        haramainEnabled: Boolean,
+        haramainFareClass: String,
+        haramainTicketCount: Int,
+    ): PackageQuote {
+        val makkahHotelId = requireNotNull(snapshot.makkahHotelId ?: snapshot.hotelFirstAnchorHotelId) { "Makkah hotel is missing from package snapshot." }
+        val includeMadinah = (snapshot.madinahNights ?: 0) > 0 && !snapshot.madinahHotelId.isNullOrBlank()
+        val provider = snapshot.providerItineraryId?.takeIf { it.isNotBlank() && outboundOfferId == snapshot.outboundOfferId && inboundOfferId == snapshot.inboundOfferId }
+            ?: if (outboundOfferId == inboundOfferId) "curated:$outboundOfferId" else "curated:$outboundOfferId+$inboundOfferId"
+        val onLap = minOf(maxOf(0, infants), maxOf(1, adults))
+        val request = StorefrontQuoteRequest(
+            tier = snapshot.tier ?: "standard",
+            tripType = "roundTrip",
+            includeMadinah = includeMadinah,
+            travelers = StorefrontQuoteRequest.Travelers(adults, children, infants, rooms),
+            meals = StorefrontQuoteRequest.Meals(makkahLunch, makkahDinner, madinahDinner),
+            transferVehicle = transferVehicle,
+            haramain = StorefrontQuoteRequest.Haramain(haramainEnabled, haramainFareClass, maxOf(0, haramainTicketCount)),
+            flight = StorefrontQuoteRequest.Flight(
+                providerItineraryId = provider,
+                cabinClass = outbound.cabinClass.ifBlank { "economy" },
+                infantsInSeat = maxOf(0, infants - onLap),
+                infantsOnLap = onLap,
+                legs = listOf(
+                    StorefrontQuoteRequest.Flight.Leg(outbound.origin, outbound.destination, outbound.departureAt.take(10)),
+                    StorefrontQuoteRequest.Flight.Leg(inbound.origin, inbound.destination, inbound.departureAt.take(10)),
+                ),
+            ),
+            hotels = StorefrontQuoteRequest.Hotels(
+                makkah = StorefrontQuoteRequest.Hotel(makkahHotelId, snapshot.configuration?.makkahRoomId, maxOf(1, snapshot.makkahNights ?: 1)),
+                madinah = if (includeMadinah) StorefrontQuoteRequest.Hotel(
+                    hotelId = requireNotNull(snapshot.madinahHotelId),
+                    roomId = snapshot.configuration?.madinahRoomId,
+                    nights = maxOf(1, snapshot.madinahNights ?: 1),
+                ) else null,
+            ),
+        )
+        return api.post<StorefrontQuoteEnvelope, StorefrontQuoteRequest>(
+            "/api/package/quote",
+            request,
+            timeoutSeconds = 15,
+        ).quote
+    }
+}
+
+
+@Serializable
+private data class StorefrontQuoteEnvelope(val ok: Boolean, val quote: PackageQuote)
+
+@Serializable
+private data class StorefrontQuoteRequest(
+    val tier: String,
+    val tripType: String,
+    val includeMadinah: Boolean,
+    val travelers: Travelers,
+    val meals: Meals,
+    val transferVehicle: String?,
+    val haramain: Haramain,
+    val flight: Flight,
+    val hotels: Hotels,
+) {
+    @Serializable data class Travelers(val adults: Int, val children: Int, val infants: Int, val rooms: Int)
+    @Serializable data class Meals(val makkahLunch: Boolean, val makkahDinner: Boolean, val madinahDinner: Boolean)
+    @Serializable data class Haramain(val enabled: Boolean, val fareClass: String, val ticketCount: Int)
+    @Serializable data class Flight(
+        val providerItineraryId: String,
+        val cabinClass: String,
+        val infantsInSeat: Int,
+        val infantsOnLap: Int,
+        val legs: List<Leg>,
+    ) { @Serializable data class Leg(val origin: String, val destination: String, val departureDate: String) }
+    @Serializable data class Hotel(val hotelId: String, val roomId: String?, val nights: Int)
+    @Serializable data class Hotels(val makkah: Hotel, val madinah: Hotel?)
 }

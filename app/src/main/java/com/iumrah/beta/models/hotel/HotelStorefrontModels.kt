@@ -47,6 +47,23 @@ data class StorefrontFlightBoardResponse(
 )
 
 @Serializable
+data class StorefrontPackageConfiguration(
+    val adults: Int = 2,
+    val children: Int = 0,
+    val infants: Int = 0,
+    val rooms: Int = 1,
+    val makkahLunch: Boolean = false,
+    val makkahDinner: Boolean = false,
+    val madinahDinner: Boolean = false,
+    val transferVehicle: String? = null,
+    val haramainEnabled: Boolean = false,
+    val haramainFareClass: String = "economy",
+    val haramainTicketCount: Int = 0,
+    val makkahRoomId: String? = null,
+    val madinahRoomId: String? = null,
+)
+
+@Serializable
 data class StorefrontPackageSnapshot(
     val id: String,
     val entryMode: String,
@@ -63,8 +80,15 @@ data class StorefrontPackageSnapshot(
     val makkahNights: Int? = null,
     val madinahNights: Int? = null,
     val hotelFirstVariant: String? = null,
+    val hotelFirstVariantIndex: Int? = null,
+    val hotelFirstVariantMinDays: Int? = null,
+    val hotelFirstVariantMaxDays: Int? = null,
     val hotelFirstAnchorCity: String? = null,
     val hotelFirstAnchorHotelId: String? = null,
+    val hotelFirstEngineVersion: Int? = null,
+    val outbound: StorefrontFlightLeg? = null,
+    val inbound: StorefrontFlightLeg? = null,
+    val providerItineraryId: String? = null,
     val outboundOfferId: String? = null,
     val inboundOfferId: String? = null,
     val imageUrl: String? = null,
@@ -74,6 +98,7 @@ data class StorefrontPackageSnapshot(
     val hotelCity: String? = null,
     val hotelStars: Int? = null,
     val hotelRating: Double? = null,
+    val hotelReviewCount: Int? = null,
     val makkahHotelId: String? = null,
     val madinahHotelId: String? = null,
     val routeSummary: String? = null,
@@ -81,6 +106,16 @@ data class StorefrontPackageSnapshot(
     val totalPackagePrice: Double? = null,
     val currency: String = "USD",
     val isEstimated: Boolean = false,
+    val configuration: StorefrontPackageConfiguration? = null,
+)
+
+@Serializable
+data class StorefrontPackageEnvelope(
+    val ok: Boolean,
+    val `package`: StorefrontPackageSnapshot,
+    val generatedAt: String? = null,
+    val expiresAt: String? = null,
+    val expired: Boolean? = null,
 )
 
 @Serializable

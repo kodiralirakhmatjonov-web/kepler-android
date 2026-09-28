@@ -1,0 +1,9 @@
+IUMRAH Android v5 — iOS Flight First package detail parity
+Date: 2026-09-28
+
+- Hotels > Flights package cards now open a dedicated Flight First package detail route.
+- Package detail is sourced from immutable /api/storefront/packages/{id} snapshots.
+- Traveler, meal and published-flight changes reprice through server-owned /api/package/quote.
+- Booking handoff reuses the existing JourneyStore + BookingCheckout flow with the confirmed server quote.
+- Cupertino semantic icons only; no Material Icons added.
+- No Gradle, Manifest, resources, or GitHub workflow changes in this overlay.

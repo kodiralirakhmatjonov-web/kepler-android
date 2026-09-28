@@ -89,6 +89,7 @@ import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 import com.iumrah.beta.ui.chat.BookingChatScreen
 import com.iumrah.beta.ui.notifications.NotificationsScreen
 import com.iumrah.beta.ui.home.HomeScreen
+import com.iumrah.beta.ui.hotels.FlightFirstPackageDetailScreen
 import com.iumrah.beta.ui.hotels.HotelDetailScreen
 import com.iumrah.beta.ui.hotels.HotelsScreen
 import com.iumrah.beta.ui.trip.HotelSelectionScreen
@@ -157,6 +158,14 @@ fun AppShell(
                     journey = journey,
                     onBack = chrome::back,
                     onOpenConfigurator = { chrome.openFinalPackage() },
+                )
+
+                is AppRoute.FlightPackageDetail -> FlightFirstPackageDetailScreen(
+                    packageId = route.packageId,
+                    language = language,
+                    service = hotelCatalog,
+                    journey = journey,
+                    chrome = chrome,
                 )
 
                 AppRoute.Flights -> FlightSearchScreen(

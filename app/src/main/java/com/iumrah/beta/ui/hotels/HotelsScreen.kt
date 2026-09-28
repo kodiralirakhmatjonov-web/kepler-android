@@ -314,7 +314,7 @@ fun HotelsScreen(
                                 packageSnapshot = bestFlightPackage(option, flightPackages),
                                 language = language,
                                 loading = loading,
-                                onClick = { /* Package detail is intentionally deferred. */ },
+                                onClick = { packageSnapshot?.let { chrome.openFlightPackage(it.id) } },
                             )
                         }
                     }

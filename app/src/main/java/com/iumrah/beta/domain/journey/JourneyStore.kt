@@ -142,5 +142,27 @@ class JourneyStore {
     }
 
     fun setQuote(quote: PackageQuote) { _state.update { it.copy(quote = quote, packageError = null) } }
+
+    /** Applies a server-owned storefront package without recalculating its public price locally. */
+    fun applyStorefrontPackage(
+        trip: TripDraft,
+        makkahHotel: HotelSummary,
+        madinahHotel: HotelSummary?,
+        flight: LiveFlightJourneyCandidate,
+        quote: PackageQuote,
+    ) {
+        _state.value = JourneyState(
+            trip = trip,
+            makkahHotel = makkahHotel,
+            madinahHotel = madinahHotel,
+            flightResults = listOf(flight),
+            selectedJourneyId = flight.id,
+            quote = quote,
+            isSearchingFlights = false,
+            flightError = null,
+            packageError = null,
+        )
+    }
+
     fun setPackageError(message: String?) { _state.update { it.copy(packageError = message, quote = if (message != null) null else it.quote) } }
 }
