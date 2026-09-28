@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.onboarding
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
@@ -26,19 +29,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FlightTakeoff
-import androidx.compose.material.icons.rounded.Hotel
-import androidx.compose.material.icons.rounded.Language
-import androidx.compose.material.icons.rounded.Route
-import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -288,14 +280,14 @@ private fun OnboardingTopBar(
             pressedScale = .92f,
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Language, contentDescription = "Language")
+                Icon(CupertinoSymbol.Globe, contentDescription = "Language")
             }
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             AppLanguage.entries.forEach { item ->
                 DropdownMenuItem(
                     text = { Text(languageTitle(item)) },
-                    trailingIcon = { if (item == language) Icon(Icons.Rounded.Check, contentDescription = null) },
+                    trailingIcon = { if (item == language) Icon(CupertinoSymbol.Checkmark, contentDescription = null) },
                     onClick = {
                         expanded = false
                         onLanguageChange(item)
@@ -398,7 +390,7 @@ private fun OnboardingScene(scene: Int, active: Boolean, language: AppLanguage) 
 
             1 -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    SceneIcon(Icons.Rounded.Route)
+                    SceneIcon(CupertinoSymbol.Route)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         IumrahPill(L10n.text("onboarding_chip_makkah_madinah", language))
                     }
@@ -413,10 +405,10 @@ private fun OnboardingScene(scene: Int, active: Boolean, language: AppLanguage) 
                 LoopingRawVideo("flight_search", modifier = Modifier.fillMaxSize(), play = active, muted = true) { }
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=.46f)))
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SceneIcon(Icons.Rounded.FlightTakeoff, light = true)
+                    SceneIcon(CupertinoSymbol.AirplaneTakeoff, light = true)
                     Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                        SceneIcon(Icons.Rounded.Hotel, small = true, light = true)
-                        SceneIcon(Icons.Rounded.Route, small = true, light = true)
+                        SceneIcon(CupertinoSymbol.Hotel, small = true, light = true)
+                        SceneIcon(CupertinoSymbol.Route, small = true, light = true)
                     }
                     IumrahPill(L10n.text("onboarding_chip_makkah_madinah", language), background = Color.White.copy(alpha=.14f), foreground = Color.White)
                 }
@@ -465,7 +457,7 @@ private fun OnboardingScene(scene: Int, active: Boolean, language: AppLanguage) 
 
 @Composable
 private fun SceneIcon(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: CupertinoSymbol,
     small: Boolean = false,
     light: Boolean = false,
 ) {

@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.booking
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -7,10 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Hotel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,7 +62,7 @@ fun BookingHotelChangeScreen(
     ) {
         item {
             IumrahPressable(onClick = chrome::back, modifier = Modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back") }
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ChevronLeft, "Back") }
             }
         }
         item {
@@ -80,11 +79,11 @@ fun BookingHotelChangeScreen(
                 Column(Modifier.fillMaxWidth().padding(13.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Box(Modifier.fillMaxWidth().height(145.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))) {
                         AppConfig.absoluteUrl(hotel.coverImageURL)?.let { AsyncImage(it, hotel.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-                            ?: Icon(Icons.Rounded.Hotel, null, Modifier.align(Alignment.Center).size(40.dp))
+                            ?: Icon(CupertinoSymbol.Hotel, null, Modifier.align(Alignment.Center).size(40.dp))
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(hotel.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                        if (selected) Icon(Icons.Rounded.CheckCircle, null)
+                        if (selected) Icon(CupertinoSymbol.CheckCircle, null)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) { hotel.stars?.let { IumrahPill("$it★") }; hotel.rating?.let { IumrahPill(String.format("%.1f", it)) } }
                 }

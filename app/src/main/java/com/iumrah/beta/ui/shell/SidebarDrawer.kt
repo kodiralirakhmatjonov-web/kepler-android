@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.shell
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -17,14 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccountCircle
-import androidx.compose.material.icons.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Luggage
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -102,27 +97,27 @@ private fun SidebarDrawer(language: AppLanguage, chrome: AppChromeStore) {
                 cornerRadius = 99.dp,
                 background = MaterialTheme.colorScheme.surfaceVariant,
                 pressedScale = .90f,
-            ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Close, contentDescription = "Close") } }
+            ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.Close, contentDescription = "Close") } }
         }
         Text(sidebarCopy(language).subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f))
         Spacer(Modifier.size(8.dp))
-        DrawerRow(Icons.Rounded.Home, sidebarCopy(language).home) { chrome.navigate(AppTab.HOME) }
-        DrawerRow(Icons.Rounded.Luggage, sidebarCopy(language).trips) { chrome.navigate(AppTab.BOOKING) }
-        DrawerRow(Icons.Rounded.Favorite, "iumrah Care") { chrome.navigate(AppTab.CARE) }
-        DrawerRow(Icons.Rounded.AccountCircle, sidebarCopy(language).account) { chrome.navigate(AppTab.ACCOUNT) }
+        DrawerRow(CupertinoSymbol.Home, sidebarCopy(language).home) { chrome.navigate(AppTab.HOME) }
+        DrawerRow(CupertinoSymbol.Suitcase, sidebarCopy(language).trips) { chrome.navigate(AppTab.BOOKING) }
+        DrawerRow(CupertinoSymbol.Heart, "iumrah Care") { chrome.navigate(AppTab.CARE) }
+        DrawerRow(CupertinoSymbol.PersonCircle, sidebarCopy(language).account) { chrome.navigate(AppTab.ACCOUNT) }
         Spacer(Modifier.weight(1f))
         Text("Independent Umrah · iumrah", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .35f))
     }
 }
 
 @Composable
-private fun DrawerRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, onClick: () -> Unit) {
+private fun DrawerRow(icon: CupertinoSymbol, title: String, onClick: () -> Unit) {
     IumrahPressable(onClick = onClick, modifier = Modifier.fillMaxWidth(), cornerRadius = 18.dp, background = MaterialTheme.colorScheme.surfaceVariant, pressedScale = .975f) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
             Text(title, modifier = Modifier.padding(start = 14.dp), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.weight(1f))
-            Icon(Icons.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .35f))
+            Icon(CupertinoSymbol.ArrowRight, contentDescription = null, modifier = Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .35f))
         }
     }
 }

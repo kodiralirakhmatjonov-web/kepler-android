@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.notifications
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import android.Manifest
 import android.os.Build
@@ -9,9 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,7 +58,7 @@ fun NotificationsScreen(
     ) {
         item {
             IumrahPressable(onClick = chrome::back, modifier = Modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back") }
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ChevronLeft, "Back") }
             }
         }
         item {
@@ -83,7 +83,7 @@ fun NotificationsScreen(
 @Composable private fun NotificationCard(value: ClientSystemNotification, onOpen: () -> Unit) {
     IumrahPressable(onClick = onOpen, modifier = Modifier.fillMaxWidth(), cornerRadius = 28.dp, background = MaterialTheme.colorScheme.surface) {
         Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.Top) {
-            Box(Modifier.size(44.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(17.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Notifications, null) }
+            Box(Modifier.size(44.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(17.dp)), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.BellBadge, null) }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

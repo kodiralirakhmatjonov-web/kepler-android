@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.components
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -14,12 +17,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -177,14 +178,14 @@ fun IumrahBackButton(
 ) {
     IumrahPressable(
         onClick = onClick,
-        modifier = modifier.size(IumrahGalaxyMetrics.TouchTarget),
+        modifier = modifier.offset(y = 6.dp).size(IumrahGalaxyMetrics.TouchTarget),
         cornerRadius = 18.dp,
         background = MaterialTheme.colorScheme.surfaceVariant,
         pressedScale = .93f,
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Icon(
-                imageVector = Icons.Rounded.ArrowBack,
+                imageVector = CupertinoSymbol.ChevronLeft,
                 contentDescription = "Back",
                 modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurface,

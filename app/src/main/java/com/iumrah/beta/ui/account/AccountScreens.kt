@@ -1,4 +1,6 @@
 package com.iumrah.beta.ui.account
+import com.iumrah.beta.ui.cupertino.Icon
+import androidx.compose.foundation.layout.statusBarsPadding
 
 import android.content.Intent
 import android.net.Uri
@@ -645,7 +647,7 @@ fun AccountSignalsScreen(language:AppLanguage,notifications:ClientNotificationSt
 
 @Composable
 private fun AccountPage(title:String,chrome:AppChromeStore,content:@Composable ColumnScope.()->Unit){
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=PagePad,end=PagePad,top=8.dp,bottom=48.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
+    LazyColumn(Modifier.fillMaxSize().statusBarsPadding(),contentPadding=PaddingValues(start=PagePad,end=PagePad,top=14.dp,bottom=48.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
         item{Row(Modifier.fillMaxWidth().height(48.dp),verticalAlignment=Alignment.CenterVertically){Surface(onClick={chrome.back()},shape=CircleShape,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.06f)){Box(Modifier.size(38.dp),contentAlignment=Alignment.Center){CupertinoIcon(CupertinoSymbol.ChevronLeft,null,Modifier.size(18.dp),MaterialTheme.colorScheme.onSurface)}};Text(title,Modifier.weight(1f).padding(horizontal=12.dp),fontSize=17.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis);Spacer(Modifier.width(38.dp))}}
         item{Column(verticalArrangement=Arrangement.spacedBy(18.dp),content=content)}
     }

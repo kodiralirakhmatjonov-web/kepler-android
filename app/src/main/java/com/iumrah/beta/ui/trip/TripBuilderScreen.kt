@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.trip
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.animateColorAsState
@@ -21,13 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -325,7 +322,7 @@ private fun OriginField(
         textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
         leadingIcon = {
             Icon(
-                imageVector = Icons.Rounded.LocationOn,
+                imageVector = CupertinoSymbol.Location,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .66f),
             )
@@ -457,7 +454,7 @@ private fun ChoiceTile(
             if (selected) {
                 Spacer(Modifier.width(8.dp))
                 Icon(
-                    imageVector = Icons.Rounded.Check,
+                    imageVector = CupertinoSymbol.Checkmark,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                     tint = foreground,
@@ -527,20 +524,20 @@ private fun CounterRow(
             fontWeight = FontWeight.Medium,
             modifier = Modifier.weight(1f),
         )
-        CounterButton(Icons.Rounded.Remove, enabled = value > min) { onValue(value - 1) }
+        CounterButton(CupertinoSymbol.Minus, enabled = value > min) { onValue(value - 1) }
         Text(
             text = value.toString(),
             modifier = Modifier.width(46.dp),
             style = MaterialTheme.typography.titleMedium,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
-        CounterButton(Icons.Rounded.Add, enabled = value < max) { onValue(value + 1) }
+        CounterButton(CupertinoSymbol.Plus, enabled = value < max) { onValue(value + 1) }
     }
 }
 
 @Composable
 private fun CounterButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: CupertinoSymbol,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {

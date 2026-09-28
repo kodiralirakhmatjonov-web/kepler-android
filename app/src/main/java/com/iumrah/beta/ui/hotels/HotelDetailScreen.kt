@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.hotels
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -22,15 +25,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Bed
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.People
-import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -151,7 +146,7 @@ private fun HotelGallery(hotel: HotelDetail, onBack: () -> Unit) {
             }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha=.26f), Color.Transparent, Color.Black.copy(alpha=.24f)))))
         }
-        BackButton(onBack, Modifier.padding(start = 16.dp, top = 46.dp).align(Alignment.TopStart))
+        BackButton(onBack, Modifier.padding(start = 16.dp, top = 54.dp).align(Alignment.TopStart))
         if (images.size > 1) IumrahPill("${pager.currentPage + 1} / ${images.size}", modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp), background = Color.Black.copy(alpha=.38f), foreground = Color.White)
     }
 }
@@ -159,7 +154,7 @@ private fun HotelGallery(hotel: HotelDetail, onBack: () -> Unit) {
 @Composable
 private fun BackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
     IumrahPressable(onClick = onBack, modifier = modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surface.copy(alpha=.86f), pressedScale = .92f) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, contentDescription = "Back") }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ChevronLeft, contentDescription = "Back") }
     }
 }
 
@@ -179,7 +174,7 @@ private fun RoomCategoryCard(option: IumrahRoomCategoryOption, selected: Boolean
         shadowElevation = 7.dp,
     ) {
         Column(Modifier.fillMaxSize().background(Brush.linearGradient(colors)).padding(22.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
-            Row { Icon(Icons.Rounded.Bed, contentDescription = null, tint = Color.White, modifier = Modifier.size(36.dp)); Spacer(Modifier.weight(1f)); if (selected) Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = Color.White) }
+            Row { Icon(CupertinoSymbol.Bed, contentDescription = null, tint = Color.White, modifier = Modifier.size(36.dp)); Spacer(Modifier.weight(1f)); if (selected) Icon(CupertinoSymbol.CheckCircle, contentDescription = null, tint = Color.White) }
             Text(option.displayName, style = MaterialTheme.typography.headlineMedium, color = Color.White)
             Text(L10n.text(option.category.bodyKey, language), style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha=.80f))
             Spacer(Modifier.weight(1f))

@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.chat
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -10,10 +13,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.AttachFile
-import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -81,7 +80,7 @@ fun BookingChatScreen(bookingID: String, language: AppLanguage, bookingStore: Bo
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).graphicsLayer { scaleX = launchScale; scaleY = launchScale }) {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            IumrahPressable(onClick = chrome::back, modifier = Modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back") } }
+            IumrahPressable(onClick = chrome::back, modifier = Modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ChevronLeft, "Back") } }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(care?.displayName?.takeIf { it.isNotBlank() } ?: L10n.text("chat_staff", language), style = MaterialTheme.typography.titleMedium)
@@ -101,7 +100,7 @@ fun BookingChatScreen(bookingID: String, language: AppLanguage, bookingStore: Bo
         }
         AnimatedVisibility(error != null) { Text(error.orEmpty(), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) }
         Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(10.dp), verticalAlignment = Alignment.Bottom) {
-            IumrahPressable(onClick = { photoLauncher.launch("image/*") }, modifier = Modifier.size(46.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant, enabled = !busy) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.AttachFile, null) } }
+            IumrahPressable(onClick = { photoLauncher.launch("image/*") }, modifier = Modifier.size(46.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant, enabled = !busy) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.Paperclip, null) } }
             Spacer(Modifier.width(8.dp))
             OutlinedTextField(
                 value = text,
@@ -122,7 +121,7 @@ fun BookingChatScreen(bookingID: String, language: AppLanguage, bookingStore: Bo
                         .onFailure { cause -> text = body; busy = false; error = cause.message }
                 }
             }, modifier = Modifier.size(46.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.primary, enabled = text.trim().isNotEmpty() && !busy) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Send, null, tint = MaterialTheme.colorScheme.onPrimary) }
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.Send, null, tint = MaterialTheme.colorScheme.onPrimary) }
             }
         }
     }

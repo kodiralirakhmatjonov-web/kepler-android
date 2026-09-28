@@ -1,0 +1,100 @@
+package com.iumrah.beta.models.hotel
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class StorefrontFlightLeg(
+    val airline: String,
+    @SerialName("flight_number") val flightNumber: String,
+    @SerialName("airline_code") val airlineCode: String,
+    val origin: String,
+    val destination: String,
+    @SerialName("departure_at") val departureAt: String,
+    @SerialName("arrival_at") val arrivalAt: String,
+    @SerialName("duration_minutes") val durationMinutes: Int,
+    val stops: Int,
+    @SerialName("cabin_class") val cabinClass: String,
+)
+
+@Serializable
+data class StorefrontFlightBaggage(
+    val carryOn: Int? = null,
+    val checked: Int? = null,
+)
+
+@Serializable
+data class StorefrontFlightOption(
+    val id: String,
+    val kind: String,
+    val priority: Int = 0,
+    val currency: String,
+    val travelerCount: Int,
+    val totalFare: Double,
+    val perTravelerFare: Double,
+    val observedAt: String,
+    val outbound: StorefrontFlightLeg,
+    val inbound: StorefrontFlightLeg? = null,
+    val baggage: StorefrontFlightBaggage? = null,
+)
+
+@Serializable
+data class StorefrontFlightBoardResponse(
+    val ok: Boolean,
+    val origin: String,
+    val generatedAt: String,
+    val options: List<StorefrontFlightOption> = emptyList(),
+)
+
+@Serializable
+data class StorefrontPackageSnapshot(
+    val id: String,
+    val entryMode: String,
+    val status: String,
+    val originCode: String,
+    val originCity: String? = null,
+    val destinationCode: String? = null,
+    val tier: String? = null,
+    val kind: String? = null,
+    val startDate: String? = null,
+    val endDate: String? = null,
+    val totalDays: Int? = null,
+    val totalNights: Int? = null,
+    val makkahNights: Int? = null,
+    val madinahNights: Int? = null,
+    val hotelFirstVariant: String? = null,
+    val hotelFirstAnchorCity: String? = null,
+    val hotelFirstAnchorHotelId: String? = null,
+    val outboundOfferId: String? = null,
+    val inboundOfferId: String? = null,
+    val imageUrl: String? = null,
+    val hotelImages: List<String> = emptyList(),
+    val hotelName: String? = null,
+    val hotelSecondaryName: String? = null,
+    val hotelCity: String? = null,
+    val hotelStars: Int? = null,
+    val hotelRating: Double? = null,
+    val makkahHotelId: String? = null,
+    val madinahHotelId: String? = null,
+    val routeSummary: String? = null,
+    val pricePerPerson: Double? = null,
+    val totalPackagePrice: Double? = null,
+    val currency: String = "USD",
+    val isEstimated: Boolean = false,
+)
+
+@Serializable
+data class StorefrontPackagesEnvelope(
+    val ok: Boolean,
+    val cacheState: String? = null,
+    val refreshRecommended: Boolean? = null,
+    val generatedAt: String? = null,
+    val expiresAt: String? = null,
+    val itemCount: Int? = null,
+    val totalItemCount: Int? = null,
+    val expectedItemCount: Int? = null,
+    val complete: Boolean? = null,
+    val failedHotelCount: Int? = null,
+    val nextRefreshCursor: Int? = null,
+    val items: List<StorefrontPackageSnapshot> = emptyList(),
+)

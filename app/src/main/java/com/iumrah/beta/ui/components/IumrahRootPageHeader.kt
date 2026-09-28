@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.components
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -9,9 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Menu
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.iumrah.beta.R
 
 /** One UI-inspired root header with real system-bar inset handling. */
@@ -49,20 +51,27 @@ fun IumrahRootPageHeader(
                 alignment = Alignment.CenterStart,
             )
         } else {
-            Text(title, style = MaterialTheme.typography.headlineMedium, maxLines = 1)
+            Text(
+                title,
+                fontSize = 38.sp,
+                lineHeight = 42.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                letterSpacing = (-1.0).sp,
+                maxLines = 1,
+            )
         }
 
         Spacer(Modifier.weight(1f))
 
         IumrahPressable(
             onClick = chrome::openSidebar,
-            modifier = Modifier.size(44.dp),
-            cornerRadius = 17.dp,
+            modifier = Modifier.size(46.dp),
+            cornerRadius = 23.dp,
             background = MaterialTheme.colorScheme.surfaceVariant,
             pressedScale = .93f,
         ) {
-            Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Menu, contentDescription = "Menu", modifier = Modifier.size(21.dp))
+            Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
+                Icon(CupertinoSymbol.Menu, contentDescription = "Menu", modifier = Modifier.size(21.dp))
             }
         }
     }

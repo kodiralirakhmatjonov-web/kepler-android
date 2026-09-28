@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.packageflow
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -22,29 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ArrowDownward
-import androidx.compose.material.icons.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.ArrowOutward
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Description
-import androidx.compose.material.icons.rounded.DirectionsCar
-import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Flight
-import androidx.compose.material.icons.rounded.FlightLand
-import androidx.compose.material.icons.rounded.FlightTakeoff
-import androidx.compose.material.icons.rounded.Group
-import androidx.compose.material.icons.rounded.Hotel
-import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Restaurant
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,7 +40,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -166,7 +146,7 @@ private fun GeneratorReadyHeader(language: AppLanguage, onBack: () -> Unit) {
             background = MaterialTheme.colorScheme.surfaceVariant,
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.ArrowBack, contentDescription = finalText(language, "Назад", "Back", "Orqaga", "Орқага"))
+                Icon(CupertinoSymbol.ChevronLeft, contentDescription = finalText(language, "Назад", "Back", "Orqaga", "Орқага"))
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -190,7 +170,7 @@ private fun GeneratorReadyHeader(language: AppLanguage, onBack: () -> Unit) {
                 .background(Color(0xFFE9F7EE)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(20.dp), tint = Color(0xFF247D49))
+            Icon(CupertinoSymbol.CheckCircle, null, modifier = Modifier.size(20.dp), tint = Color(0xFF247D49))
         }
     }
 }
@@ -282,7 +262,7 @@ private fun PackageTierSection(language: AppLanguage, state: JourneyState, quote
         }
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Rounded.Flight, null, modifier = Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+            Icon(CupertinoSymbol.Airplane, null, modifier = Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
             Text(
                 finalText(language, "Выбранный авиабилет и даты не меняются при сравнении", "Your selected flight and dates stay fixed while comparing", "Taqqoslashda tanlangan reys va sanalar o‘zgarmaydi", "Таққослашда танланган рейс ва саналар ўзгармайди"),
                 fontSize = 13.sp,
@@ -335,7 +315,7 @@ private fun PackageTierCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                Icon(Icons.Rounded.Person, null, modifier = Modifier.size(13.dp), tint = Color.White)
+                Icon(CupertinoSymbol.PersonCircle, null, modifier = Modifier.size(13.dp), tint = Color.White)
                 Text("$travelers", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
@@ -381,7 +361,7 @@ private fun PackageTierCard(
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             packageBenefits(language, tier, makkahHotel, madinahHotel, needsMadinah).forEach { benefit ->
                 Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(15.dp).padding(top = 1.dp), tint = Color.White.copy(alpha = .90f))
+                    Icon(CupertinoSymbol.CheckCircle, null, modifier = Modifier.size(15.dp).padding(top = 1.dp), tint = Color.White.copy(alpha = .90f))
                     Text(
                         benefit,
                         modifier = Modifier.weight(1f),
@@ -398,7 +378,7 @@ private fun PackageTierCard(
 
         Spacer(Modifier.weight(1f))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Rounded.ArrowDownward, null, modifier = Modifier.size(15.dp), tint = Color.White.copy(alpha = .88f))
+            Icon(CupertinoSymbol.ArrowDown, null, modifier = Modifier.size(15.dp), tint = Color.White.copy(alpha = .88f))
             Text(
                 finalText(language, "Продолжение — внизу страницы", "Continue below on this page", "Davomi sahifa pastida", "Давоми саҳифа пастида"),
                 fontSize = 13.sp,
@@ -420,7 +400,7 @@ private fun PackageRecommendationCard(language: AppLanguage, tier: PackageTier) 
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Rounded.AutoAwesome, null, modifier = Modifier.size(15.dp), tint = Color(0xFF593B99))
+            Icon(CupertinoSymbol.Sparkles, null, modifier = Modifier.size(15.dp), tint = Color(0xFF593B99))
             Text(
                 finalText(language, "РЕКОМЕНДАЦИЯ IUMRAH", "IUMRAH RECOMMENDATION", "IUMRAH TAVSIYASI", "IUMRAH ТАВСИЯСИ"),
                 fontSize = 12.sp,
@@ -460,16 +440,16 @@ private fun PackageSupportCard(language: AppLanguage) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f),
         )
-        SupportRow(language, Icons.Rounded.Description, SupportExplainer.VISA, expanded, { expanded = if (expanded == it) null else it })
-        SupportRow(language, Icons.Rounded.Favorite, SupportExplainer.CARE, expanded, { expanded = if (expanded == it) null else it })
-        SupportRow(language, Icons.Rounded.Group, SupportExplainer.GUIDE, expanded, { expanded = if (expanded == it) null else it })
+        SupportRow(language, CupertinoSymbol.Document, SupportExplainer.VISA, expanded, { expanded = if (expanded == it) null else it })
+        SupportRow(language, CupertinoSymbol.Heart, SupportExplainer.CARE, expanded, { expanded = if (expanded == it) null else it })
+        SupportRow(language, CupertinoSymbol.Persons, SupportExplainer.GUIDE, expanded, { expanded = if (expanded == it) null else it })
     }
 }
 
 @Composable
 private fun SupportRow(
     language: AppLanguage,
-    icon: ImageVector,
+    icon: CupertinoSymbol,
     kind: SupportExplainer,
     expanded: SupportExplainer?,
     onClick: (SupportExplainer) -> Unit,
@@ -499,7 +479,7 @@ private fun SupportRow(
                     Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Text(subtitle, fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f))
                 }
-                Icon(Icons.Rounded.ArrowOutward, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .35f))
+                Icon(CupertinoSymbol.ArrowUpRight, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .35f))
             }
             AnimatedVisibility(expanded == kind) {
                 Text(
@@ -536,7 +516,7 @@ private fun IncludedServicesCard(language: AppLanguage, state: JourneyState) {
                 service = PackageService.OUTBOUND,
                 expanded = expanded,
                 onToggle = { expanded = if (expanded == it) null else it },
-                icon = Icons.Rounded.FlightTakeoff,
+                icon = CupertinoSymbol.AirplaneTakeoff,
                 title = finalText(language, "Перелёт в Саудовскую Аравию", "Outbound flight", "Saudiya Arabistoniga parvoz", "Саудия Арабистонига парвоз"),
                 subtitle = listOf(it.airline, it.flightNumber).filter { value -> value.isNotBlank() }.joinToString(" · "),
                 detail = flightDetail(language, it),
@@ -549,7 +529,7 @@ private fun IncludedServicesCard(language: AppLanguage, state: JourneyState) {
                 service = PackageService.MAKKAH,
                 expanded = expanded,
                 onToggle = { expanded = if (expanded == it) null else it },
-                icon = Icons.Rounded.Hotel,
+                icon = CupertinoSymbol.Hotel,
                 title = finalText(language, "Отель в Мекке", "Makkah hotel", "Makkadagi mehmonxona", "Маккадаги меҳмонхона"),
                 subtitle = hotel.name,
                 detail = hotelDetail(language, hotel, state.makkahRoomCategory?.displayName ?: state.makkahRoom?.name),
@@ -563,7 +543,7 @@ private fun IncludedServicesCard(language: AppLanguage, state: JourneyState) {
                     service = PackageService.MADINAH,
                     expanded = expanded,
                     onToggle = { expanded = if (expanded == it) null else it },
-                    icon = Icons.Rounded.Hotel,
+                    icon = CupertinoSymbol.Hotel,
                     title = finalText(language, "Отель в Медине", "Madinah hotel", "Madinadagi mehmonxona", "Мадинадаги меҳмонхона"),
                     subtitle = hotel.name,
                     detail = hotelDetail(language, hotel, state.madinahRoomCategory?.displayName ?: state.madinahRoom?.name),
@@ -577,7 +557,7 @@ private fun IncludedServicesCard(language: AppLanguage, state: JourneyState) {
                 service = PackageService.INBOUND,
                 expanded = expanded,
                 onToggle = { expanded = if (expanded == it) null else it },
-                icon = Icons.Rounded.FlightLand,
+                icon = CupertinoSymbol.AirplaneLand,
                 title = finalText(language, "Обратный перелёт", "Return flight", "Qaytish parvozi", "Қайтиш парвози"),
                 subtitle = listOf(it.airline, it.flightNumber).filter { value -> value.isNotBlank() }.joinToString(" · "),
                 detail = flightDetail(language, it),
@@ -589,25 +569,25 @@ private fun IncludedServicesCard(language: AppLanguage, state: JourneyState) {
             service = PackageService.TRANSFER,
             expanded = expanded,
             onToggle = { expanded = if (expanded == it) null else it },
-            icon = Icons.Rounded.DirectionsCar,
+            icon = CupertinoSymbol.Car,
             title = finalText(language, "Полный трансфер", "Full transfer", "To‘liq transfer", "Тўлиқ трансфер"),
             subtitle = "Kia Carnival",
             detail = finalText(language, "Аэропорт → отель → межгородской маршрут → аэропорт. Маршрут адаптируется под выбранные города.", "Airport → hotel → intercity route → airport. The route adapts to your selected cities.", "Aeroport → mehmonxona → shaharlararo yo‘nalish → aeroport. Yo‘nalish tanlangan shaharlarga moslashadi.", "Аэропорт → меҳмонхона → шаҳарлараро йўналиш → аэропорт. Йўналиш танланган шаҳарларга мослашади."),
         )
 
-        StaticServiceRow(Icons.Rounded.LocationOn, finalText(language, "Зияраты в Мекке", "Makkah ziyarat", "Makka ziyoratlari", "Макка зиёратлари"), finalText(language, "Включено", "Included", "Kiritilgan", "Киритилган"))
+        StaticServiceRow(CupertinoSymbol.Location, finalText(language, "Зияраты в Мекке", "Makkah ziyarat", "Makka ziyoratlari", "Макка зиёратлари"), finalText(language, "Включено", "Included", "Kiritilgan", "Киритилган"))
         if (state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH) {
-            StaticServiceRow(Icons.Rounded.LocationOn, finalText(language, "Зияраты в Медине", "Madinah ziyarat", "Madina ziyoratlari", "Мадина зиёратлари"), finalText(language, "Включено", "Included", "Kiritilgan", "Киритилган"))
+            StaticServiceRow(CupertinoSymbol.Location, finalText(language, "Зияраты в Медине", "Madinah ziyarat", "Madina ziyoratlari", "Мадина зиёратлари"), finalText(language, "Включено", "Included", "Kiritilgan", "Киритилган"))
         }
-        StaticServiceRow(Icons.Rounded.Favorite, "iumrah Care", finalText(language, "Включено", "Included", "Kiritilgan", "Киритилган"), tint = Color(0xFFE24C6A))
-        StaticServiceRow(Icons.Rounded.Group, "iumrah Guide", finalText(language, "Включено", "Included", "Kiritilgan", "Киритилган"))
+        StaticServiceRow(CupertinoSymbol.Heart, "iumrah Care", finalText(language, "Включено", "Included", "Kiritilgan", "Киритилган"), tint = Color(0xFFE24C6A))
+        StaticServiceRow(CupertinoSymbol.Persons, "iumrah Guide", finalText(language, "Включено", "Included", "Kiritilgan", "Киритилган"))
 
         ExpandableServiceRow(
             language = language,
             service = PackageService.VISA,
             expanded = expanded,
             onToggle = { expanded = if (expanded == it) null else it },
-            icon = Icons.Rounded.Description,
+            icon = CupertinoSymbol.Document,
             title = finalText(language, "Виза", "Visa", "Viza", "Виза"),
             subtitle = finalText(language, "Включено", "Included", "Kiritilgan", "Киритилган"),
             detail = finalText(language, "Визовая часть поездки включена в состав пакета. Перед оформлением данные и требования будут дополнительно проверены.", "The visa part of the trip is included in the package. Details and requirements are checked again before processing.", "Safarning viza qismi paketga kiritilgan. Rasmiylashtirishdan oldin ma’lumotlar va talablar yana tekshiriladi.", "Сафарнинг виза қисми пакетга киритилган. Расмийлаштиришдан олдин маълумотлар ва талаблар яна текширилади."),
@@ -617,7 +597,7 @@ private fun IncludedServicesCard(language: AppLanguage, state: JourneyState) {
             service = PackageService.MEALS,
             expanded = expanded,
             onToggle = { expanded = if (expanded == it) null else it },
-            icon = Icons.Rounded.Restaurant,
+            icon = CupertinoSymbol.ForkKnife,
             title = finalText(language, "Питание", "Meals", "Ovqatlanish", "Овқатланиш"),
             subtitle = mealsSummary(language, state.trip.packageTier),
             detail = mealsDetail(language, state.trip.packageTier),
@@ -643,7 +623,7 @@ private fun ExpandableServiceRow(
     service: PackageService,
     expanded: PackageService?,
     onToggle: (PackageService) -> Unit,
-    icon: ImageVector,
+    icon: CupertinoSymbol,
     title: String,
     subtitle: String,
     detail: String,
@@ -670,7 +650,7 @@ private fun ExpandableServiceRow(
                     Text(subtitle, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f))
                 }
                 Icon(
-                    Icons.Rounded.ExpandMore,
+                    CupertinoSymbol.ChevronDown,
                     contentDescription = if (isExpanded) finalText(language, "Свернуть", "Collapse", "Yopish", "Ёпиш") else finalText(language, "Открыть", "Open", "Ochish", "Очиш"),
                     modifier = Modifier.size(20.dp).rotate(if (isExpanded) 180f else 0f),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .38f),
@@ -694,7 +674,7 @@ private fun ExpandableServiceRow(
 }
 
 @Composable
-private fun StaticServiceRow(icon: ImageVector, title: String, subtitle: String, tint: Color = MaterialTheme.colorScheme.onSurface) {
+private fun StaticServiceRow(icon: CupertinoSymbol, title: String, subtitle: String, tint: Color = MaterialTheme.colorScheme.onSurface) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -718,7 +698,7 @@ private fun RefundPolicyCard(language: AppLanguage) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(Color(0xFFFFF4E8)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.VerifiedUser, null, modifier = Modifier.size(18.dp), tint = Color(0xFF9A5B10))
+                Icon(CupertinoSymbol.ShieldCheck, null, modifier = Modifier.size(18.dp), tint = Color(0xFF9A5B10))
             }
             Text(finalText(language, "Условия возврата пакета", "Package refund policy", "Paketni qaytarish shartlari", "Пакетни қайтариш шартлари"), fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
@@ -739,7 +719,7 @@ private fun ManualPaymentCard(language: AppLanguage) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.size(42.dp).clip(CircleShape).background(Color(0xFFEFF4FF)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.VerifiedUser, null, modifier = Modifier.size(19.dp), tint = Color(0xFF3559A8))
+            Icon(CupertinoSymbol.ShieldCheck, null, modifier = Modifier.size(19.dp), tint = Color(0xFF3559A8))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(finalText(language, "Оплата после подтверждения", "Payment after confirmation", "Tasdiqlangandan keyin to‘lov", "Тасдиқлангандан кейин тўлов"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -767,7 +747,7 @@ private fun CareReassuranceCard(language: AppLanguage) {
         )
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                Icon(Icons.Rounded.Favorite, null, modifier = Modifier.size(13.dp), tint = Color(0xFFE24C6A))
+                Icon(CupertinoSymbol.Heart, null, modifier = Modifier.size(13.dp), tint = Color(0xFFE24C6A))
                 Text("iumrah Care", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE24C6A))
             }
             Text(
@@ -791,7 +771,7 @@ private fun CareReassuranceCard(language: AppLanguage) {
                 Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(finalText(language, "Как это работает", "How it works", "Qanday ishlaydi", "Қандай ишлайди"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     Spacer(Modifier.weight(1f))
-                    Icon(Icons.Rounded.ArrowOutward, null, modifier = Modifier.size(17.dp), tint = Color.White)
+                    Icon(CupertinoSymbol.ArrowUpRight, null, modifier = Modifier.size(17.dp), tint = Color.White)
                 }
             }
             AnimatedVisibility(expanded) {
@@ -820,7 +800,7 @@ private fun NotificationCard(language: AppLanguage) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.size(42.dp).clip(CircleShape).background(Color(0xFFEFF4FF)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Notifications, null, modifier = Modifier.size(19.dp), tint = Color(0xFF4D6FB6))
+            Icon(CupertinoSymbol.BellBadge, null, modifier = Modifier.size(19.dp), tint = Color(0xFF4D6FB6))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(L10n.text("notifications_title", language), fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -849,7 +829,7 @@ private fun FinalBlackButton(title: String, onClick: () -> Unit) {
         ) {
             Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.weight(1f))
-            Icon(Icons.Rounded.ArrowForward, null, modifier = Modifier.size(18.dp), tint = Color.White)
+            Icon(CupertinoSymbol.ArrowRight, null, modifier = Modifier.size(18.dp), tint = Color.White)
         }
     }
 }

@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.flights
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -19,12 +22,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Flight
-import androidx.compose.material.icons.rounded.Luggage
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -125,7 +122,7 @@ fun FlightSearchScreen(language: AppLanguage, journey: JourneyStore, provider: I
         Column(Modifier.align(Alignment.Center).padding(26.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Box(Modifier.size(220.dp).clip(RoundedCornerShape(42.dp)).background(MaterialTheme.colorScheme.surface)) {
                 LoopingRawVideo("flight_search", modifier = Modifier.fillMaxSize(), play = true, muted = true) {
-                    Icon(Icons.Rounded.Flight, contentDescription = null, modifier = Modifier.align(Alignment.Center).size(72.dp))
+                    Icon(CupertinoSymbol.Airplane, contentDescription = null, modifier = Modifier.align(Alignment.Center).size(72.dp))
                 }
             }
             Text(L10n.text("flight_search_hero", language), style = MaterialTheme.typography.headlineMedium)
@@ -142,11 +139,11 @@ fun FlightSearchScreen(language: AppLanguage, journey: JourneyStore, provider: I
     IumrahPressable(onClick = onClick, modifier = Modifier.fillMaxWidth().border(borderWidth, borderColor, shape), cornerRadius = 30.dp, shadowElevation = if (selected) 7.dp else 3.dp) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Flight, contentDescription = null)
+                Icon(CupertinoSymbol.Airplane, contentDescription = null)
                 Spacer(Modifier.padding(5.dp))
                 Text(option.outbound.airline, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.weight(1f))
-                if (selected) Icon(Icons.Rounded.CheckCircle, contentDescription = null)
+                if (selected) Icon(CupertinoSymbol.CheckCircle, contentDescription = null)
             }
             FlightLegRow(option.outbound, language)
             option.inbound?.let { inbound ->
@@ -189,5 +186,5 @@ fun FlightSearchScreen(language: AppLanguage, journey: JourneyStore, provider: I
 }
 
 @Composable private fun BackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
-    IumrahPressable(onClick = onBack, modifier = modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, contentDescription = "Back") } }
+    IumrahPressable(onClick = onBack, modifier = modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ChevronLeft, contentDescription = "Back") } }
 }

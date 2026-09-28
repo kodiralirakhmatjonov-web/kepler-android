@@ -1,4 +1,10 @@
 package com.iumrah.beta.ui.shell
+import com.iumrah.beta.ui.cupertino.Icon
+import kotlin.math.roundToInt
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -121,7 +127,7 @@ fun AppShell(
             when (route) {
                 AppRoute.Root -> when (tab) {
                     AppTab.HOME -> HomeScreen(language, chrome)
-                    AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, chrome)
+                    AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, journey, airports, chrome)
                     AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, chrome)
                     AppTab.CARE -> CareHomeScreen(language, bookingStore, chatService, chrome)
                     AppTab.ACCOUNT -> AccountRootScreen(language, accountStore, bookingStore, settingsStore, notifications, chrome)
@@ -205,13 +211,10 @@ private fun IumrahBottomBar(
         Triple(AppTab.HOME, CupertinoSymbol.Home, L10n.text("tab_home", language)),
         Triple(AppTab.HOTELS, CupertinoSymbol.Hotel, L10n.text("tab_hotels", language)),
         Triple(AppTab.BOOKING, CupertinoSymbol.Suitcase, L10n.text("tab_booking", language)),
-        Triple(AppTab.CARE, CupertinoSymbol.Heart, L10n.text("tab_care", language)),
+        Triple(AppTab.CARE, CupertinoSymbol.HeartFill, L10n.text("tab_care", language)),
         Triple(AppTab.ACCOUNT, CupertinoSymbol.PersonCircle, "Account"),
     )
 
-    // iOS 26's native SwiftUI TabView is a compact Liquid Glass bar floating
-    // above content. Android mirrors that geometry here while keeping native
-    // Compose input/haptics and the same five top-level destinations.
     val dark = MaterialTheme.colorScheme.background.red +
         MaterialTheme.colorScheme.background.green +
         MaterialTheme.colorScheme.background.blue < 1.5f
@@ -221,6 +224,9 @@ private fun IumrahBottomBar(
     val unselectedTint = if (dark) Color.White.copy(alpha = .62f) else Color.Black.copy(alpha = .54f)
     val selectionFill = selectedTint.copy(alpha = if (dark) .17f else .12f)
     val barShape = RoundedCornerShape(30.dp)
+    val selectedIndex = items.indexOfFirst { it.first == selected }.coerceAtLeast(0)
+    var dragPx by remember(selected) { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    var dragging by remember { androidx.compose.runtime.mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -229,7 +235,7 @@ private fun IumrahBottomBar(
             .padding(horizontal = 10.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Row(
+        androidx.compose.foundation.layout.BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(62.dp)
@@ -244,18 +250,70 @@ private fun IumrahBottomBar(
                 .background(glass)
                 .border(.7.dp, border, barShape)
                 .padding(horizontal = 5.dp, vertical = 5.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            items.forEach { (tab, icon, label) ->
-                BottomTabItem(
-                    selected = tab == selected,
-                    icon = icon,
-                    label = label,
-                    selectedTint = selectedTint,
-                    unselectedTint = unselectedTint,
-                    selectionFill = selectionFill,
-                ) { onSelect(tab) }
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val slotWidth = maxWidth / items.size
+            val slotPx = with(density) { slotWidth.toPx() }
+            val minDrag = -selectedIndex * slotPx
+            val maxDrag = (items.lastIndex - selectedIndex) * slotPx
+            val liveIndex = if (slotPx > 0f) {
+                (selectedIndex + dragPx / slotPx).roundToInt().coerceIn(0, items.lastIndex)
+            } else selectedIndex
+            val restingOffset by animateFloatAsState(
+                targetValue = selectedIndex * slotPx,
+                animationSpec = IumrahMotion.tab,
+                label = "tab-indicator",
+            )
+
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(selectedIndex, items.size) {
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                dragging = true
+                                dragPx = 0f
+                            },
+                            onHorizontalDrag = { _, amount ->
+                                dragPx = (dragPx + amount).coerceIn(minDrag, maxDrag)
+                            },
+                            onDragCancel = {
+                                dragging = false
+                                dragPx = 0f
+                            },
+                            onDragEnd = {
+                                val target = if (slotPx > 0f) {
+                                    (selectedIndex + dragPx / slotPx).roundToInt().coerceIn(0, items.lastIndex)
+                                } else selectedIndex
+                                dragging = false
+                                dragPx = 0f
+                                if (target != selectedIndex) onSelect(items[target].first)
+                            },
+                        )
+                    },
+            ) {
+                val indicatorOffsetPx = if (dragging) selectedIndex * slotPx + dragPx else restingOffset
+                Box(
+                    Modifier
+                        .offset { androidx.compose.ui.unit.IntOffset(indicatorOffsetPx.roundToInt(), 0) }
+                        .width(slotWidth)
+                        .height(52.dp)
+                        .padding(horizontal = 1.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(selectionFill),
+                )
+
+                Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                    items.forEachIndexed { index, (tab, icon, label) ->
+                        BottomTabItem(
+                            selected = index == if (dragging) liveIndex else selectedIndex,
+                            icon = icon,
+                            label = label,
+                            selectedTint = selectedTint,
+                            unselectedTint = unselectedTint,
+                        ) { onSelect(tab) }
+                    }
+                }
             }
         }
     }
@@ -268,7 +326,6 @@ private fun RowScope.BottomTabItem(
     label: String,
     selectedTint: Color,
     unselectedTint: Color,
-    selectionFill: Color,
     onClick: () -> Unit,
 ) {
     val source = remember { MutableInteractionSource() }
@@ -278,7 +335,6 @@ private fun RowScope.BottomTabItem(
         animationSpec = IumrahMotion.tab,
         label = "tab-scale",
     )
-    val itemShape = RoundedCornerShape(22.dp)
 
     Column(
         modifier = Modifier
@@ -286,8 +342,6 @@ private fun RowScope.BottomTabItem(
             .height(52.dp)
             .padding(horizontal = 1.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(itemShape)
-            .background(if (selected) selectionFill else Color.Transparent)
             .clickable(interactionSource = source, indication = null, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

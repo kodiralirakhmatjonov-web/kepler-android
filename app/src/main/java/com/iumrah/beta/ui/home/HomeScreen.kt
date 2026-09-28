@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.home
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -31,26 +34,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Description
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Flight
-import androidx.compose.material.icons.rounded.Hotel
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.People
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Route
-import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material.icons.rounded.Speaker
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,7 +50,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
@@ -169,14 +152,14 @@ private fun EmotionalPrompt(language: AppLanguage, onOpen: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
                 Text(HomeEmotionalCopy.action(language), style = MaterialTheme.typography.labelLarge)
-                Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(17.dp))
+                Icon(CupertinoSymbol.Play, contentDescription = null, modifier = Modifier.size(17.dp))
             }
         }
     }
 }
 
 private data class AudienceItem(
-    val icon: ImageVector,
+    val icon: CupertinoSymbol,
     val title: String,
     val body: String,
     val background: Color,
@@ -189,24 +172,24 @@ private fun audienceItems(language: AppLanguage): List<AudienceItem> {
     val sandBg = Color(0xFFFAF0E3); val sandFg = Color(0xFF503012)
     return when (language) {
         AppLanguage.RUSSIAN -> listOf(
-            AudienceItem(Icons.Rounded.Tune, "Соберите поездку сами", "Перелёт, отели, трансфер и сервисы — один персональный пакет Умры, который Вы собираете под себя.", blueBg, blueFg),
-            AudienceItem(Icons.Rounded.People, "Семья и близкие", "Организуйте Умру для семьи или друзей вместе, сохраняя приватность и удобный темп поездки.", greenBg, greenFg),
-            AudienceItem(Icons.Rounded.Star, "Индивидуальный и VIP", "Премиальные отели, приватный транспорт, индивидуальный сервис и максимум личного пространства.", sandBg, sandFg),
+            AudienceItem(CupertinoSymbol.Sliders, "Соберите поездку сами", "Перелёт, отели, трансфер и сервисы — один персональный пакет Умры, который Вы собираете под себя.", blueBg, blueFg),
+            AudienceItem(CupertinoSymbol.Persons, "Семья и близкие", "Организуйте Умру для семьи или друзей вместе, сохраняя приватность и удобный темп поездки.", greenBg, greenFg),
+            AudienceItem(CupertinoSymbol.Star, "Индивидуальный и VIP", "Премиальные отели, приватный транспорт, индивидуальный сервис и максимум личного пространства.", sandBg, sandFg),
         )
         AppLanguage.ENGLISH -> listOf(
-            AudienceItem(Icons.Rounded.Tune, "Build it your way", "Flights, hotels, transfer and services in one personal Umrah package you configure for yourself.", blueBg, blueFg),
-            AudienceItem(Icons.Rounded.People, "Family & friends", "Organize Umrah together while keeping the journey private, comfortable and paced around your group.", greenBg, greenFg),
-            AudienceItem(Icons.Rounded.Star, "Private & VIP", "Premium hotels, private transport, individual service and more personal space throughout the journey.", sandBg, sandFg),
+            AudienceItem(CupertinoSymbol.Sliders, "Build it your way", "Flights, hotels, transfer and services in one personal Umrah package you configure for yourself.", blueBg, blueFg),
+            AudienceItem(CupertinoSymbol.Persons, "Family & friends", "Organize Umrah together while keeping the journey private, comfortable and paced around your group.", greenBg, greenFg),
+            AudienceItem(CupertinoSymbol.Star, "Private & VIP", "Premium hotels, private transport, individual service and more personal space throughout the journey.", sandBg, sandFg),
         )
         AppLanguage.UZBEK -> listOf(
-            AudienceItem(Icons.Rounded.Tune, "Safarni o‘zingiz tuzing", "Parvoz, mehmonxona, transfer va servislar — o‘zingizga mos bitta shaxsiy Umra paketi.", blueBg, blueFg),
-            AudienceItem(Icons.Rounded.People, "Oila va yaqinlar", "Oila yoki do‘stlar bilan guruhingizga mos, qulay va xususiy tempda Umra safarini tashkil qiling.", greenBg, greenFg),
-            AudienceItem(Icons.Rounded.Star, "Individual va VIP", "Premium mehmonxonalar, xususiy transport, individual servis va safar davomida maksimal maxfiylik.", sandBg, sandFg),
+            AudienceItem(CupertinoSymbol.Sliders, "Safarni o‘zingiz tuzing", "Parvoz, mehmonxona, transfer va servislar — o‘zingizga mos bitta shaxsiy Umra paketi.", blueBg, blueFg),
+            AudienceItem(CupertinoSymbol.Persons, "Oila va yaqinlar", "Oila yoki do‘stlar bilan guruhingizga mos, qulay va xususiy tempda Umra safarini tashkil qiling.", greenBg, greenFg),
+            AudienceItem(CupertinoSymbol.Star, "Individual va VIP", "Premium mehmonxonalar, xususiy transport, individual servis va safar davomida maksimal maxfiylik.", sandBg, sandFg),
         )
         AppLanguage.UZBEK_CYRILLIC -> listOf(
-            AudienceItem(Icons.Rounded.Tune, "Сафарни ўзингиз тузинг", "Парвоз, меҳмонхона, трансфер ва сервислар — ўзингизга мос битта шахсий Умра пакети.", blueBg, blueFg),
-            AudienceItem(Icons.Rounded.People, "Оила ва яқинлар", "Оила ёки дўстлар билан гуруҳингизга мос, қулай ва хусусий темпда Умра сафарини ташкил қилинг.", greenBg, greenFg),
-            AudienceItem(Icons.Rounded.Star, "Индивидуал ва VIP", "Премиум меҳмонхоналар, хусусий транспорт, индивидуал сервис ва сафар давомида максимал махфийлик.", sandBg, sandFg),
+            AudienceItem(CupertinoSymbol.Sliders, "Сафарни ўзингиз тузинг", "Парвоз, меҳмонхона, трансфер ва сервислар — ўзингизга мос битта шахсий Умра пакети.", blueBg, blueFg),
+            AudienceItem(CupertinoSymbol.Persons, "Оила ва яқинлар", "Оила ёки дўстлар билан гуруҳингизга мос, қулай ва хусусий темпда Умра сафарини ташкил қилинг.", greenBg, greenFg),
+            AudienceItem(CupertinoSymbol.Star, "Индивидуал ва VIP", "Премиум меҳмонхоналар, хусусий транспорт, индивидуал сервис ва сафар давомида максимал махфийлик.", sandBg, sandFg),
         )
     }
 }
@@ -242,7 +225,7 @@ private fun AudienceSection(language: AppLanguage) {
 }
 
 private data class ServiceItem(
-    val images: List<Int>, val title: String, val body: String, val badge: String, val icon: ImageVector, val action: () -> Unit,
+    val images: List<Int>, val title: String, val body: String, val badge: String, val icon: CupertinoSymbol, val action: () -> Unit,
 )
 
 @Composable
@@ -251,32 +234,32 @@ private fun ServicesSection(language: AppLanguage, chrome: AppChromeStore) {
     val ziyaratImages = listOf(R.drawable.ziyarat_quba_1, R.drawable.ziyarat_quba_2, R.drawable.ziyarat_quba_3, R.drawable.ziyarat_quba_4, R.drawable.ziyarat_quba_5)
     val serviceItems = when (language) {
         AppLanguage.RUSSIAN -> listOf(
-            ServiceItem(transferImages, "Iumrah Transfer", "Встреча в аэропорту и приватные поездки между ключевыми точками маршрута. Комфортный автомобиль под Ваш формат поездки.", "В пакете", Icons.Rounded.Route, chrome::startNewTrip),
-            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Места Мекки и Медины в одном маршруте. История, навигация и понятный порядок посещения без лишней суеты.", "Маршруты", Icons.Rounded.LocationOn, {}),
-            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Интернет в Саудовской Аравии готов к подключению сразу после приземления — без поиска SIM-карты в аэропорту.", "Связь", Icons.Rounded.Security, {}),
-            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Статус Вашего рейса в реальном времени: изменения времени, задержки и важные обновления поездки в одном месте.", "Live status", Icons.Rounded.Flight, chrome::openFlights),
-            ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Человеческая поддержка, когда она действительно нужна: до поездки, в Саудовской Аравии и во время возвращения домой.", "Поддержка", Icons.Rounded.Favorite) { chrome.navigate(AppTab.CARE) },
+            ServiceItem(transferImages, "Iumrah Transfer", "Встреча в аэропорту и приватные поездки между ключевыми точками маршрута. Комфортный автомобиль под Ваш формат поездки.", "В пакете", CupertinoSymbol.Route, chrome::startNewTrip),
+            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Места Мекки и Медины в одном маршруте. История, навигация и понятный порядок посещения без лишней суеты.", "Маршруты", CupertinoSymbol.Location, {}),
+            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Интернет в Саудовской Аравии готов к подключению сразу после приземления — без поиска SIM-карты в аэропорту.", "Связь", CupertinoSymbol.LockShield, {}),
+            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Статус Вашего рейса в реальном времени: изменения времени, задержки и важные обновления поездки в одном месте.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
+            ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Человеческая поддержка, когда она действительно нужна: до поездки, в Саудовской Аравии и во время возвращения домой.", "Поддержка", CupertinoSymbol.Heart) { chrome.navigate(AppTab.CARE) },
         )
         AppLanguage.ENGLISH -> listOf(
-            ServiceItem(transferImages, "Iumrah Transfer", "Airport pickup and private rides between key stops, with the right vehicle for your journey.", "Included", Icons.Rounded.Route, chrome::startNewTrip),
-            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Makkah and Madinah places in one route, with context, navigation and a clear visit sequence.", "Routes", Icons.Rounded.LocationOn, {}),
-            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Saudi internet ready from arrival, without having to search for a local SIM card at the airport.", "Connectivity", Icons.Rounded.Security, {}),
-            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Real-time flight status with schedule changes, delays and important journey updates in one place.", "Live status", Icons.Rounded.Flight, chrome::openFlights),
-            ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Human support when it matters — before the trip, in Saudi Arabia and on the way home.", "Support", Icons.Rounded.Favorite) { chrome.navigate(AppTab.CARE) },
+            ServiceItem(transferImages, "Iumrah Transfer", "Airport pickup and private rides between key stops, with the right vehicle for your journey.", "Included", CupertinoSymbol.Route, chrome::startNewTrip),
+            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Makkah and Madinah places in one route, with context, navigation and a clear visit sequence.", "Routes", CupertinoSymbol.Location, {}),
+            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Saudi internet ready from arrival, without having to search for a local SIM card at the airport.", "Connectivity", CupertinoSymbol.LockShield, {}),
+            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Real-time flight status with schedule changes, delays and important journey updates in one place.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
+            ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Human support when it matters — before the trip, in Saudi Arabia and on the way home.", "Support", CupertinoSymbol.Heart) { chrome.navigate(AppTab.CARE) },
         )
         AppLanguage.UZBEK -> listOf(
-            ServiceItem(transferImages, "Iumrah Transfer", "Aeroportdan kutib olish va yo‘nalishning muhim nuqtalari orasida safaringizga mos xususiy transport.", "Paketda", Icons.Rounded.Route, chrome::startNewTrip),
-            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Makka va Madina ziyorat joylari bitta yo‘nalishda: ma’lumot, navigatsiya va tushunarli tashrif tartibi.", "Yo‘nalishlar", Icons.Rounded.LocationOn, {}),
-            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Saudiya Arabistonida internet qo‘nganingizdan boshlab tayyor — aeroportda SIM-karta izlash shart emas.", "Internet", Icons.Rounded.Security, {}),
-            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Parvoz holati real vaqtda: vaqt o‘zgarishi, kechikish va safar uchun muhim yangilanishlar bir joyda.", "Live status", Icons.Rounded.Flight, chrome::openFlights),
-            ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Kerak bo‘lgan paytda insoniy yordam — safardan oldin, Saudiya Arabistonida va uyga qaytishda.", "Yordam", Icons.Rounded.Favorite) { chrome.navigate(AppTab.CARE) },
+            ServiceItem(transferImages, "Iumrah Transfer", "Aeroportdan kutib olish va yo‘nalishning muhim nuqtalari orasida safaringizga mos xususiy transport.", "Paketda", CupertinoSymbol.Route, chrome::startNewTrip),
+            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Makka va Madina ziyorat joylari bitta yo‘nalishda: ma’lumot, navigatsiya va tushunarli tashrif tartibi.", "Yo‘nalishlar", CupertinoSymbol.Location, {}),
+            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Saudiya Arabistonida internet qo‘nganingizdan boshlab tayyor — aeroportda SIM-karta izlash shart emas.", "Internet", CupertinoSymbol.LockShield, {}),
+            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Parvoz holati real vaqtda: vaqt o‘zgarishi, kechikish va safar uchun muhim yangilanishlar bir joyda.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
+            ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Kerak bo‘lgan paytda insoniy yordam — safardan oldin, Saudiya Arabistonida va uyga qaytishda.", "Yordam", CupertinoSymbol.Heart) { chrome.navigate(AppTab.CARE) },
         )
         AppLanguage.UZBEK_CYRILLIC -> listOf(
-            ServiceItem(transferImages, "Iumrah Transfer", "Аэропортдан кутиб олиш ва йўналишнинг муҳим нуқталари орасида сафарингизга мос хусусий транспорт.", "Пакетда", Icons.Rounded.Route, chrome::startNewTrip),
-            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Макка ва Мадина зиёрат жойлари битта йўналишда: маълумот, навигация ва тушунарли ташриф тартиби.", "Йўналишлар", Icons.Rounded.LocationOn, {}),
-            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Саудия Арабистонида интернет қўнганингиздан бошлаб тайёр — аэропортда SIM-карта излаш шарт эмас.", "Интернет", Icons.Rounded.Security, {}),
-            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Парвоз ҳолати реал вақтда: вақт ўзгариши, кечикиш ва сафар учун муҳим янгиланишлар бир жойда.", "Live status", Icons.Rounded.Flight, chrome::openFlights),
-            ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Керак бўлган пайтда инсоний ёрдам — сафардан олдин, Саудия Арабистонида ва уйга қайтишда.", "Ёрдам", Icons.Rounded.Favorite) { chrome.navigate(AppTab.CARE) },
+            ServiceItem(transferImages, "Iumrah Transfer", "Аэропортдан кутиб олиш ва йўналишнинг муҳим нуқталари орасида сафарингизга мос хусусий транспорт.", "Пакетда", CupertinoSymbol.Route, chrome::startNewTrip),
+            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Макка ва Мадина зиёрат жойлари битта йўналишда: маълумот, навигация ва тушунарли ташриф тартиби.", "Йўналишлар", CupertinoSymbol.Location, {}),
+            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Саудия Арабистонида интернет қўнганингиздан бошлаб тайёр — аэропортда SIM-карта излаш шарт эмас.", "Интернет", CupertinoSymbol.LockShield, {}),
+            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Парвоз ҳолати реал вақтда: вақт ўзгариши, кечикиш ва сафар учун муҳим янгиланишлар бир жойда.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
+            ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Керак бўлган пайтда инсоний ёрдам — сафардан олдин, Саудия Арабистонида ва уйга қайтишда.", "Ёрдам", CupertinoSymbol.Heart) { chrome.navigate(AppTab.CARE) },
         )
     }
 
@@ -352,7 +335,7 @@ private fun ReadyPackagesSection(language: AppLanguage, chrome: AppChromeStore) 
                 Image(painterResource(R.drawable.iumrah_flights_showcase), contentDescription = null, modifier = Modifier.fillMaxWidth().height(118.dp), contentScale = ContentScale.Crop)
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Flight, null, tint = Color.Black.copy(alpha = .52f), modifier = Modifier.size(17.dp)); Spacer(Modifier.width(7.dp))
+                        Icon(CupertinoSymbol.Airplane, null, tint = Color.Black.copy(alpha = .52f), modifier = Modifier.size(17.dp)); Spacer(Modifier.width(7.dp))
                         Text("Iumrah Flights", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black.copy(alpha = .52f))
                     }
                     Text(tr(language, "Все готовые варианты", "All ready packages", "Barcha tayyor paketlar", "Барча тайёр пакетлар"), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, color = Color.Black)
@@ -385,7 +368,7 @@ private fun ConfiguratorCard(language: AppLanguage, chrome: AppChromeStore) {
             Image(painterResource(R.drawable.iumrah_configurator_hero), null, Modifier.fillMaxWidth().height(220.dp), contentScale = ContentScale.Crop)
             Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Tune, null, tint = Color.White.copy(alpha = .78f), modifier = Modifier.size(17.dp)); Spacer(Modifier.width(7.dp))
+                    Icon(CupertinoSymbol.Sliders, null, tint = Color.White.copy(alpha = .78f), modifier = Modifier.size(17.dp)); Spacer(Modifier.width(7.dp))
                     Text("Iumrah Configurator", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = .45.sp, color = Color.White.copy(alpha = .78f))
                     Spacer(Modifier.weight(1f))
                     IumrahPill(tr(language, "≈ 5 минут", "≈ 5 min", "≈ 5 daqiqa", "≈ 5 дақиқа"), background = Color.White.copy(alpha = .10f), foreground = Color.White.copy(alpha = .82f))
@@ -411,7 +394,7 @@ private fun CareBuilderCard(language: AppLanguage, onClick: () -> Unit) {
             Image(painterResource(R.drawable.iumrah_care_showcase), null, Modifier.fillMaxWidth().height(220.dp), contentScale = ContentScale.Crop)
             Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Favorite, null, tint = Color.Black.copy(alpha = .58f), modifier = Modifier.size(17.dp)); Spacer(Modifier.width(7.dp))
+                    Icon(CupertinoSymbol.Heart, null, tint = Color.Black.copy(alpha = .58f), modifier = Modifier.size(17.dp)); Spacer(Modifier.width(7.dp))
                     Text("Iumrah Care", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = .45.sp, color = Color.Black.copy(alpha = .58f))
                     Spacer(Modifier.weight(1f))
                     IumrahPill(tr(language, "≈ 10 минут", "≈ 10 min", "≈ 10 daqiqa", "≈ 10 дақиқа"), background = Color.Black.copy(alpha = .055f), foreground = Color.Black.copy(alpha = .62f))
@@ -453,7 +436,7 @@ private fun BackendSystemCard(language: AppLanguage) {
             listOf(118, 86, 54).forEachIndexed { i, size ->
                 Box(Modifier.size(size.dp).clip(CircleShape).background(purple.copy(alpha = .10f + i * .04f)))
             }
-            Icon(Icons.Rounded.Route, null, tint = Color.White.copy(alpha = .92f), modifier = Modifier.size(44.dp))
+            Icon(CupertinoSymbol.Route, null, tint = Color.White.copy(alpha = .92f), modifier = Modifier.size(44.dp))
         }
         Text(tr(language, "Одна система для всей поездки", "One system for the whole journey", "Butun safar uchun bitta tizim", "Бутун сафар учун битта тизим"), fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.65).sp, color = Color.White)
         Spacer(Modifier.height(9.dp))
@@ -468,14 +451,14 @@ private fun AdvisorCard(language: AppLanguage, chrome: AppChromeStore) {
         Box(Modifier.fillMaxSize().background(aura).padding(20.dp)) {
             Column(Modifier.fillMaxSize()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Speaker, null, tint = Color.White.copy(alpha = .92f), modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                    Icon(CupertinoSymbol.Speaker, null, tint = Color.White.copy(alpha = .92f), modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
                     Text("iumrah Advisor", fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = .45.sp, color = Color.White.copy(alpha = .92f))
                     Spacer(Modifier.weight(1f)); Text("↗", color = Color.White.copy(alpha = .92f), fontSize = 18.sp)
                 }
                 Spacer(Modifier.weight(1f))
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Box(Modifier.size(106.dp).clip(CircleShape).background(Color.White.copy(alpha = .075f)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Speaker, null, tint = Color.White.copy(alpha = .92f), modifier = Modifier.size(42.dp))
+                        Icon(CupertinoSymbol.Speaker, null, tint = Color.White.copy(alpha = .92f), modifier = Modifier.size(42.dp))
                     }
                 }
                 Spacer(Modifier.weight(1f))
@@ -492,14 +475,14 @@ private fun AdvisorCard(language: AppLanguage, chrome: AppChromeStore) {
 @Composable
 private fun ConfidenceStrip(language: AppLanguage) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { SmallChip(Icons.Rounded.Hotel, L10n.text("tab_hotels", language)) }
-        item { SmallChip(Icons.Rounded.Flight, L10n.text("step_flight", language)) }
-        item { SmallChip(Icons.Rounded.Favorite, "iumrah Care") }
+        item { SmallChip(CupertinoSymbol.Hotel, L10n.text("tab_hotels", language)) }
+        item { SmallChip(CupertinoSymbol.Airplane, L10n.text("step_flight", language)) }
+        item { SmallChip(CupertinoSymbol.Heart, "iumrah Care") }
     }
 }
 
 @Composable
-private fun SmallChip(icon: ImageVector, text: String) {
+private fun SmallChip(icon: CupertinoSymbol, text: String) {
     Row(
         Modifier.height(40.dp).clip(RoundedCornerShape(99.dp)).background(MaterialTheme.colorScheme.surface).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -526,14 +509,14 @@ private fun ConnectedTripCard(language: AppLanguage) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            JourneyIcon(Icons.Rounded.Flight); Connector(Modifier.weight(1f)); JourneyIcon(Icons.Rounded.Hotel); Connector(Modifier.weight(1f)); JourneyIcon(Icons.Rounded.Route); Connector(Modifier.weight(1f)); JourneyIcon(Icons.Rounded.Star); Connector(Modifier.weight(1f)); JourneyIcon(Icons.Rounded.Favorite)
+            JourneyIcon(CupertinoSymbol.Airplane); Connector(Modifier.weight(1f)); JourneyIcon(CupertinoSymbol.Hotel); Connector(Modifier.weight(1f)); JourneyIcon(CupertinoSymbol.Route); Connector(Modifier.weight(1f)); JourneyIcon(CupertinoSymbol.Star); Connector(Modifier.weight(1f)); JourneyIcon(CupertinoSymbol.Heart)
         }
         Text(L10n.text("home_connected_title", language), fontSize = 27.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold)
         Text(L10n.text("home_connected_body", language), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f))
     }
 }
 
-@Composable private fun JourneyIcon(icon: ImageVector) { Box(Modifier.size(34.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(14.dp)) } }
+@Composable private fun JourneyIcon(icon: CupertinoSymbol) { Box(Modifier.size(34.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(14.dp)) } }
 @Composable private fun Connector(modifier: Modifier = Modifier) { Box(modifier.padding(horizontal = 5.dp).height(2.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .10f))) }
 
 private data class FAQItem(val q: String, val a: String)
@@ -584,7 +567,7 @@ private fun PersonalUmrahFAQ(language: AppLanguage) {
                     Column(Modifier.fillMaxWidth().animateContentSize()) {
                         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(item.q, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                            Icon(Icons.Rounded.KeyboardArrowDown, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f), modifier = Modifier.graphicsLayer { rotationZ = if (expanded == index) 180f else 0f })
+                            Icon(CupertinoSymbol.ChevronDown, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f), modifier = Modifier.graphicsLayer { rotationZ = if (expanded == index) 180f else 0f })
                         }
                         if (expanded == index) Text(item.a, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f), modifier = Modifier.padding(bottom = 17.dp))
                     }
@@ -610,14 +593,14 @@ private fun AboutFooter(language: AppLanguage) {
 @Composable
 private fun DarkCTA(title: String) {
     Row(Modifier.fillMaxWidth().height(54.dp).clip(RoundedCornerShape(18.dp)).background(Color.Black).padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, color = Color.White, fontWeight = FontWeight.Bold); Spacer(Modifier.weight(1f)); Icon(Icons.Rounded.ArrowForward, null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Text(title, color = Color.White, fontWeight = FontWeight.Bold); Spacer(Modifier.weight(1f)); Icon(CupertinoSymbol.ArrowRight, null, tint = Color.White, modifier = Modifier.size(18.dp))
     }
 }
 
 @Composable
 private fun LightCTA(title: String) {
     Row(Modifier.fillMaxWidth().height(54.dp).clip(RoundedCornerShape(18.dp)).background(Color.White).padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, color = Color.Black, fontWeight = FontWeight.Bold); Spacer(Modifier.weight(1f)); Icon(Icons.Rounded.ArrowForward, null, tint = Color.Black, modifier = Modifier.size(18.dp))
+        Text(title, color = Color.Black, fontWeight = FontWeight.Bold); Spacer(Modifier.weight(1f)); Icon(CupertinoSymbol.ArrowRight, null, tint = Color.Black, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -660,7 +643,7 @@ private fun HomeVideoCarousel() {
                     onClick = { muted = !muted; IumrahHaptics.soft(hapticView) },
                     modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).size(44.dp), cornerRadius = 99.dp,
                     background = Color.White.copy(alpha=.16f), pressedScale = .92f,
-                ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(if (muted) Icons.Rounded.VolumeOff else Icons.Rounded.Speaker, contentDescription = null, tint = Color.White) } }
+                ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(if (muted) CupertinoSymbol.SpeakerSlash else CupertinoSymbol.Speaker, contentDescription = null, tint = Color.White) } }
             }
         }
         Row(
@@ -701,7 +684,7 @@ private fun EmotionalJourneyFullscreen(language: AppLanguage, onClose: () -> Uni
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha=.42f), Color.Transparent, Color.Transparent, Color.Black.copy(alpha=.90f)))))
             Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 IumrahPill("${pager.currentPage + 1} / ${storyResources.size}", background = Color.White.copy(alpha=.14f), foreground = Color.White)
-                Spacer(Modifier.weight(1f)); CircleControl(if (muted) Icons.Rounded.VolumeOff else Icons.Rounded.Speaker) { muted = !muted }; Spacer(Modifier.width(8.dp)); CircleControl(Icons.Rounded.Close, onClose)
+                Spacer(Modifier.weight(1f)); CircleControl(if (muted) CupertinoSymbol.SpeakerSlash else CupertinoSymbol.Speaker) { muted = !muted }; Spacer(Modifier.width(8.dp)); CircleControl(CupertinoSymbol.Close, onClose)
             }
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 24.dp)) {
                 AnimatedVisibility(visible = captionVisible, enter = fadeIn(IumrahMotion.vapor), exit = fadeOut(IumrahMotion.fastFade)) {
@@ -725,7 +708,7 @@ private fun EmotionalJourneyFullscreen(language: AppLanguage, onClose: () -> Uni
 }
 
 @Composable
-private fun CircleControl(icon: ImageVector, onClick: () -> Unit) {
+private fun CircleControl(icon: CupertinoSymbol, onClick: () -> Unit) {
     IumrahPressable(onClick = onClick, modifier = Modifier.height(44.dp).aspectRatio(1f), cornerRadius = 99.dp, background = Color.White.copy(alpha=.14f), pressedScale = .94f) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, tint = Color.White) }
     }

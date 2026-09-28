@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.trip
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -19,13 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Luggage
-import androidx.compose.material.icons.rounded.Remove
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -81,13 +77,13 @@ fun FlightSearchFiltersCard(
         ) {
             Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(38.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Tune, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(CupertinoSymbol.Sliders, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
                 Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(copy.title, style = MaterialTheme.typography.titleMedium)
                     Text(summary(filters, copy), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha=.52f), maxLines = 2)
                 }
-                Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, modifier = Modifier.graphicsLayer { rotationZ = rotation })
+                Icon(CupertinoSymbol.ChevronDown, contentDescription = null, modifier = Modifier.graphicsLayer { rotationZ = rotation })
             }
         }
 
@@ -207,18 +203,18 @@ fun FlightSearchFiltersCard(
 @Composable private fun BagCounter(title: String, value: Int, modifier: Modifier, onValue: (Int) -> Unit) {
     Column(modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Luggage, contentDescription = null, modifier = Modifier.size(17.dp))
+            Icon(CupertinoSymbol.Suitcase, contentDescription = null, modifier = Modifier.size(17.dp))
             Text(title, modifier = Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelMedium)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            MiniCounter(Icons.Rounded.Remove, value > 0) { onValue((value - 1).coerceAtLeast(0)) }
+            MiniCounter(CupertinoSymbol.Minus, value > 0) { onValue((value - 1).coerceAtLeast(0)) }
             Text(if (value == 0) "Any" else "$value+", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            MiniCounter(Icons.Rounded.Add, value < 2) { onValue((value + 1).coerceAtMost(2)) }
+            MiniCounter(CupertinoSymbol.Plus, value < 2) { onValue((value + 1).coerceAtMost(2)) }
         }
     }
 }
 
-@Composable private fun MiniCounter(icon: androidx.compose.ui.graphics.vector.ImageVector, enabled: Boolean, onClick: () -> Unit) {
+@Composable private fun MiniCounter(icon: CupertinoSymbol, enabled: Boolean, onClick: () -> Unit) {
     IumrahPressable(onClick = onClick, enabled = enabled, modifier = Modifier.size(34.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surface, pressedScale = .9f) {
         Box(Modifier.fillMaxWidth().height(34.dp), contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp)) }
     }

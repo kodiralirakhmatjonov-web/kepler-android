@@ -1,4 +1,7 @@
 package com.iumrah.beta.ui.trip
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -11,11 +14,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Hotel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -154,7 +152,7 @@ private fun RoomCategoryPanel(
                     }
                     IumrahPill("${category.maxGuests} guests")
                     Spacer(Modifier.width(8.dp))
-                    if (active) Icon(Icons.Rounded.CheckCircle, null)
+                    if (active) Icon(CupertinoSymbol.CheckCircle, null)
                 }
             }
         }
@@ -162,14 +160,14 @@ private fun RoomCategoryPanel(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Selected", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.weight(1f))
-                Icon(Icons.Rounded.ArrowForward, null)
+                Icon(CupertinoSymbol.ArrowRight, null)
             }
         }
     }
 }
 
 @Composable private fun BackButton(onBack: () -> Unit) {
-    IumrahPressable(onClick = onBack, modifier = Modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, contentDescription = "Back") } }
+    IumrahPressable(onClick = onBack, modifier = Modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ChevronLeft, contentDescription = "Back") } }
 }
 
 @Composable private fun SelectHotelCard(hotel: HotelSummary, language: AppLanguage, recommended: Boolean, selected: Boolean, onSelect: () -> Unit) {
@@ -183,7 +181,7 @@ private fun RoomCategoryPanel(
             Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(22.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) {
                 val url = AppConfig.absoluteUrl(hotel.coverImageURL)
                 if (url != null) AsyncImage(model = url, contentDescription = hotel.name, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                else Icon(Icons.Rounded.Hotel, contentDescription = null, modifier = Modifier.align(Alignment.Center).size(40.dp))
+                else Icon(CupertinoSymbol.Hotel, contentDescription = null, modifier = Modifier.align(Alignment.Center).size(40.dp))
                 if (recommended) IumrahPill(L10n.text("flight_recommended", language), modifier = Modifier.padding(10.dp), background = MaterialTheme.colorScheme.surface.copy(alpha=.86f))
             }
             Text(hotel.name, style = MaterialTheme.typography.titleLarge)
@@ -195,7 +193,7 @@ private fun RoomCategoryPanel(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(if (selected) "Choose room" else "Select", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.weight(1f))
-                if (selected) Icon(Icons.Rounded.CheckCircle, null) else Icon(Icons.Rounded.ArrowForward, null)
+                if (selected) Icon(CupertinoSymbol.CheckCircle, null) else Icon(CupertinoSymbol.ArrowRight, null)
             }
         }
     }

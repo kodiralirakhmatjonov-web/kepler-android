@@ -1,15 +1,13 @@
 package com.iumrah.beta.ui.booking
+import com.iumrah.beta.ui.cupertino.Icon
+
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ChatBubble
-import androidx.compose.material.icons.rounded.Hotel
-import androidx.compose.material.icons.rounded.Luggage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -57,7 +55,7 @@ fun BookingDetailScreen(bookingID: String, language: AppLanguage, bookingStore: 
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(horizontal = 24.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        IumrahPressable(onClick = chrome::back, modifier = Modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.ArrowBack, "Back") } }
+        IumrahPressable(onClick = chrome::back, modifier = Modifier.size(44.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surfaceVariant) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ChevronLeft, "Back") } }
         Text(L10n.text("booking_detail_title", language), style = MaterialTheme.typography.headlineLarge)
         IumrahBookingDomeCard(session) {}
 
@@ -113,12 +111,12 @@ fun BookingDetailScreen(bookingID: String, language: AppLanguage, bookingStore: 
         IumrahSecurityConfirmationPanel(session, bookingStore.service)
 
         Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(30.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.ChatBubble, null); Spacer(Modifier.width(9.dp)); Text("iumrah Care", style = MaterialTheme.typography.titleLarge) }
+            Row(verticalAlignment = Alignment.CenterVertically) { Icon(CupertinoSymbol.ChatBubble, null); Spacer(Modifier.width(9.dp)); Text("iumrah Care", style = MaterialTheme.typography.titleLarge) }
             Text(L10n.text("booking_care_body", language), color = MaterialTheme.colorScheme.onSurface.copy(alpha=.55f))
             IumrahPrimaryButton(L10n.text("booking_open_care", language)) { chrome.openBookingChat(bookingID) }
         }
         IumrahPressable(onClick = { chrome.openPilgrimCheckout(bookingID) }, modifier = Modifier.fillMaxWidth(), cornerRadius = 28.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
-            Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.Luggage, null); Spacer(Modifier.width(12.dp)); Text("Pilgrim documents & payment", style = MaterialTheme.typography.titleMedium) }
+            Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) { Icon(CupertinoSymbol.Suitcase, null); Spacer(Modifier.width(12.dp)); Text("Pilgrim documents & payment", style = MaterialTheme.typography.titleMedium) }
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(42.dp))
@@ -127,7 +125,7 @@ fun BookingDetailScreen(bookingID: String, language: AppLanguage, bookingStore: 
 
 @Composable private fun HotelSection(city: String, hotel: String, room: String?, onChange: () -> Unit) {
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(30.dp)).padding(18.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.Hotel, null); Spacer(Modifier.width(9.dp)); Text("Hotel in $city", style = MaterialTheme.typography.titleLarge) }
+        Row(verticalAlignment = Alignment.CenterVertically) { Icon(CupertinoSymbol.Hotel, null); Spacer(Modifier.width(9.dp)); Text("Hotel in $city", style = MaterialTheme.typography.titleLarge) }
         Text(hotel, style = MaterialTheme.typography.titleMedium)
         room?.let { Text(it, color = MaterialTheme.colorScheme.onSurface.copy(alpha=.54f)) }
         IumrahSecondaryButton("Change hotel", onClick = onChange)

@@ -1,0 +1,18 @@
+IUMRAH ANDROID — iOS HOTELS / CUPERTINO PARITY UPDATE
+Date: 2026-09-28
+
+Included:
+- Hotels root storefront parity with iOS HotelsHomeView.
+- 3 storefront boards: Hotels / Flights / Sunday Umrah Club.
+- Same server-owned data boundaries as iOS:
+  /api/catalog/hotels
+  /api/package/storefront/flights
+  /api/storefront/packages?mode=hotel-first|flight-first
+- Departure airport selector wired to JourneyStore + /api/airports.
+- iOS showcase assets copied byte-for-byte from kepler-ios-main(7).
+- Hotel card detail tap intentionally remains a no-op for the next update.
+- Bottom navigation supports tap + horizontal drag/swipe selection.
+- Material icon dependency removed; Android UI call-sites use the repository Cupertino semantic layer.
+- Shared/Account child back controls moved below Android system-bar chrome.
+
+This patch does not merge Debug Build and Live UI workflows.
