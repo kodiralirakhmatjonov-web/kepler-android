@@ -309,9 +309,10 @@ fun HotelsScreen(
                         item { NoFlightsCard(language) }
                     } else {
                         items(filtered, key = { "f-${it.id}" }) { option ->
+                            val packageSnapshot = bestFlightPackage(option, flightPackages)
                             StorefrontFlightCard(
                                 option = option,
-                                packageSnapshot = bestFlightPackage(option, flightPackages),
+                                packageSnapshot = packageSnapshot,
                                 language = language,
                                 loading = loading,
                                 onClick = { packageSnapshot?.let { chrome.openFlightPackage(it.id) } },

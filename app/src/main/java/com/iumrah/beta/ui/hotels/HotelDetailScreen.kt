@@ -784,11 +784,29 @@ private fun HotelGalleryDialog(hotel: HotelDetail, language: AppLanguage, onDism
                 Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GlassDarkButton(CupertinoSymbol.Close, detailText(language, "close"), onDismiss)
+                GalleryCloseButton(detailText(language, "close"), onDismiss)
                 Spacer(Modifier.weight(1f))
                 Text("${page + 1}/${photos.size.coerceAtLeast(1)}", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+
+
+@Composable
+private fun GalleryCloseButton(text: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(99.dp))
+            .background(Color.Black.copy(alpha = .48f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 13.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CupertinoIcon(CupertinoSymbol.Close, null, Modifier.size(15.dp), Color.White)
+        Text(text, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
