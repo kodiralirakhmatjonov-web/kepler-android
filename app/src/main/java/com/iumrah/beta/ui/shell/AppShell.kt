@@ -130,7 +130,7 @@ fun AppShell(
                 AppRoute.Root -> when (tab) {
                     AppTab.HOME -> HomeScreen(language, chrome)
                     AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, journey, airports, chrome)
-                    AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, chrome)
+                    AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, accountService, chrome)
                     AppTab.CARE -> CareHomeScreen(language, bookingStore, chatService, chrome)
                     AppTab.ACCOUNT -> AccountRootScreen(language, accountStore, bookingStore, settingsStore, notifications, chrome)
                 }

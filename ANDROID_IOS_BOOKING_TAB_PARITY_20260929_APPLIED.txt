@@ -1,0 +1,10 @@
+Iumrah Android v6 — iOS Booking tab parity
+
+- Bookings root rebuilt from iOS BookingsHomeView hierarchy.
+- Booking / Booking status segmented panel.
+- Upcoming / Past scope.
+- Active booking identity, lifecycle progress, active stage card and Wallet entry.
+- Status fulfillment actions, trip plan and trip management.
+- Empty booking Configurator + iumrah Care showcase cards use existing iOS-copied assets.
+- Existing BookingStore / BookingService / Account checkout endpoints remain source of truth.
+- Cupertino semantic icons only; no Material icon dependency/call-sites added.
