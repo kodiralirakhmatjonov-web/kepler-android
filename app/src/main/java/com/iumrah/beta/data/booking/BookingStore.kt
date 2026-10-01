@@ -81,12 +81,10 @@ class BookingStore(
                 snapshot = payload.booking.pricingSnapshot,
             )
             if (operational != null) {
-                session = session.copy(
-                    pilgrimID = operational.trip.pilgrimID ?: session.pilgrimID,
-                    bookingNumber = operational.trip.bookingNumber ?: session.bookingNumber,
-                    bookingDisplayNumber = operational.trip.bookingDisplayNumber ?: session.bookingDisplayNumber,
-                    operationStatus = operational.trip.status,
-                    guide = operational.assignment?.guide,
+                session = session.mergeOperationalTrip(
+                    trip = operational.trip,
+                    history = operational.statusHistory,
+                    assignment = operational.assignment,
                 )
             }
 
@@ -100,10 +98,10 @@ class BookingStore(
                         payload.booking.pricingSnapshot,
                     )
                 }.getOrNull()?.let { synced ->
-                    session = session.copy(
-                        pilgrimID = synced.trip.pilgrimID ?: session.pilgrimID,
-                        operationStatus = synced.trip.status,
-                        guide = synced.assignment?.guide ?: session.guide,
+                    session = session.mergeOperationalTrip(
+                        trip = synced.trip,
+                        history = synced.statusHistory,
+                        assignment = synced.assignment,
                     )
                 }
             }
@@ -133,12 +131,10 @@ class BookingStore(
             )
         }
         if (operational != null) {
-            next = next.copy(
-                pilgrimID = operational.trip.pilgrimID ?: next.pilgrimID,
-                bookingNumber = operational.trip.bookingNumber ?: next.bookingNumber,
-                bookingDisplayNumber = operational.trip.bookingDisplayNumber ?: next.bookingDisplayNumber,
-                operationStatus = operational.trip.status,
-                guide = operational.assignment?.guide ?: next.guide,
+            next = next.mergeOperationalTrip(
+                trip = operational.trip,
+                history = operational.statusHistory,
+                assignment = operational.assignment,
             )
         }
         upsert(next)

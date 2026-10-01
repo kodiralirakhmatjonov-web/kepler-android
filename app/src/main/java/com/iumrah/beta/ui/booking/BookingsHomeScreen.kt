@@ -1,10 +1,14 @@
 package com.iumrah.beta.ui.booking
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,30 +18,34 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -56,45 +64,75 @@ import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.account.IumrahAccountService
 import com.iumrah.beta.data.booking.BookingStore
+import com.iumrah.beta.data.notification.ClientNotificationStore
 import com.iumrah.beta.models.account.IumrahCheckoutResponse
+import com.iumrah.beta.models.booking.BookingGeneratorFlightSegmentSnapshot
+import com.iumrah.beta.models.booking.BookingGeneratorFlightSnapshot
+import com.iumrah.beta.models.booking.BookingItineraryItem
 import com.iumrah.beta.models.booking.StoredBookingSession
 import com.iumrah.beta.ui.components.IumrahPressable
-import com.iumrah.beta.ui.components.IumrahRootPageHeader
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 import java.text.NumberFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.util.Currency
 import java.util.Locale
 import kotlinx.coroutines.delay
 
 private enum class BookingPanel { BOOKING, STATUS }
-private enum class BookingScope { ACTIVE, PAST }
+
+private const val IOS_PAGE_PADDING = 18
+private val iOSGreen = Color(0xFF34C759)
+private val iOSOrange = Color(0xFFFF9500)
+private val iOSBlue = Color(0xFF007AFF)
+private val iOSTeal = Color(0xFF30B0C7)
+private val iOSIndigo = Color(0xFF5856D6)
+private val iOSRed = Color(0xFFFF3B30)
+private val iOSYellow = Color(0xFFFFCC00)
+private val iOSCyan = Color(0xFF32ADE6)
 
 @Composable
 fun BookingsHomeScreen(
     language: AppLanguage,
     bookingStore: BookingStore,
     accountService: IumrahAccountService,
+    notifications: ClientNotificationStore,
     chrome: AppChromeStore,
 ) {
-    val state by bookingStore.state.collectAsState()
-    var scope by remember { mutableStateOf(BookingScope.ACTIVE) }
+    val bookingState by bookingStore.state.collectAsState()
+    val notificationState by notifications.state.collectAsState()
     var panel by remember { mutableStateOf(BookingPanel.BOOKING) }
     var checkout by remember { mutableStateOf<IumrahCheckoutResponse?>(null) }
+    var itinerary by remember { mutableStateOf<List<BookingItineraryItem>>(emptyList()) }
     var deleteError by remember { mutableStateOf<String?>(null) }
 
-    val active = state.sessions.filterNot { it.effectiveStatus.uppercase() in setOf("COMPLETED", "CANCELLED") }
-    val past = state.sessions.filter { it.effectiveStatus.uppercase() in setOf("COMPLETED", "CANCELLED") }
-    val activeSession = active.firstOrNull()
+    val activeSessions = bookingState.sessions.filterNot {
+        it.effectiveStatus.uppercase() in setOf("COMPLETED", "CANCELLED")
+    }
+    val activeSession = activeSessions.firstOrNull()
 
     suspend fun refresh() {
-        state.sessions.toList().forEach { session -> runCatching { bookingStore.refresh(session.id) } }
+        bookingState.sessions.toList().forEach { session ->
+            runCatching { bookingStore.refresh(session.id) }
+        }
         activeSession?.let { session ->
-            checkout = runCatching { accountService.checkout(session.id, bookingStore.headersFor(session)) }.getOrNull()
+            checkout = runCatching {
+                accountService.checkout(session.id, bookingStore.headersFor(session))
+            }.getOrNull()
+            itinerary = runCatching {
+                bookingStore.service.fetchItinerary(session.id, bookingStore.headersFor(session))
+            }.getOrDefault(emptyList())
+        } ?: run {
+            checkout = null
+            itinerary = emptyList()
         }
     }
 
-    LaunchedEffect(activeSession?.id, state.sessions.size) {
+    LaunchedEffect(activeSession?.id, bookingState.sessions.size) {
         refresh()
         while (true) {
             delay(60_000)
@@ -103,45 +141,33 @@ fun BookingsHomeScreen(
     }
 
     AnimatedContent(
-        targetState = scope,
+        targetState = activeSession?.id,
         transitionSpec = { fadeIn().togetherWith(fadeOut()) },
-        label = "booking-scope",
-    ) { selectedScope ->
-        when (selectedScope) {
-            BookingScope.ACTIVE -> {
-                if (activeSession == null) {
-                    EmptyBookingHome(
-                        language = language,
-                        scope = scope,
-                        onScope = { scope = it },
-                        chrome = chrome,
-                    )
-                } else {
-                    ActiveBookingHome(
-                        language = language,
-                        session = activeSession,
-                        otherSessions = active.drop(1),
-                        panel = panel,
-                        onPanel = { panel = it },
-                        scope = scope,
-                        onScope = { scope = it },
-                        checkout = checkout,
-                        chrome = chrome,
-                        onDelete = { id ->
-                            deleteError = null
-                            runCatching { bookingStore.deleteBooking(id) }.onFailure { deleteError = it.message }
-                        },
-                        deleteError = deleteError,
-                    )
-                }
-            }
-            BookingScope.PAST -> PastBookingsHome(
+        label = "booking-root-parity",
+    ) {
+        if (activeSession == null) {
+            EmptyBookingHome(
                 language = language,
-                sessions = past,
-                scope = scope,
-                onScope = { scope = it },
+                unreadCount = notificationState.unreadCount,
                 chrome = chrome,
-                onDelete = { id -> runCatching { bookingStore.deleteBooking(id) } },
+            )
+        } else {
+            ActiveBookingHome(
+                language = language,
+                session = activeSession,
+                otherSessions = activeSessions.drop(1),
+                panel = panel,
+                onPanel = { panel = it },
+                checkout = checkout,
+                itinerary = itinerary,
+                unreadCount = notificationState.unreadCount,
+                chrome = chrome,
+                onDelete = { id ->
+                    deleteError = null
+                    runCatching { bookingStore.deleteBooking(id) }
+                        .onFailure { deleteError = it.message }
+                },
+                deleteError = deleteError,
             )
         }
     }
@@ -154,29 +180,37 @@ private fun ActiveBookingHome(
     otherSessions: List<StoredBookingSession>,
     panel: BookingPanel,
     onPanel: (BookingPanel) -> Unit,
-    scope: BookingScope,
-    onScope: (BookingScope) -> Unit,
     checkout: IumrahCheckoutResponse?,
+    itinerary: List<BookingItineraryItem>,
+    unreadCount: Int,
     chrome: AppChromeStore,
     onDelete: suspend (String) -> Unit,
     deleteError: String?,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 10.dp, bottom = 118.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bookingPageColor()),
+        contentPadding = PaddingValues(
+            start = IOS_PAGE_PADDING.dp,
+            end = IOS_PAGE_PADDING.dp,
+            top = 10.dp,
+            bottom = 112.dp,
+        ),
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         item {
-            IumrahRootPageHeader(
-                title = t(language, "Бронирование", "Booking", "Bron", "Брон"),
-                chrome = chrome,
+            BookingRootHeader(
+                language = language,
+                title = L10n.text("tab_booking", language),
                 usesBrandLogo = true,
+                showsMakkahTime = true,
+                unreadCount = unreadCount,
+                chrome = chrome,
             )
             Spacer(Modifier.height(18.dp))
             BookingPanelPicker(language, panel, onPanel)
             Spacer(Modifier.height(12.dp))
-            BookingScopePicker(language, scope, onScope)
-            Spacer(Modifier.height(24.dp))
             BookingIdentity(language, session)
             Spacer(Modifier.height(28.dp))
         }
@@ -184,17 +218,21 @@ private fun ActiveBookingHome(
         if (panel == BookingPanel.BOOKING) {
             item {
                 BookingProgress(language, session, chrome)
-                Spacer(Modifier.height(28.dp))
-                TripWalletEntry(language, session) { chrome.openBookingDetail(session.id) }
                 Spacer(Modifier.height(38.dp))
             }
         } else {
             item {
-                BookingStatusOverview(language, session, checkout)
-                Spacer(Modifier.height(28.dp))
-                FulfillmentCenter(language, session, checkout, chrome)
+                BookingTimerOverview(language, session)
+                if (lifecyclePhase(session) != null) Spacer(Modifier.height(28.dp))
+                BookingFulfillmentCenter(language, session, checkout, chrome)
                 Spacer(Modifier.height(34.dp))
-                TripPlanPreview(language, session, chrome)
+
+                if (shouldShowTravelReadyFlights(session)) {
+                    BookingStatusFlights(language, session, chrome)
+                    Spacer(Modifier.height(34.dp))
+                }
+
+                TripPlanPreview(language, session, itinerary, chrome)
                 Spacer(Modifier.height(34.dp))
                 TripManagement(language, session, chrome)
                 Spacer(Modifier.height(if (otherSessions.isNotEmpty()) 36.dp else 12.dp))
@@ -203,8 +241,11 @@ private fun ActiveBookingHome(
 
         if (otherSessions.isNotEmpty()) {
             item {
-                SectionHeader(t(language, "Другие поездки", "Other trips", "Boshqa safarlar", "Бошқа сафарлар"), null)
-                Spacer(Modifier.height(14.dp))
+                SectionHeader(
+                    t(language, "Другие поездки", "Other trips", "Boshqa safarlar", "Бошқа сафарлар"),
+                    null,
+                )
+                Spacer(Modifier.height(16.dp))
             }
             items(otherSessions, key = { it.id }) { other ->
                 CompactBookingCard(language, other, chrome, onDelete)
@@ -221,8 +262,148 @@ private fun ActiveBookingHome(
                     fontSize = 13.sp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.error.copy(alpha = .08f), RoundedCornerShape(18.dp))
+                        .background(
+                            MaterialTheme.colorScheme.error.copy(alpha = .08f),
+                            RoundedCornerShape(18.dp),
+                        )
                         .padding(14.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookingRootHeader(
+    language: AppLanguage,
+    title: String,
+    usesBrandLogo: Boolean,
+    showsMakkahTime: Boolean,
+    unreadCount: Int,
+    chrome: AppChromeStore,
+) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(showsMakkahTime) {
+        if (!showsMakkahTime) return@LaunchedEffect
+        while (true) {
+            delay(30_000)
+            now = System.currentTimeMillis()
+        }
+    }
+
+    val foreground = MaterialTheme.colorScheme.onBackground
+    val surface = bookingRaisedColor()
+    val dark = MaterialTheme.colorScheme.background.iosLuminance() < .45f
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        if (usesBrandLogo) {
+            Image(
+                painter = painterResource(
+                    if (dark) R.drawable.iumrah_header_wordmark_dark
+                    else R.drawable.iumrah_header_wordmark_light,
+                ),
+                contentDescription = "iumrah",
+                modifier = Modifier
+                    .width(180.dp)
+                    .height(46.dp),
+                contentScale = ContentScale.Fit,
+                alignment = Alignment.CenterStart,
+            )
+        } else {
+            Text(
+                title,
+                fontSize = 38.sp,
+                lineHeight = 42.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-1).sp,
+                maxLines = 1,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        Column(horizontalAlignment = Alignment.End) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                IumrahPressable(
+                    onClick = chrome::openNotifications,
+                    modifier = Modifier.size(46.dp),
+                    cornerRadius = 23.dp,
+                    background = surface,
+                    pressedScale = .94f,
+                    shadowElevation = 0.dp,
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CupertinoIcon(
+                            if (unreadCount > 0) CupertinoSymbol.BellBadge else CupertinoSymbol.Bell,
+                            contentDescription = t(language, "Уведомления", "Notifications", "Bildirishnomalar", "Билдиришномалар"),
+                            modifier = Modifier.size(18.dp),
+                            tint = foreground,
+                        )
+                        if (unreadCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 3.dp, end = 2.dp)
+                                    .height(16.dp)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(iOSRed)
+                                    .border(.8.dp, Color.White, RoundedCornerShape(999.dp))
+                                    .padding(horizontal = if (unreadCount > 9) 4.dp else 5.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    if (unreadCount > 9) "9+" else unreadCount.toString(),
+                                    color = Color.White,
+                                    fontSize = 9.sp,
+                                    lineHeight = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                IumrahPressable(
+                    onClick = chrome::openSidebar,
+                    modifier = Modifier.size(46.dp),
+                    cornerRadius = 23.dp,
+                    background = surface,
+                    pressedScale = .94f,
+                    shadowElevation = 0.dp,
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CupertinoIcon(
+                            CupertinoSymbol.Menu,
+                            contentDescription = t(language, "Меню", "Menu", "Menyu", "Меню"),
+                            modifier = Modifier.size(18.dp),
+                            tint = foreground,
+                        )
+                    }
+                }
+            }
+
+            if (showsMakkahTime) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    L10n.text("makkah_time", language),
+                    fontSize = 10.sp,
+                    lineHeight = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = foreground.copy(alpha = .55f),
+                )
+                Text(
+                    makkahTime(now),
+                    fontSize = 20.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = foreground.copy(alpha = .55f),
                 )
             }
         }
@@ -239,17 +420,22 @@ private fun BookingIdentity(language: AppLanguage, session: StoredBookingSession
             Modifier
                 .size(94.dp)
                 .clip(RoundedCornerShape(28.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .065f), RoundedCornerShape(28.dp)),
+                .background(bookingRaisedColor())
+                .border(
+                    .7.dp,
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = .065f),
+                    RoundedCornerShape(28.dp),
+                ),
             contentAlignment = Alignment.Center,
         ) {
             CupertinoIcon(
-                CupertinoSymbol.Suitcase,
+                CupertinoSymbol.SuitcaseFill,
                 contentDescription = null,
-                modifier = Modifier.size(38.dp),
+                modifier = Modifier.size(34.dp),
                 tint = MaterialTheme.colorScheme.onBackground.copy(alpha = .58f),
             )
         }
+
         Spacer(Modifier.height(17.dp))
         Text(
             t(language, "Ваша Umrah", "Your Umrah", "Sizning Umrangiz", "Сизнинг Умрангиз"),
@@ -272,26 +458,29 @@ private fun BookingIdentity(language: AppLanguage, session: StoredBookingSession
         Text(
             "${L10n.date(session.booking.input.startDate, language)} – ${L10n.date(session.booking.input.endDate, language)}",
             fontSize = 16.sp,
+            lineHeight = 20.sp,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f),
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(17.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IdentityPill(session.displayBookingNumber)
+            IdentityPill(shortBookingNumber(language, session.displayBookingNumber))
             IdentityPill(
-                text = pilgrimCount(language, session.booking.input.travelers.totalPeople),
-                icon = CupertinoSymbol.Persons,
+                pilgrimCount(language, session.booking.input.travelers.totalPeople),
+                CupertinoSymbol.Persons,
             )
         }
-        session.travelerName?.trim()?.takeIf { it.isNotBlank() }?.let {
+        session.travelerName?.trim()?.takeIf { it.isNotEmpty() }?.let { traveler ->
             Spacer(Modifier.height(11.dp))
             Text(
-                it,
+                traveler,
                 fontSize = 14.sp,
+                lineHeight = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = .54f),
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -303,18 +492,35 @@ private fun IdentityPill(text: String, icon: CupertinoSymbol? = null) {
         modifier = Modifier
             .height(31.dp)
             .clip(RoundedCornerShape(999.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(bookingRaisedColor())
             .padding(horizontal = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        icon?.let { CupertinoIcon(it, null, Modifier.size(13.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .55f)) }
-        Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
+        icon?.let {
+            CupertinoIcon(
+                it,
+                null,
+                Modifier.size(12.dp),
+                MaterialTheme.colorScheme.onBackground.copy(alpha = .55f),
+            )
+        }
+        Text(
+            text,
+            fontSize = 12.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f),
+        )
     }
 }
 
 @Composable
-private fun BookingPanelPicker(language: AppLanguage, selected: BookingPanel, onSelect: (BookingPanel) -> Unit) {
+private fun BookingPanelPicker(
+    language: AppLanguage,
+    selected: BookingPanel,
+    onSelect: (BookingPanel) -> Unit,
+) {
     SegmentedPicker(
         items = listOf(
             BookingPanel.BOOKING to t(language, "Бронирование", "Booking", "Bron", "Брон"),
@@ -326,36 +532,30 @@ private fun BookingPanelPicker(language: AppLanguage, selected: BookingPanel, on
 }
 
 @Composable
-private fun BookingScopePicker(language: AppLanguage, selected: BookingScope, onSelect: (BookingScope) -> Unit) {
-    SegmentedPicker(
-        items = listOf(
-            BookingScope.ACTIVE to t(language, "Активные", "Upcoming", "Faol", "Фаол"),
-            BookingScope.PAST to t(language, "Прошлые", "Past", "O‘tgan", "Ўтган"),
-        ),
-        selected = selected,
-        onSelect = onSelect,
-    )
-}
-
-@Composable
-private fun <T> SegmentedPicker(items: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
+private fun <T> SegmentedPicker(
+    items: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+) {
     val view = LocalView.current
     Row(
         Modifier
             .fillMaxWidth()
-            .height(36.dp)
+            .height(32.dp)
             .clip(RoundedCornerShape(9.dp))
             .background(MaterialTheme.colorScheme.onBackground.copy(alpha = .055f))
             .padding(2.dp),
     ) {
         items.forEach { (value, label) ->
-            val active = selected == value
+            val active = value == selected
             IumrahPressable(
                 onClick = {
                     if (!active) IumrahHaptics.selection(view)
                     onSelect(value)
                 },
-                modifier = Modifier.weight(1f).fillMaxSize(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize(),
                 cornerRadius = 7.dp,
                 background = if (active) MaterialTheme.colorScheme.surface else Color.Transparent,
                 shadowElevation = if (active) 1.dp else 0.dp,
@@ -363,7 +563,14 @@ private fun <T> SegmentedPicker(items: List<Pair<T, String>>, selected: T, onSel
                 haptic = false,
             ) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(label, fontSize = 13.sp, fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium, maxLines = 1)
+                    Text(
+                        label,
+                        fontSize = 13.sp,
+                        lineHeight = 15.sp,
+                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
@@ -380,33 +587,105 @@ private data class ProgressStage(
     val subtitleEn: String,
     val subtitleUz: String,
     val subtitleCy: String,
+    val cardTitleRu: String = titleRu,
+    val cardTitleEn: String = titleEn,
+    val cardTitleUz: String = titleUz,
+    val cardTitleCy: String = titleCy,
+    val cardBodyRu: String = subtitleRu,
+    val cardBodyEn: String = subtitleEn,
+    val cardBodyUz: String = subtitleUz,
+    val cardBodyCy: String = subtitleCy,
 )
 
 private val progressStages = listOf(
-    ProgressStage("CREATED", "Пакет создан", "Package created", "Paket yaratildi", "Пакет яратилди", "Поездка добавлена в iumrah", "Trip added to iumrah", "Safar iumrah'ga qo‘shildi", "Сафар iumrah'га қўшилди"),
-    ProgressStage("AVAILABILITY_CHECK", "Проверка наличия", "Availability check", "Mavjudlik tekshiruvi", "Мавжудлик текшируви", "Подтверждаем перелёт, отель и услуги", "Confirming flight, hotel and services", "Parvoz, mehmonxona va xizmatlar tasdiqlanmoqda", "Парвоз, меҳмонхона ва хизматлар тасдиқланмоқда"),
-    ProgressStage("PAYMENT_PENDING", "Оплата и данные паломников", "Payment and pilgrim details", "To‘lov va ziyoratchi ma’lumotlari", "Тўлов ва зиёратчи маълумотлари", "Наличие подтверждено · требуется действие", "Availability confirmed · action required", "Mavjudlik tasdiqlandi · amal kerak", "Мавжудлик тасдиқланди · амал керак"),
-    ProgressStage("BOOKING_CONFIRMED", "Бронирование подтверждено", "Booking confirmed", "Bron tasdiqlandi", "Брон тасдиқланди", "Позиции закреплены за вами", "Your trip components are secured", "Safar xizmatlari siz uchun band qilindi", "Сафар хизматлари сиз учун банд қилинди"),
-    ProgressStage("READY_TO_TRAVEL", "Документы готовы", "Documents ready", "Hujjatlar tayyor", "Ҳужжатлар тайёр", "Всё готово к поездке", "Everything is ready for travel", "Safar uchun hammasi tayyor", "Сафар учун ҳаммаси тайёр"),
-    ProgressStage("IN_TRIP", "Паломник в поездке", "Pilgrim in trip", "Ziyoratchi safarda", "Зиёратчи сафарда", "iumrah сопровождает вашу поездку", "iumrah is accompanying your trip", "iumrah safaringizga hamroh", "iumrah сафарингизга ҳамроҳ"),
-    ProgressStage("COMPLETED", "Поездка завершена", "Trip completed", "Safar yakunlandi", "Сафар якунланди", "История поездки сохранена", "Your trip history is saved", "Safar tarixi saqlandi", "Сафар тарихи сақланди"),
+    ProgressStage(
+        "CREATED",
+        "Пакет создан", "Package created", "Paket yaratildi", "Пакет яратилди",
+        "Поездка добавлена в iumrah", "Trip added to iumrah", "Safar iumrah'ga qo‘shildi", "Сафар iumrah'га қўшилди",
+    ),
+    ProgressStage(
+        "AVAILABILITY_CHECK",
+        "Проверка наличия", "Availability check", "Mavjudlik tekshiruvi", "Мавжудлик текшируви",
+        "Подтверждаем перелёт, отель и услуги", "Confirming flight, hotel and services", "Parvoz, mehmonxona va xizmatlar tasdiqlanmoqda", "Парвоз, меҳмонхона ва хизматлар тасдиқланмоқда",
+        "Проверяем ваш пакет", "Checking your package", "Paketingiz tekshirilmoqda", "Пакетингиз текширилмоқда",
+        "iumrah подтверждает выбранные позиции. Пока от вас ничего не требуется.", "iumrah is confirming the selected items. No action is required from you yet.", "iumrah tanlangan xizmatlarni tasdiqlamoqda. Hozircha sizdan hech narsa talab qilinmaydi.", "iumrah танланган хизматларни тасдиқламоқда. Ҳозирча сиздан ҳеч нарса талаб қилинмайди.",
+    ),
+    ProgressStage(
+        "PAYMENT_PENDING",
+        "Оплата и данные паломников", "Payment and pilgrim details", "To‘lov va ziyoratchi ma’lumotlari", "Тўлов ва зиёратчи маълумотлари",
+        "Наличие подтверждено · требуется действие", "Availability confirmed · action required", "Mavjudlik tasdiqlandi · amal kerak", "Мавжудлик тасдиқланди · амал керак",
+        "Наличие подтверждено", "Availability confirmed", "Mavjudlik tasdiqlandi", "Мавжудлик тасдиқланди",
+        "Проверьте данные паломников и перейдите к оплате, чтобы закрепить бронирование.", "Review pilgrim details and continue to payment to secure the booking.", "Bronni mustahkamlash uchun ziyoratchilar ma’lumotlarini tekshiring va to‘lovga o‘ting.", "Бронни мустаҳкамлаш учун зиёратчилар маълумотларини текширинг ва тўловга ўтинг.",
+    ),
+    ProgressStage(
+        "BOOKING_CONFIRMED",
+        "Бронирование подтверждено", "Booking confirmed", "Bron tasdiqlandi", "Брон тасдиқланди",
+        "Позиции закреплены за вами", "Your trip components are secured", "Safar xizmatlari siz uchun band qilindi", "Сафар хизматлари сиз учун банд қилинди",
+        cardBodyRu = "Перелёт, проживание и выбранные услуги закреплены. Все детали доступны внутри бронирования.",
+        cardBodyEn = "Flight, stay and selected services are secured. Full details are available inside the booking.",
+        cardBodyUz = "Parvoz, yashash va tanlangan xizmatlar band qilindi. Barcha tafsilotlar bron ichida mavjud.",
+        cardBodyCy = "Парвоз, яшаш ва танланган хизматлар банд қилинди. Барча тафсилотлар брон ичида мавжуд.",
+    ),
+    ProgressStage(
+        "READY_TO_TRAVEL",
+        "Документы готовы", "Documents ready", "Hujjatlar tayyor", "Ҳужжатлар тайёр",
+        "Всё готово к поездке", "Everything is ready for travel", "Safar uchun hammasi tayyor", "Сафар учун ҳаммаси тайёр",
+        "Готово к поездке", "Ready to travel", "Safarga tayyor", "Сафарга тайёр",
+        "Проверьте билеты, бронирования и документы перед выездом.", "Review tickets, reservations and travel documents before departure.", "Jo‘nashdan oldin chiptalar, bronlar va hujjatlarni tekshiring.", "Жўнашдан олдин чипталар, бронлар ва ҳужжатларни текширинг.",
+    ),
+    ProgressStage(
+        "IN_TRIP",
+        "Паломник в поездке", "Pilgrim in trip", "Ziyoratchi safarda", "Зиёратчи сафарда",
+        "iumrah сопровождает вашу поездку", "iumrah is accompanying your trip", "iumrah safaringizga hamroh", "iumrah сафарингизга ҳамроҳ",
+        "Ваша Umrah идёт", "Your Umrah is underway", "Umrangiz davom etmoqda", "Умрангиз давом этмоқда",
+        "Маршрут, отель, расписание и помощь iumrah остаются под рукой на протяжении поездки.", "Your route, hotel, schedule and iumrah support stay close throughout the trip.", "Yo‘nalish, mehmonxona, jadval va iumrah yordami safar davomida doimo yoningizda.", "Йўналиш, меҳмонхона, жадвал ва iumrah ёрдами сафар давомида доимо ёнингизда.",
+    ),
+    ProgressStage(
+        "COMPLETED",
+        "Поездка завершена", "Trip completed", "Safar yakunlandi", "Сафар якунланди",
+        "История поездки сохранена", "Your trip history is saved", "Safar tarixi saqlandi", "Сафар тарихи сақланди",
+        cardBodyRu = "Бронирование и история поездки останутся доступны в iumrah.",
+        cardBodyEn = "The booking and trip history remain available in iumrah.",
+        cardBodyUz = "Bron va safar tarixi iumrah'da saqlanadi.",
+        cardBodyCy = "Брон ва сафар тарихи iumrah'да сақланади.",
+    ),
 )
 
 @Composable
-private fun BookingProgress(language: AppLanguage, session: StoredBookingSession, chrome: AppChromeStore) {
+private fun BookingProgress(
+    language: AppLanguage,
+    session: StoredBookingSession,
+    chrome: AppChromeStore,
+) {
     val current = progressIndex(session.effectiveStatus)
     val cancelled = session.effectiveStatus.equals("CANCELLED", true)
-    Column(Modifier.fillMaxWidth()) {
+
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         SectionHeader(
             t(language, "Статус бронирования", "Booking status", "Bron holati", "Брон ҳолати"),
-            if (cancelled) t(language, "Отменено", "Cancelled", "Bekor qilingan", "Бекор қилинган") else "${(current + 1).coerceAtMost(progressStages.size)} / ${progressStages.size}",
+            if (cancelled) {
+                t(language, "Отменено", "Cancelled", "Bekor qilingan", "Бекор қилинган")
+            } else {
+                progressCounter(language, current, progressStages.size)
+            },
         )
-        Spacer(Modifier.height(18.dp))
-        progressStages.forEachIndexed { index, stage ->
-            val completed = !cancelled && index < current
-            val active = if (cancelled) index == 0 else index == current
-            val future = index > current
-            ProcessStep(language, stage, session, completed, active, future, index == progressStages.lastIndex, chrome)
+
+        Column(Modifier.fillMaxWidth()) {
+            progressStages.forEachIndexed { index, stage ->
+                ProcessStep(
+                    language = language,
+                    stage = if (cancelled && index == current) cancelledStage(language) else stage,
+                    session = session,
+                    index = index,
+                    current = current,
+                    completed = if (cancelled) index == 0 else index < current,
+                    active = index == current,
+                    future = index > current,
+                    isLast = index == progressStages.lastIndex,
+                    chrome = chrome,
+                    cancelled = cancelled,
+                )
+            }
         }
     }
 }
@@ -416,98 +695,346 @@ private fun ProcessStep(
     language: AppLanguage,
     stage: ProgressStage,
     session: StoredBookingSession,
+    index: Int,
+    current: Int,
     completed: Boolean,
     active: Boolean,
     future: Boolean,
     isLast: Boolean,
     chrome: AppChromeStore,
+    cancelled: Boolean,
 ) {
     val tint = statusColor(session.effectiveStatus)
+    val nodeColor = when {
+        active -> tint
+        completed -> iOSGreen
+        else -> MaterialTheme.colorScheme.onBackground.copy(alpha = .38f)
+    }
+    val lineColor = if (completed) iOSGreen.copy(alpha = .36f)
+    else MaterialTheme.colorScheme.onBackground.copy(alpha = .12f)
+
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.width(26.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Box(
                 Modifier
                     .size(25.dp)
                     .clip(CircleShape)
-                    .background(if (completed || active) if (completed) Color(0xFF34C759) else tint else MaterialTheme.colorScheme.background)
-                    .then(if (future) Modifier.border(1.6.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .32f), CircleShape) else Modifier),
+                    .then(
+                        if (completed || active) Modifier.background(nodeColor)
+                        else Modifier
+                            .background(bookingPageColor())
+                            .border(
+                                1.6.dp,
+                                MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+                                CircleShape,
+                            ),
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 when {
-                    completed -> CupertinoIcon(CupertinoSymbol.Checkmark, null, Modifier.size(11.dp), Color.White)
-                    active -> Box(Modifier.size(7.dp).clip(CircleShape).background(if (tint.luminance() < .45f) Color.White else Color.Black))
+                    completed -> CupertinoIcon(CupertinoSymbol.Checkmark, null, Modifier.size(10.dp), Color.White)
+                    active -> Box(
+                        Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(activeNodeForeground(session.effectiveStatus)),
+                    )
                 }
             }
-            if (!isLast) Box(Modifier.width(1.dp).height(if (active) 292.dp else 46.dp).background(if (completed) Color(0xFF34C759).copy(alpha = .36f) else MaterialTheme.colorScheme.onBackground.copy(alpha = .12f)))
+            if (!isLast) {
+                Box(
+                    Modifier
+                        .width(1.dp)
+                        .weight(1f, fill = true)
+                        .background(lineColor),
+                )
+            }
         }
         Spacer(Modifier.width(17.dp))
-        Column(Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = if (isLast) 0.dp else 13.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Text(
                 stageTitle(language, stage),
                 fontSize = if (active) 18.sp else 17.sp,
                 lineHeight = 22.sp,
                 fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
-                color = if (future) MaterialTheme.colorScheme.onBackground.copy(alpha = .42f) else MaterialTheme.colorScheme.onBackground,
+                color = if (future) MaterialTheme.colorScheme.onBackground.copy(alpha = .42f)
+                else MaterialTheme.colorScheme.onBackground,
             )
+
+            stageTimestamp(index, current, session, cancelled)?.let { timestamp ->
+                Text(
+                    compactTimestamp(timestamp, language),
+                    fontSize = 12.sp,
+                    lineHeight = 14.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .34f),
+                )
+            }
+
             if (active) {
+                Text(
+                    activeStageSubtitle(language, session, stage),
+                    fontSize = 14.sp,
+                    lineHeight = 19.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f),
+                )
                 Spacer(Modifier.height(4.dp))
-                Text(stageSubtitle(language, stage), fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
-                Spacer(Modifier.height(14.dp))
-                ActiveStageCard(language, session, tint, chrome)
+                ActiveStageCard(language, session, stage, chrome)
                 Spacer(Modifier.height(18.dp))
-            } else {
-                Spacer(Modifier.height(19.dp))
+            } else if (!isLast) {
+                Spacer(Modifier.height(15.dp))
             }
         }
     }
 }
 
 @Composable
-private fun ActiveStageCard(language: AppLanguage, session: StoredBookingSession, tint: Color, chrome: AppChromeStore) {
+private fun ActiveStageCard(
+    language: AppLanguage,
+    session: StoredBookingSession,
+    stage: ProgressStage,
+    chrome: AppChromeStore,
+) {
+    val tint = statusColor(session.effectiveStatus)
     val shape = RoundedCornerShape(28.dp)
+    val availabilityActive = session.effectiveStatus.uppercase() in setOf("NEW", "AVAILABILITY_CHECK")
+    val iconScale = if (availabilityActive) {
+        val transition = rememberInfiniteTransition(label = "availability-hourglass")
+        val scale by transition.animateFloat(
+            initialValue = .92f,
+            targetValue = 1.06f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 650),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "availability-hourglass-scale",
+        )
+        scale
+    } else 1f
+
     Column(
         Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(Brush.linearGradient(listOf(tint.copy(alpha = .13f), MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)))
+            .background(bookingCardColor())
+            .background(
+                Brush.linearGradient(
+                    listOf(tint.copy(alpha = .13f), tint.copy(alpha = .025f), Color.Transparent),
+                ),
+            )
             .border(.8.dp, tint.copy(alpha = .22f), shape)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            Box(Modifier.size(34.dp).clip(CircleShape).background(tint), contentAlignment = Alignment.Center) {
-                CupertinoIcon(statusIcon(session.effectiveStatus), null, Modifier.size(16.dp), Color.White)
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(tint),
+                contentAlignment = Alignment.Center,
+            ) {
+                CupertinoIcon(
+                    statusIcon(session.effectiveStatus),
+                    null,
+                    Modifier
+                        .size(15.dp)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        },
+                    activeNodeForeground(session.effectiveStatus),
+                )
             }
-            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(activeCardTitle(language, session.effectiveStatus), fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.25).sp)
+                Text(
+                    activeCardTitle(language, session, stage),
+                    fontSize = 20.sp,
+                    lineHeight = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-.25).sp,
+                )
                 Spacer(Modifier.height(4.dp))
-                Text(activeCardBody(language, session.effectiveStatus), fontSize = 14.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
+                Text(
+                    activeCardBody(language, session, stage),
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f),
+                )
             }
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.onBackground.copy(alpha = .05f)))
-        ProgressFact(t(language, "Маршрут", "Route", "Yo‘nalish", "Йўналиш"), "${session.booking.route.originCode} → ${session.booking.route.outboundDestination}")
-        ProgressFact(t(language, "Даты", "Dates", "Sanalar", "Саналар"), "${L10n.date(session.booking.input.startDate, language)} – ${L10n.date(session.booking.input.endDate, language)}")
-        session.booking.hotelNames.makkah.takeIf { it.isNotBlank() }?.let { ProgressFact(t(language, "Отель", "Hotel", "Mehmonxona", "Меҳмонхона"), it) }
+
+        LifecycleTimerPanel(language, session, tint)
+
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.onBackground.copy(alpha = .05f)),
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+            ProgressFact(
+                t(language, "Маршрут", "Route", "Yo‘nalish", "Йўналиш"),
+                "${session.booking.route.originCode} → ${session.booking.route.outboundDestination}",
+            )
+            ProgressFact(
+                t(language, "Даты", "Dates", "Sanalar", "Саналар"),
+                "${L10n.date(session.booking.input.startDate, language)} – ${L10n.date(session.booking.input.endDate, language)}",
+            )
+            session.booking.hotelNames.makkah.trim().takeIf { it.isNotEmpty() }?.let { hotel ->
+                ProgressFact(
+                    t(language, "Отель", "Hotel", "Mehmonxona", "Меҳмонхона"),
+                    hotel,
+                )
+            }
+        }
+
         Row(verticalAlignment = Alignment.Bottom) {
             Column {
-                Text(t(language, "На паломника", "Per pilgrim", "Bir ziyoratchiga", "Бир зиёратчига"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
-                Text(formatPrice(session.booking.perPilgrimUsd), fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    t(language, "На паломника", "Per pilgrim", "Bir ziyoratchiga", "Бир зиёратчига"),
+                    fontSize = 12.sp,
+                    lineHeight = 14.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+                )
+                Text(
+                    formatPrice(session.booking.perPilgrimUsd),
+                    fontSize = 24.sp,
+                    lineHeight = 29.sp,
+                    fontWeight = FontWeight.Bold,
+                )
             }
             Spacer(Modifier.weight(1f))
-            Text(pilgrimCount(language, session.booking.input.travelers.totalPeople), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+            Text(
+                pilgrimCount(language, session.booking.input.travelers.totalPeople),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+            )
         }
-        IumrahPressable(
-            onClick = { chrome.openBookingDetail(session.id) },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            cornerRadius = 18.dp,
-            background = MaterialTheme.colorScheme.primary,
-        ) {
-            Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(t(language, "Открыть бронирование", "Open booking", "Bronni ochish", "Бронни очиш"), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimary)
-                Spacer(Modifier.weight(1f))
-                CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(17.dp), MaterialTheme.colorScheme.onPrimary)
+
+        StatusCardActions(language, session, chrome)
+    }
+}
+
+@Composable
+private fun LifecycleTimerPanel(
+    language: AppLanguage,
+    session: StoredBookingSession,
+    tint: Color,
+) {
+    val phase = lifecyclePhase(session) ?: return
+    var now by remember(session.id, phase.deadlineMs) { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(session.id, phase.deadlineMs) {
+        while (true) {
+            delay(1_000)
+            now = System.currentTimeMillis()
+        }
+    }
+
+    val remaining = (phase.deadlineMs - now).coerceAtLeast(0L)
+    val expired = remaining <= 0L
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = .035f))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    lifecycleTimerTitle(language, phase.kind, expired),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    lifecycleCountdown(remaining),
+                    fontSize = 31.sp,
+                    lineHeight = 34.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-.7).sp,
+                )
             }
+            Box(
+                Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(tint.copy(alpha = .09f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CupertinoIcon(phase.symbol, null, Modifier.size(17.dp), tint)
+            }
+        }
+        Text(
+            lifecycleTimerFootnote(language, phase.kind, expired),
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+        )
+    }
+}
+
+@Composable
+private fun StatusCardActions(
+    language: AppLanguage,
+    session: StoredBookingSession,
+    chrome: AppChromeStore,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        StatusButton(
+            title = t(language, "Открыть статус бронирования", "Open booking status", "Bron holatini ochish", "Брон ҳолатини очиш"),
+            primary = true,
+        ) { chrome.openPilgrimCheckout(session.id) }
+        StatusButton(
+            title = t(language, "Открыть бронирование", "Open booking", "Bronni ochish", "Бронни очиш"),
+            primary = false,
+        ) { chrome.openBookingDetail(session.id) }
+    }
+}
+
+@Composable
+private fun StatusButton(title: String, primary: Boolean, onClick: () -> Unit) {
+    val bg = if (primary) Color.Black else bookingRaisedColor()
+    val fg = if (primary) Color.White else MaterialTheme.colorScheme.onBackground
+    IumrahPressable(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .then(
+                if (!primary) Modifier.border(
+                    .7.dp,
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = .06f),
+                    RoundedCornerShape(18.dp),
+                ) else Modifier,
+            ),
+        cornerRadius = 18.dp,
+        background = bg,
+        shadowElevation = 0.dp,
+    ) {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = fg)
+            Spacer(Modifier.weight(1f))
+            CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(15.dp), fg)
         }
     }
 }
@@ -515,253 +1042,762 @@ private fun ActiveStageCard(language: AppLanguage, session: StoredBookingSession
 @Composable
 private fun ProgressFact(title: String, value: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Text(title, fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f), modifier = Modifier.width(92.dp))
-        Text(value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+        Text(
+            title,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+            modifier = Modifier.width(74.dp),
+        )
+        Text(
+            value,
+            fontSize = 14.sp,
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
 @Composable
-private fun TripWalletEntry(language: AppLanguage, session: StoredBookingSession, onClick: () -> Unit) {
-    IumrahPressable(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        cornerRadius = 28.dp,
-        background = Color(0xFF111214),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Color.White.copy(alpha = .10f)), contentAlignment = Alignment.Center) {
-                    CupertinoIcon(CupertinoSymbol.Wallet, null, Modifier.size(23.dp), Color.White)
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("iumrah Wallet", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                    Text(session.displayBookingNumber, color = Color.White.copy(alpha = .58f), fontSize = 13.sp)
-                }
-                CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(18.dp), Color.White.copy(alpha = .55f))
-            }
-            Spacer(Modifier.height(18.dp))
-            Text("${session.booking.route.originCode} → ${session.booking.route.outboundDestination}", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(5.dp))
-            Text("${L10n.date(session.booking.input.startDate, language)} – ${L10n.date(session.booking.input.endDate, language)}", color = Color.White.copy(alpha = .62f), fontSize = 14.sp)
-        }
-    }
-}
-
-@Composable
-private fun BookingStatusOverview(language: AppLanguage, session: StoredBookingSession, checkout: IumrahCheckoutResponse?) {
+private fun BookingTimerOverview(language: AppLanguage, session: StoredBookingSession) {
+    val phase = lifecyclePhase(session) ?: return
     val tint = statusColor(session.effectiveStatus)
     val shape = RoundedCornerShape(26.dp)
-    Row(
-        Modifier.fillMaxWidth().clip(shape).background(MaterialTheme.colorScheme.surface).border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .06f), shape).padding(18.dp),
-        verticalAlignment = Alignment.Top,
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(bookingCardColor())
+            .border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .06f), shape)
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(15.dp),
     ) {
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(tint.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
-            CupertinoIcon(statusIcon(session.effectiveStatus), null, Modifier.size(22.dp), tint)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(tint.copy(alpha = .12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (session.effectiveStatus.uppercase() in setOf("AVAILABILITY_CHECK", "PAYMENT_PENDING", "BOOKING_CONFIRMED")) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = tint,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    CupertinoIcon(CupertinoSymbol.CalendarClock, null, Modifier.size(20.dp), tint)
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    t(language, "Работа идёт", "Work is in progress", "Jarayon davom etmoqda", "Жараён давом этмоқда"),
+                    fontSize = 17.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    t(language, "Вы можете закрыть приложение — статус обновится автоматически.", "You can close the app — the status will update automatically.", "Ilovani yopishingiz mumkin — holat avtomatik yangilanadi.", "Иловани ёпишингиз мумкин — ҳолат автоматик янгиланади."),
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+                )
+            }
         }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(statusOverviewTitle(language, session, checkout), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(4.dp))
-            Text(statusOverviewBody(language, session, checkout), fontSize = 13.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
-        }
+        LifecycleTimerPanel(language, session, tint)
     }
 }
 
 @Composable
-private fun FulfillmentCenter(language: AppLanguage, session: StoredBookingSession, checkout: IumrahCheckoutResponse?, chrome: AppChromeStore) {
-    val total = checkout?.travelers?.size ?: session.booking.input.travelers.totalPeople
+private fun BookingFulfillmentCenter(
+    language: AppLanguage,
+    session: StoredBookingSession,
+    checkout: IumrahCheckoutResponse?,
+    chrome: AppChromeStore,
+) {
     val completed = checkout?.travelers?.count { it.completed } ?: 0
+    val total = checkout?.travelers?.size ?: session.booking.input.travelers.totalPeople
     val receiptReady = !checkout?.receipts.isNullOrEmpty()
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SectionHeader(t(language, "Что нужно завершить", "What needs attention", "Nimani yakunlash kerak", "Нимани якунлаш керак"), null)
-        BookingActionCard(
-            icon = CupertinoSymbol.Passport,
-            title = t(language, "Данные паломников", "Pilgrim details", "Ziyoratchilar ma’lumotlari", "Зиёратчилар маълумотлари"),
-            subtitle = "$completed / $total",
-            completed = total > 0 && completed >= total,
-            onClick = { chrome.openPilgrimCheckout(session.id) },
+    val documents = checkout?.documents.orEmpty()
+    val ticketReady = documents.any { it.documentKind.lowercase() in setOf("ticket", "flight_ticket", "airline_ticket") }
+    val hotelReady = documents.any { it.documentKind.lowercase() in setOf("voucher", "hotel_voucher", "hotel_booking", "hotel_confirmation") }
+
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+        SectionHeader(
+            t(language, "Что нужно сделать", "What to do next", "Keyingi qadamlar", "Кейинги қадамлар"),
+            null,
         )
+        Text(
+            t(language, "Открывайте карточки по порядку. Все введённые данные сохраняются в бронировании.", "Open the cards in order. Everything you enter is saved with the booking.", "Kartalarni ketma-ket oching. Kiritilgan ma’lumotlar bronda saqlanadi.", "Карталарни кетма-кет очинг. Киритилган маълумотлар бронда сақланади."),
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f),
+        )
+
+        BookingActionCard(
+            icon = CupertinoSymbol.IdentityCard,
+            tint = iOSGreen,
+            title = "KYC · iumrah Security",
+            body = t(language, "Подтвердите личность владельца бронирования.", "Confirm the booking holder’s identity.", "Bron egasining shaxsini tasdiqlang.", "Брон эгасининг шахсини тасдиқланг."),
+            action = t(language, "Проверить личность", "Confirm identity", "Shaxsni tasdiqlash", "Шахсни тасдиқлаш"),
+            ready = false,
+        ) { chrome.openAccountKyc(session.id) }
+
+        BookingActionCard(
+            icon = CupertinoSymbol.Persons,
+            tint = iOSCyan,
+            title = t(language, "Кто едет с Вами", "Who is traveling with you", "Siz bilan kim bormoqda", "Сиз билан ким бормоқда"),
+            body = t(language, "Заполнено анкет: $completed из $total. Можно заполнить заранее во время проверки наличия.", "Forms completed: $completed of $total. You can fill them in while availability is checked.", "To‘ldirilgan anketalar: $completed/$total. Mavjudlik tekshirilayotganda oldindan to‘ldirish mumkin.", "Тўлдирилган анкеталар: $completed/$total. Мавжудлик текширилаётганда олдиндан тўлдириш мумкин."),
+            action = if (completed == total && total > 0) {
+                t(language, "Проверить анкеты", "Review forms", "Anketalarni tekshirish", "Анкеталарни текшириш")
+            } else {
+                t(language, "Заполнить данные заранее", "Complete details in advance", "Ma’lumotlarni oldindan to‘ldirish", "Маълумотларни олдиндан тўлдириш")
+            },
+            ready = completed == total && total > 0,
+        ) { chrome.openPilgrimCheckout(session.id) }
+
         BookingActionCard(
             icon = CupertinoSymbol.CreditCard,
+            tint = iOSGreen,
             title = t(language, "Оплата", "Payment", "To‘lov", "Тўлов"),
-            subtitle = if (receiptReady) t(language, "Чек получен", "Receipt received", "Chek qabul qilindi", "Чек қабул қилинди") else t(language, "Требуется действие", "Action required", "Amal kerak", "Амал керак"),
-            completed = receiptReady,
-            onClick = { chrome.openPilgrimCheckout(session.id) },
-        )
+            body = if (session.effectiveStatus.uppercase() == "AVAILABILITY_CHECK") {
+                t(language, "Пока ничего оплачивать не нужно. Оплата откроется после подтверждения наличия.", "No payment is needed yet. It will open after availability is confirmed.", "Hozircha to‘lov kerak emas. Mavjudlik tasdiqlangach ochiladi.", "Ҳозирча тўлов керак эмас. Мавжудлик тасдиқлангач очилади.")
+            } else if (receiptReady) {
+                t(language, "Чек получен и сохранён в бронировании.", "The receipt is received and saved with the booking.", "Chek qabul qilindi va bronda saqlandi.", "Чек қабул қилинди ва бронда сақланди.")
+            } else {
+                t(language, "Оплатите по реквизитам и прикрепите чек.", "Pay using the provided details and attach the receipt.", "Rekvizitlar bo‘yicha to‘lang va chekni biriktiring.", "Реквизитлар бўйича тўланг ва чекни бириктиринг.")
+            },
+            action = if (receiptReady) t(language, "Открыть чек", "Open receipt", "Chekni ochish", "Чекни очиш")
+            else t(language, "Перейти к оплате", "Go to payment", "To‘lovga o‘tish", "Тўловга ўтиш"),
+            ready = receiptReady,
+        ) { chrome.openPilgrimCheckout(session.id) }
+
         BookingActionCard(
-            icon = CupertinoSymbol.ShieldCheck,
-            title = "iumrah Security",
-            subtitle = t(language, "Подтверждение личности", "Identity confirmation", "Shaxsni tasdiqlash", "Шахсни тасдиқлаш"),
-            completed = session.effectiveStatus.uppercase() in setOf("BOOKING_CONFIRMED", "READY_TO_TRAVEL", "IN_TRIP", "COMPLETED"),
-            onClick = { chrome.openAccountKyc(session.id) },
-        )
+            icon = CupertinoSymbol.Document,
+            tint = iOSCyan,
+            title = t(language, "Документы поездки", "Travel documents", "Safar hujjatlari", "Сафар ҳужжатлари"),
+            body = if (documents.isNotEmpty()) {
+                t(language, "Готово документов: ${documents.size}. Каждый файл доступен отдельно.", "Documents ready: ${documents.size}. Each file is available separately.", "Tayyor hujjatlar: ${documents.size}. Har biri alohida ochiladi.", "Тайёр ҳужжатлар: ${documents.size}. Ҳар бири алоҳида очилади.")
+            } else {
+                t(language, "После оплаты здесь появятся авиабилет, отель и остальные готовые документы.", "After payment, your ticket, hotel confirmation and other documents will appear here.", "To‘lovdan keyin aviachipta, mehmonxona tasdig‘i va boshqa hujjatlar shu yerda chiqadi.", "Тўловдан кейин авиачипта, меҳмонхона тасдиғи ва бошқа ҳужжатлар шу ерда чиқади.")
+            },
+            action = t(language, "Посмотреть документы", "View documents", "Hujjatlarni ko‘rish", "Ҳужжатларни кўриш"),
+            ready = ticketReady && hotelReady,
+        ) { chrome.openPilgrimCheckout(session.id) }
+
+        StatusButton(
+            t(language, "Перейти к бронированию", "Open booking", "Bronni ochish", "Бронни очиш"),
+            primary = true,
+        ) { chrome.openPilgrimCheckout(session.id) }
+
+        IumrahPressable(
+            onClick = { chrome.openBookingPolicy("refund") },
+            modifier = Modifier.height(34.dp),
+            cornerRadius = 17.dp,
+            background = Color.Transparent,
+            shadowElevation = 0.dp,
+        ) {
+            Row(
+                Modifier.padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CupertinoIcon(
+                    CupertinoSymbol.Document,
+                    null,
+                    Modifier.size(15.dp),
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = .48f),
+                )
+                Text(
+                    t(language, "Условия возврата", "Refund policy", "Qaytarish shartlari", "Қайтариш шартлари"),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun BookingActionCard(icon: CupertinoSymbol, title: String, subtitle: String, completed: Boolean, onClick: () -> Unit) {
-    IumrahPressable(onClick = onClick, modifier = Modifier.fillMaxWidth(), cornerRadius = 22.dp, background = MaterialTheme.colorScheme.surface) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                CupertinoIcon(icon, null, Modifier.size(21.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .72f))
+private fun BookingActionCard(
+    icon: CupertinoSymbol,
+    tint: Color,
+    title: String,
+    body: String,
+    action: String,
+    ready: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(26.dp)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(bookingCardColor())
+            .border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .06f), shape)
+            .padding(17.dp),
+        verticalArrangement = Arrangement.spacedBy(15.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+            Box(
+                Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background((if (ready) iOSGreen else tint).copy(alpha = .12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CupertinoIcon(
+                    if (ready) CupertinoSymbol.CheckCircle else icon,
+                    null,
+                    Modifier.size(21.dp),
+                    if (ready) iOSGreen else tint,
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    fontSize = 20.sp,
+                    lineHeight = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    body,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f),
+                )
+            }
+        }
+        IumrahPressable(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            cornerRadius = 17.dp,
+            background = bookingPrimaryButtonColor(),
+            shadowElevation = 0.dp,
+        ) {
+            Row(
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    action,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = bookingPrimaryButtonTextColor(),
+                )
+                Spacer(Modifier.weight(1f))
+                CupertinoIcon(
+                    CupertinoSymbol.ArrowRight,
+                    null,
+                    Modifier.size(15.dp),
+                    MaterialTheme.colorScheme.onPrimary,
+                )
+            }
+        }
+    }
+}
+
+private fun shouldShowTravelReadyFlights(session: StoredBookingSession): Boolean =
+    session.effectiveStatus.uppercase() in setOf("READY_TO_TRAVEL", "IN_TRIP")
+
+@Composable
+private fun BookingStatusFlights(
+    language: AppLanguage,
+    session: StoredBookingSession,
+    chrome: AppChromeStore,
+) {
+    val outbound = session.booking.generatorTrace?.outbound
+    val inbound = session.booking.generatorTrace?.inbound
+    val shape = RoundedCornerShape(26.dp)
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(bookingCardColor())
+            .border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .06f), shape)
+            .padding(17.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(iOSBlue.copy(alpha = .12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CupertinoIcon(CupertinoSymbol.Airplane, null, Modifier.size(19.dp), iOSBlue)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    t(language, "Ваши авиабилеты", "Your flights", "Aviachiptalaringiz", "Авиачипталарингиз"),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    t(language, "Полные данные рейсов закреплены в статусе поездки.", "Full flight details stay attached to your trip status.", "Parvozning to‘liq ma’lumotlari safar holatida saqlanadi.", "Парвознинг тўлиқ маълумотлари сафар ҳолатида сақланади."),
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+                )
+            }
+        }
+
+        if (outbound != null) {
+            StatusFlightCard(language, outbound, t(language, "Туда", "Outbound", "Borish", "Бориш"))
+        } else {
+            LegacyFlightCard(
+                t(language, "Туда", "Outbound", "Borish", "Бориш"),
+                "${session.booking.route.originCode} → ${session.booking.route.outboundDestination}",
+                session.booking.input.startDate,
+                session.booking.flight,
+                language,
+            )
+        }
+
+        if (inbound != null) {
+            StatusFlightCard(language, inbound, t(language, "Обратно", "Return", "Qaytish", "Қайтиш"))
+        } else {
+            LegacyFlightCard(
+                t(language, "Обратно", "Return", "Qaytish", "Қайтиш"),
+                "${session.booking.route.returnOrigin} → ${session.booking.route.originCode}",
+                session.booking.input.endDate,
+                session.booking.flight,
+                language,
+            )
+        }
+
+        IumrahPressable(
+            onClick = chrome::openFlights,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            cornerRadius = 18.dp,
+            background = bookingPrimaryButtonColor(),
+            shadowElevation = 0.dp,
+        ) {
+            Row(
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                CupertinoIcon(CupertinoSymbol.SignalWave, null, Modifier.size(17.dp), bookingPrimaryButtonTextColor())
+                Text(
+                    t(language, "Отслеживать рейс", "Track flight", "Reysni kuzatish", "Рейсни кузатиш"),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = bookingPrimaryButtonTextColor(),
+                )
+                Spacer(Modifier.weight(1f))
+                CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(15.dp), bookingPrimaryButtonTextColor())
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusFlightCard(
+    language: AppLanguage,
+    flight: BookingGeneratorFlightSnapshot,
+    label: String,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(21.dp))
+            .background(bookingRaisedColor().copy(alpha = .72f))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = .055f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CupertinoIcon(CupertinoSymbol.Airplane, null, Modifier.size(19.dp), MaterialTheme.colorScheme.onBackground)
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f))
+                Text(label.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = .5.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+                Text(flight.flightNumbers, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                Text(flight.airline, fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f), maxLines = 1)
             }
-            if (completed) CupertinoIcon(CupertinoSymbol.CheckCircle, null, Modifier.size(20.dp), Color(0xFF34C759))
-            else CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(17.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .38f))
+            Text(
+                if ((flight.stops ?: 0) == 0) t(language, "Прямой", "Direct", "To‘g‘ridan", "Тўғридан") else t(language, "С пересадкой", "Connection", "Ulanish", "Уланиш"),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+            )
         }
-    }
-}
 
-@Composable
-private fun TripPlanPreview(language: AppLanguage, session: StoredBookingSession, chrome: AppChromeStore) {
-    Column(Modifier.fillMaxWidth()) {
-        SectionHeader(t(language, "План поездки", "Trip plan", "Safar rejasi", "Сафар режаси"), null)
-        Spacer(Modifier.height(14.dp))
-        val items = buildList {
-            add(Triple(CupertinoSymbol.AirplaneTakeoff, L10n.date(session.booking.input.startDate, language), "${session.booking.route.originCode} → ${session.booking.route.outboundDestination}"))
-            add(Triple(CupertinoSymbol.Hotel, session.booking.hotelNames.makkah, "Makkah · ${session.booking.stay.makkahNights} nights"))
-            if (session.booking.input.includeMadinah) add(Triple(CupertinoSymbol.Hotel, session.booking.hotelNames.madinah, "Madinah · ${session.booking.stay.madinahNights ?: 0} nights"))
-            add(Triple(CupertinoSymbol.AirplaneLand, L10n.date(session.booking.input.endDate, language), "${session.booking.route.returnOrigin} → ${session.booking.route.originCode}"))
-        }
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(MaterialTheme.colorScheme.surface).padding(16.dp)) {
-            items.forEachIndexed { index, (icon, title, subtitle) ->
-                Row(verticalAlignment = Alignment.Top) {
-                    Box(Modifier.size(38.dp).clip(RoundedCornerShape(13.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) { CupertinoIcon(icon, null, Modifier.size(19.dp)) }
-                    Spacer(Modifier.width(11.dp))
-                    Column(Modifier.weight(1f)) { Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold); Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f)) }
-                }
-                if (index != items.lastIndex) Spacer(Modifier.height(14.dp))
+        val segments = flight.segments.orEmpty()
+        if (segments.isNotEmpty()) {
+            segments.forEachIndexed { index, segment ->
+                if (index > 0) DividerLine(0.dp)
+                StatusFlightSegment(segment)
             }
-            Spacer(Modifier.height(16.dp))
-            IumrahPressable(onClick = { chrome.openBookingDetail(session.id) }, modifier = Modifier.fillMaxWidth().height(50.dp), cornerRadius = 18.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
-                Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(t(language, "Открыть полное расписание", "Open full schedule", "To‘liq jadvalni ochish", "Тўлиқ жадвални очиш"), fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.weight(1f)); CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(17.dp))
-                }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(flight.origin, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                CupertinoIcon(CupertinoSymbol.Airplane, null, Modifier.size(15.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .5f))
+                Spacer(Modifier.weight(1f))
+                Text(flight.destination, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
 @Composable
-private fun TripManagement(language: AppLanguage, session: StoredBookingSession, chrome: AppChromeStore) {
-    Column(Modifier.fillMaxWidth()) {
-        SectionHeader(t(language, "Управление поездкой", "Trip management", "Safarni boshqarish", "Сафарни бошқариш"), null)
-        Spacer(Modifier.height(14.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(MaterialTheme.colorScheme.surface)) {
-            ManagementRow(CupertinoSymbol.Suitcase, t(language, "Управлять бронированием", "Manage booking", "Bronni boshqarish", "Бронни бошқариш"), t(language, "Отели, данные, услуги и документы", "Hotels, details, services and documents", "Mehmonxona, ma’lumotlar, xizmatlar va hujjatlar", "Меҳмонхона, маълумотлар, хизматлар ва ҳужжатлар")) { chrome.openBookingDetail(session.id) }
-            DividerLine()
-            ManagementRow(CupertinoSymbol.PlusPerson, t(language, "Добавить паломника", "Add pilgrim", "Ziyoratchi qo‘shish", "Зиёратчи қўшиш"), t(language, "Запрос через iumrah Care", "Request via iumrah Care", "iumrah Care orqali so‘rov", "iumrah Care орқали сўров")) { chrome.navigate(AppTab.CARE) }
-            DividerLine()
-            ManagementRow(CupertinoSymbol.Route, t(language, "Зияраты", "Ziyarat", "Ziyorat", "Зиёрат"), t(language, "Маршрут и места посещения", "Route and places to visit", "Yo‘nalish va tashrif joylari", "Йўналиш ва ташриф жойлари")) { chrome.openBookingDetail(session.id) }
-            DividerLine()
-            ManagementRow(CupertinoSymbol.Plus, t(language, "Новая Umrah", "New Umrah", "Yangi Umra", "Янги Умра"), t(language, "Собрать новый пакет", "Build a new package", "Yangi paket tuzish", "Янги пакет тузиш")) { chrome.startNewTrip() }
+private fun StatusFlightSegment(segment: BookingGeneratorFlightSegmentSnapshot) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(segment.flightNumber, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            segment.aircraft?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                Text(it, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(segment.origin, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(isoTime(segment.departureAt), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+            CupertinoIcon(CupertinoSymbol.Airplane, null, Modifier.size(15.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .5f))
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                Text(segment.destination, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(isoTime(segment.arrivalAt), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            segment.originTerminal?.trim()?.takeIf { it.isNotEmpty() }?.let { FlightMetaPill("Dep T$it") }
+            segment.destinationTerminal?.trim()?.takeIf { it.isNotEmpty() }?.let { FlightMetaPill("Arr T$it") }
+            segment.cabin?.trim()?.takeIf { it.isNotEmpty() }?.let { FlightMetaPill(it) }
         }
     }
 }
 
 @Composable
-private fun ManagementRow(icon: CupertinoSymbol, title: String, subtitle: String, onClick: () -> Unit) {
-    IumrahPressable(onClick = onClick, modifier = Modifier.fillMaxWidth(), cornerRadius = 0.dp, background = Color.Transparent, shadowElevation = 0.dp) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            CupertinoIcon(icon, null, Modifier.size(22.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .64f))
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) { Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold); Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f), maxLines = 2) }
-            CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(16.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .32f))
-        }
-    }
-}
-
-@Composable
-private fun DividerLine() { Box(Modifier.fillMaxWidth().padding(start = 50.dp).height(.7.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .07f))) }
-
-@Composable
-private fun PastBookingsHome(
+private fun LegacyFlightCard(
+    title: String,
+    route: String,
+    date: String,
+    value: String,
     language: AppLanguage,
-    sessions: List<StoredBookingSession>,
-    scope: BookingScope,
-    onScope: (BookingScope) -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(21.dp))
+            .background(bookingRaisedColor().copy(alpha = .72f))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(title.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+        Text(route, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+        Text(value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(L10n.date(date, language), fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+    }
+}
+
+@Composable
+private fun FlightMetaPill(text: String) {
+    Box(
+        Modifier
+            .height(28.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = .045f))
+            .padding(horizontal = 9.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+    }
+}
+
+@Composable
+private fun TripPlanPreview(
+    language: AppLanguage,
+    session: StoredBookingSession,
+    remoteItems: List<BookingItineraryItem>,
+    chrome: AppChromeStore,
+) {
+    val items = previewItineraryItems(session, remoteItems)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        SectionHeader(t(language, "План поездки", "Trip plan", "Safar rejasi", "Сафар режаси"), null)
+        val shape = RoundedCornerShape(25.dp)
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(bookingCardColor())
+                .border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .06f), shape),
+        ) {
+            if (items.isEmpty()) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(74.dp)
+                        .padding(horizontal = 17.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(
+                        t(language, "События поездки появятся после подтверждения деталей.", "Trip events will appear after the details are confirmed.", "Tafsilotlar tasdiqlangach safar voqealari paydo bo‘ladi.", "Тафсилотлар тасдиқлангач сафар воқеалари пайдо бўлади."),
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+                    )
+                }
+            } else {
+                items.forEachIndexed { index, item ->
+                    TripPlanRow(language, item)
+                    if (index < items.lastIndex) DividerLine(56.dp)
+                }
+            }
+            DividerLine(17.dp)
+            IumrahPressable(
+                onClick = { chrome.openBookingDetail(session.id) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                cornerRadius = 0.dp,
+                background = Color.Transparent,
+                shadowElevation = 0.dp,
+            ) {
+                Row(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 17.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        t(language, "Открыть полное расписание", "Open full schedule", "To‘liq jadvalni ochish", "Тўлиқ жадвални очиш"),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.weight(1f))
+                    CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(14.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .34f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TripPlanRow(language: AppLanguage, item: BookingItineraryItem) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 17.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(13.dp),
+    ) {
+        Box(
+            Modifier
+                .size(39.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(bookingRaisedColor()),
+            contentAlignment = Alignment.Center,
+        ) {
+            CupertinoIcon(safeItineraryIcon(item.icon), null, Modifier.size(15.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
+        }
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text(compactDate(item.dateLocal, language), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+                Text(item.title, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            item.subtitle.trim().takeIf { it.isNotEmpty() }?.let {
+                Spacer(Modifier.height(4.dp))
+                Text(it, fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            item.location.trim().takeIf { it.isNotEmpty() }?.let {
+                Spacer(Modifier.height(3.dp))
+                Text(it, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .34f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TripManagement(
+    language: AppLanguage,
+    session: StoredBookingSession,
+    chrome: AppChromeStore,
+) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        SectionHeader(t(language, "Управление поездкой", "Trip management", "Safarni boshqarish", "Сафарни бошқариш"), null)
+        val shape = RoundedCornerShape(25.dp)
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(bookingCardColor())
+                .border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .06f), shape),
+        ) {
+            ManagementRow(
+                CupertinoSymbol.Sliders,
+                t(language, "Управлять бронированием", "Manage booking", "Bronni boshqarish", "Бронни бошқариш"),
+                t(language, "Отели, данные, услуги и документы", "Hotels, details, services and documents", "Mehmonxona, ma’lumotlar, xizmatlar va hujjatlar", "Меҳмонхона, маълумотлар, хизматлар ва ҳужжатлар"),
+            ) { chrome.openBookingDetail(session.id) }
+            DividerLine(65.dp)
+            ManagementRow(
+                CupertinoSymbol.PlusPerson,
+                t(language, "Добавить паломника", "Add pilgrim", "Ziyoratchi qo‘shish", "Зиёратчи қўшиш"),
+                t(language, "Запрос через iumrah Care", "Request via iumrah Care", "iumrah Care orqali so‘rov", "iumrah Care орқали сўров"),
+            ) { chrome.openBookingChat(session.id) }
+            DividerLine(65.dp)
+            ManagementRow(
+                CupertinoSymbol.Route,
+                t(language, "Зияраты", "Ziyarat", "Ziyorat", "Зиёрат"),
+                t(language, "Маршрут и места посещения", "Route and places to visit", "Yo‘nalish va tashrif joylari", "Йўналиш ва ташриф жойлари"),
+            ) { chrome.openBookingDetail(session.id) }
+            DividerLine(65.dp)
+            ManagementRow(
+                CupertinoSymbol.Plus,
+                t(language, "Новая Umrah", "New Umrah", "Yangi Umra", "Янги Умра"),
+                t(language, "Собрать новый пакет", "Build a new package", "Yangi paket tuzish", "Янги пакет тузиш"),
+            ) { chrome.startNewTrip() }
+        }
+    }
+}
+
+@Composable
+private fun ManagementRow(
+    icon: CupertinoSymbol,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    IumrahPressable(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp),
+        cornerRadius = 0.dp,
+        background = Color.Transparent,
+        shadowElevation = 0.dp,
+    ) {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(13.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(bookingRaisedColor()),
+                contentAlignment = Alignment.Center,
+            ) {
+                CupertinoIcon(icon, null, Modifier.size(15.dp), MaterialTheme.colorScheme.onBackground)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(2.dp))
+                Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(13.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .30f))
+        }
+    }
+}
+
+@Composable
+private fun CompactBookingCard(
+    language: AppLanguage,
+    session: StoredBookingSession,
     chrome: AppChromeStore,
     onDelete: suspend (String) -> Unit,
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 10.dp, bottom = 118.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    val shape = RoundedCornerShape(22.dp)
+    IumrahPressable(
+        onClick = { chrome.openBookingDetail(session.id) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .055f), shape),
+        cornerRadius = 22.dp,
+        background = bookingCardColor(),
+        shadowElevation = 0.dp,
     ) {
-        item {
-            IumrahRootPageHeader(t(language, "Бронирование", "Booking", "Bron", "Брон"), chrome)
-            Spacer(Modifier.height(18.dp))
-            BookingScopePicker(language, scope, onScope)
-            Spacer(Modifier.height(24.dp))
-        }
-        if (sessions.isEmpty()) {
-            item {
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(MaterialTheme.colorScheme.surface).border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .06f), RoundedCornerShape(28.dp)).padding(22.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Box(Modifier.size(58.dp).clip(RoundedCornerShape(19.dp)).background(MaterialTheme.colorScheme.onBackground.copy(alpha = .055f)), contentAlignment = Alignment.Center) {
-                        CupertinoIcon(CupertinoSymbol.CalendarClock, null, Modifier.size(25.dp))
-                    }
-                    Spacer(Modifier.height(14.dp))
-                    Text(t(language, "Прошлых поездок пока нет", "No past trips yet", "O‘tgan safarlar hozircha yo‘q", "Ўтган сафарлар ҳозирча йўқ"), fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                    Spacer(Modifier.height(6.dp))
-                    Text(t(language, "Завершённые и отменённые поездки будут храниться здесь.", "Completed and cancelled trips will appear here.", "Yakunlangan va bekor qilingan safarlar shu yerda ko‘rinadi.", "Якунланган ва бекор қилинган сафарлар шу ерда кўринади."), fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f), textAlign = TextAlign.Center)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 15.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(13.dp),
+        ) {
+            Box(Modifier.size(10.dp).clip(CircleShape).background(statusColor(session.effectiveStatus)))
+            Column(Modifier.weight(1f)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("${session.booking.route.originCode} → ${session.booking.route.outboundDestination}", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(session.displayBookingNumber, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .34f))
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(L10n.status(session.effectiveStatus, language), fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f), maxLines = 1)
+                session.travelerName?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                    Text(it, fontSize = 10.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .34f), maxLines = 1)
                 }
             }
-        } else {
-            items(sessions, key = { it.id }) { session -> CompactBookingCard(language, session, chrome, onDelete) }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(formatPrice(session.booking.perPilgrimUsd), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(L10n.date(session.booking.input.startDate, language), fontSize = 10.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+            }
+            CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(13.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .30f))
         }
     }
 }
 
 @Composable
-private fun CompactBookingCard(language: AppLanguage, session: StoredBookingSession, chrome: AppChromeStore, onDelete: suspend (String) -> Unit) {
-    IumrahPressable(onClick = { chrome.openBookingDetail(session.id) }, modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp, background = MaterialTheme.colorScheme.surface) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(statusColor(session.effectiveStatus).copy(alpha = .11f)), contentAlignment = Alignment.Center) {
-                CupertinoIcon(CupertinoSymbol.Suitcase, null, Modifier.size(22.dp), statusColor(session.effectiveStatus))
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text("${session.booking.route.originCode} → ${session.booking.route.outboundDestination}", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Text("${L10n.date(session.booking.input.startDate, language)} – ${L10n.date(session.booking.input.endDate, language)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f))
-                Text(L10n.status(session.effectiveStatus, language), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = statusColor(session.effectiveStatus))
-            }
-            CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(17.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .34f))
-        }
-    }
-}
-
-@Composable
-private fun EmptyBookingHome(language: AppLanguage, scope: BookingScope, onScope: (BookingScope) -> Unit, chrome: AppChromeStore) {
+private fun EmptyBookingHome(
+    language: AppLanguage,
+    unreadCount: Int,
+    chrome: AppChromeStore,
+) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 10.dp, bottom = 118.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bookingPageColor()),
+        contentPadding = PaddingValues(
+            start = IOS_PAGE_PADDING.dp,
+            end = IOS_PAGE_PADDING.dp,
+            top = 10.dp,
+            bottom = 112.dp,
+        ),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        item { IumrahRootPageHeader(t(language, "Бронирование", "Booking", "Bron", "Брон"), chrome) }
-        item { BookingScopePicker(language, scope, onScope) }
-        item { EmptyStatusCard(language) }
         item {
-            IumrahPressable(onClick = { chrome.navigate(AppTab.HOTELS) }, modifier = Modifier.fillMaxWidth().height(58.dp), cornerRadius = 20.dp, background = Color.Black) {
-                Row(Modifier.fillMaxSize().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    CupertinoIcon(CupertinoSymbol.Suitcase, null, Modifier.size(18.dp), Color.White)
-                    Spacer(Modifier.width(10.dp))
-                    Text(t(language, "Смотреть готовые пакеты", "Explore Packages", "Tayyor paketlarni ko‘rish", "Тайёр пакетларни кўриш"), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.weight(1f)); CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(17.dp), Color.White)
-                }
-            }
+            BookingRootHeader(
+                language = language,
+                title = L10n.text("tab_booking", language),
+                usesBrandLogo = false,
+                showsMakkahTime = true,
+                unreadCount = unreadCount,
+                chrome = chrome,
+            )
         }
+        item { EmptyStatusCard(language) }
+        item { ExplorePackagesButton(language, chrome) }
         item {
             EmptyShowcaseCard(
                 imageRes = R.drawable.iumrah_configurator_hero,
+                imageBackground = Color.Black,
                 eyebrow = "Iumrah Configurator",
                 badge = t(language, "5 минут", "5 minutes", "5 daqiqa", "5 дақиқа"),
                 title = L10n.text("booking_hero_title", language),
@@ -775,6 +1811,7 @@ private fun EmptyBookingHome(language: AppLanguage, scope: BookingScope, onScope
         item {
             EmptyShowcaseCard(
                 imageRes = R.drawable.iumrah_care_showcase,
+                imageBackground = Color.White,
                 eyebrow = "Iumrah Care",
                 badge = t(language, "За вас", "For you", "Siz uchun", "Сиз учун"),
                 title = t(language, "Соберите Umrah за меня", "Build my Umrah for me", "Umramni men uchun yig‘ing", "Умрамни мен учун йиғинг"),
@@ -792,17 +1829,69 @@ private fun EmptyBookingHome(language: AppLanguage, scope: BookingScope, onScope
 private fun EmptyStatusCard(language: AppLanguage) {
     val shape = RoundedCornerShape(28.dp)
     Row(
-        Modifier.fillMaxWidth().clip(shape).background(MaterialTheme.colorScheme.surface).border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .06f), shape).padding(18.dp),
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(bookingCardColor())
+            .border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .06f), shape)
+            .padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Box(Modifier.size(58.dp).clip(RoundedCornerShape(19.dp)).background(MaterialTheme.colorScheme.onBackground.copy(alpha = .055f)), contentAlignment = Alignment.Center) {
-            CupertinoIcon(CupertinoSymbol.Suitcase, null, Modifier.size(25.dp))
+        Box(
+            Modifier
+                .size(58.dp)
+                .clip(RoundedCornerShape(19.dp))
+                .background(MaterialTheme.colorScheme.onBackground.copy(alpha = .055f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            CupertinoIcon(CupertinoSymbol.TrayFill, null, Modifier.size(23.dp), MaterialTheme.colorScheme.onBackground)
         }
-        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(t(language, "Пока бронирований нет", "No bookings yet", "Hozircha bron yo‘q", "Ҳозирча брон йўқ"), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text(
+                t(language, "Пока бронирований нет", "No bookings yet", "Hozircha bron yo‘q", "Ҳозирча брон йўқ"),
+                fontSize = 17.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.Bold,
+            )
             Spacer(Modifier.height(5.dp))
-            Text(t(language, "Пока здесь нет активных бронирований. Начните с Конфигуратора или передайте сборку iumrah Care.", "There are no active bookings here yet. Start with the Configurator or let iumrah Care prepare the trip for you.", "Hozircha bu yerda faol bronlar yo‘q. Konfiguratorni oching yoki safarni iumrah Care’ga topshiring.", "Ҳозирча бу ерда фаол бронлар йўқ. Конфигураторни очинг ёки сафарни iumrah Care’га топширинг."), fontSize = 14.sp, lineHeight = 19.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
+            Text(
+                t(language, "Пока здесь нет активных бронирований. Начните с Конфигуратора или передайте сборку iumrah Care.", "There are no active bookings here yet. Start with the Configurator or let iumrah Care prepare the trip for you.", "Hozircha bu yerda faol bronlar yo‘q. Konfiguratorni oching yoki safarni iumrah Care’ga topshiring.", "Ҳозирча бу ерда фаол бронлар йўқ. Конфигураторни очинг ёки сафарни iumrah Care’га топширинг."),
+                fontSize = 14.5.sp,
+                lineHeight = 19.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExplorePackagesButton(language: AppLanguage, chrome: AppChromeStore) {
+    IumrahPressable(
+        onClick = { chrome.navigate(AppTab.HOTELS) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(58.dp),
+        cornerRadius = 20.dp,
+        background = Color.Black,
+        shadowElevation = 0.dp,
+    ) {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CupertinoIcon(CupertinoSymbol.SuitcaseFill, null, Modifier.size(16.dp), Color.White)
+            Text(
+                t(language, "Смотреть готовые пакеты", "Explore Packages", "Tayyor paketlarni ko‘rish", "Тайёр пакетларни кўриш"),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+            )
+            Spacer(Modifier.weight(1f))
+            CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(14.dp), Color.White)
         }
     }
 }
@@ -810,6 +1899,7 @@ private fun EmptyStatusCard(language: AppLanguage) {
 @Composable
 private fun EmptyShowcaseCard(
     imageRes: Int,
+    imageBackground: Color,
     eyebrow: String,
     badge: String,
     title: String,
@@ -823,32 +1913,74 @@ private fun EmptyShowcaseCard(
     val fg = if (dark) Color.White else Color.Black
     val buttonBg = if (dark) Color.White else Color.Black
     val buttonFg = if (dark) Color.Black else Color.White
-    IumrahPressable(onClick = onClick, modifier = Modifier.fillMaxWidth(), cornerRadius = 34.dp, background = bg, shadowElevation = 0.dp) {
+    val shape = RoundedCornerShape(34.dp)
+
+    IumrahPressable(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(.8.dp, (if (dark) Color.White else Color.Black).copy(alpha = if (dark) .06f else .055f), shape),
+        cornerRadius = 34.dp,
+        background = bg,
+        shadowElevation = 0.dp,
+    ) {
         Column(Modifier.fillMaxWidth()) {
-            Image(
-                painter = painterResource(imageRes),
-                contentDescription = null,
-                modifier = Modifier.fillMaxWidth().height(236.dp),
-                contentScale = ContentScale.Crop,
-            )
-            Column(Modifier.fillMaxWidth().padding(20.dp)) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(236.dp)
+                    .background(imageBackground),
+            ) {
+                Image(
+                    painter = painterResource(imageRes),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { scaleX = 1.08f; scaleY = 1.08f },
+                    contentScale = ContentScale.Crop,
+                )
+            }
+
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 222.dp)
+                    .padding(20.dp),
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CupertinoIcon(icon, null, Modifier.size(16.dp), fg.copy(alpha = .72f))
-                    Spacer(Modifier.width(7.dp))
-                    Text(eyebrow, color = fg.copy(alpha = .72f), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = .45.sp)
+                    val eyebrowColor = if (dark) Color.White.copy(alpha = .78f) else Color.Black.copy(alpha = .58f)
+                    CupertinoIcon(icon, null, Modifier.size(15.dp), eyebrowColor)
+                    Spacer(Modifier.width(8.dp))
+                    Text(eyebrow, color = eyebrowColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = .45.sp)
                     Spacer(Modifier.weight(1f))
-                    Box(Modifier.height(29.dp).clip(RoundedCornerShape(999.dp)).background(fg.copy(alpha = .08f)).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
-                        Text(badge, color = fg.copy(alpha = .72f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Box(
+                        Modifier
+                            .height(29.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(fg.copy(alpha = if (dark) .10f else .055f))
+                            .padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(badge, color = if (dark) Color.White.copy(alpha = .82f) else Color.Black.copy(alpha = .62f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Spacer(Modifier.height(15.dp))
                 Text(title, color = fg, fontSize = 31.sp, lineHeight = 35.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.75).sp)
                 Spacer(Modifier.height(8.dp))
-                Text(body, color = fg.copy(alpha = .64f), fontSize = 15.sp, lineHeight = 21.sp)
-                Spacer(Modifier.height(20.dp))
-                Row(Modifier.fillMaxWidth().height(54.dp).clip(RoundedCornerShape(18.dp)).background(buttonBg).padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(cta, color = buttonFg, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.weight(1f)); CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(18.dp), buttonFg)
+                Text(body, color = if (dark) Color.White.copy(alpha = .68f) else Color.Black.copy(alpha = .62f), fontSize = 15.sp, lineHeight = 21.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.weight(1f))
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(buttonBg)
+                        .padding(horizontal = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(cta, color = buttonFg, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.weight(1f))
+                    CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(15.dp), buttonFg)
                 }
             }
         }
@@ -858,104 +1990,391 @@ private fun EmptyShowcaseCard(
 @Composable
 private fun SectionHeader(title: String, trailing: String?) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-        Text(title, fontSize = 24.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.35).sp, modifier = Modifier.weight(1f))
-        trailing?.let { Text(it, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f)) }
+        Text(
+            title,
+            fontSize = 24.sp,
+            lineHeight = 29.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-.35).sp,
+            modifier = Modifier.weight(1f),
+        )
+        trailing?.let {
+            Text(
+                it,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+            )
+        }
     }
 }
 
+@Composable
+private fun DividerLine(start: androidx.compose.ui.unit.Dp) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = start)
+            .height(.7.dp)
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = .07f)),
+    )
+}
+
+private data class LifecyclePhase(val kind: LifecycleKind, val deadlineMs: Long, val symbol: CupertinoSymbol)
+private enum class LifecycleKind { AVAILABILITY, PRICE_LOCK, PAYMENT_CONFIRMATION, DOCUMENTS }
+
+private fun lifecyclePhase(session: StoredBookingSession): LifecyclePhase? {
+    return when (session.effectiveStatus.uppercase()) {
+        "NEW", "AVAILABILITY_CHECK" -> lifecycleDeadline(
+            explicit = session.availabilityDeadlineAt,
+            start = session.availabilityStartedAt ?: session.booking.createdAt,
+            durationMs = 6L * 60 * 60 * 1000,
+        )?.let { LifecyclePhase(LifecycleKind.AVAILABILITY, it, CupertinoSymbol.CalendarClock) }
+
+        "PAYMENT_PENDING" -> {
+            if (!session.paymentReceivedAt.isNullOrBlank()) {
+                lifecycleDeadline(
+                    explicit = session.paymentConfirmationDeadlineAt,
+                    start = session.paymentReceivedAt,
+                    durationMs = 10L * 60 * 1000,
+                )?.let { LifecyclePhase(LifecycleKind.PAYMENT_CONFIRMATION, it, CupertinoSymbol.CheckCircle) }
+            } else {
+                lifecycleDeadline(
+                    explicit = session.priceLockExpiresAt,
+                    start = session.priceLockStartedAt
+                        ?: transitionDate("payment_pending", session)
+                        ?: session.booking.updatedAt,
+                    durationMs = 30L * 60 * 1000,
+                )?.let { LifecyclePhase(LifecycleKind.PRICE_LOCK, it, CupertinoSymbol.CreditCard) }
+            }
+        }
+
+        "PAID", "BOOKING_CONFIRMED" -> lifecycleDeadline(
+            explicit = session.documentsDeadlineAt,
+            start = session.documentsStartedAt
+                ?: transitionDate("booking_confirmed", session)
+                ?: transitionDate("paid", session)
+                ?: session.booking.updatedAt,
+            durationMs = 24L * 60 * 60 * 1000,
+        )?.let { LifecyclePhase(LifecycleKind.DOCUMENTS, it, CupertinoSymbol.Document) }
+
+        else -> null
+    }
+}
+
+private fun lifecycleDeadline(explicit: String?, start: String?, durationMs: Long): Long? {
+    parseInstantMs(explicit)?.let { return it }
+    return parseInstantMs(start)?.plus(durationMs)
+}
+
+private fun transitionDate(status: String, session: StoredBookingSession): String? =
+    session.orderedStatusHistory.lastOrNull {
+        it.newStatus.trim().equals(status.trim(), ignoreCase = true)
+    }?.createdAt
+
+private fun lifecycleTimerTitle(language: AppLanguage, kind: LifecycleKind, expired: Boolean): String = when (kind) {
+    LifecycleKind.AVAILABILITY -> if (expired) {
+        t(language, "Проверка занимает дольше обычного", "The check is taking longer than usual", "Tekshiruv odatdagidan uzoqroq davom etmoqda", "Текширув одатдагидан узоқроқ давом этмоқда")
+    } else t(language, "До максимального срока проверки", "Until the maximum check time", "Tekshiruvning maksimal muddatigacha", "Текширувнинг максимал муддатигача")
+
+    LifecycleKind.PRICE_LOCK -> if (expired) {
+        t(language, "Срок фиксации цены завершён", "Price hold has ended", "Narxni saqlash muddati tugadi", "Нархни сақлаш муддати тугади")
+    } else t(language, "Цена зафиксирована ещё", "Price held for", "Narx yana shuncha vaqtga saqlanadi", "Нарх яна шунча вақтга сақланади")
+
+    LifecycleKind.PAYMENT_CONFIRMATION -> if (expired) {
+        t(language, "Подтверждение занимает дольше обычного", "Confirmation is taking longer than usual", "Tasdiqlash odatdagidan uzoqroq davom etmoqda", "Тасдиқлаш одатдагидан узоқроқ давом этмоқда")
+    } else t(language, "Подтверждаем оплату", "Confirming payment", "To‘lov tasdiqlanmoqda", "Тўлов тасдиқланмоқда")
+
+    LifecycleKind.DOCUMENTS -> if (expired) {
+        t(language, "Подготовка занимает дольше обычного", "Preparation is taking longer than usual", "Tayyorlash odatdagidan uzoqroq davom etmoqda", "Тайёрлаш одатдагидан узоқроқ давом этмоқда")
+    } else t(language, "Плановый срок подготовки", "Planned preparation time", "Rejalashtirilgan tayyorlash muddati", "Режалаштирилган тайёрлаш муддати")
+}
+
+private fun lifecycleTimerFootnote(language: AppLanguage, kind: LifecycleKind, expired: Boolean): String = when (kind) {
+    LifecycleKind.AVAILABILITY -> if (expired) {
+        t(language, "Мы продолжаем проверку. Статус обновится автоматически, как только все компоненты будут подтверждены.", "We are continuing the check. The status will update automatically once all components are confirmed.", "Tekshiruv davom etmoqda. Barcha qismlar tasdiqlangach holat avtomatik yangilanadi.", "Текширув давом этмоқда. Барча қисмлар тасдиқлангач ҳолат автоматик янгиланади.")
+    } else {
+        t(language, "Обычно подтверждение занимает 1–2 часа. Можно закрыть приложение — статус обновится автоматически.", "Confirmation usually takes 1–2 hours. You can close the app — the status will update automatically.", "Tasdiqlash odatda 1–2 soat davom etadi. Ilovani yopishingiz mumkin — holat avtomatik yangilanadi.", "Тасдиқлаш одатда 1–2 соат давом этади. Иловани ёпишингиз мумкин — ҳолат автоматик янгиланади.")
+    }
+
+    LifecycleKind.PRICE_LOCK -> if (expired) {
+        t(language, "Перед подтверждением оплаты iumrah повторно проверит актуальную итоговую стоимость.", "Before confirming payment, iumrah will recheck the current total price.", "To‘lovni tasdiqlashdan oldin iumrah yakuniy narxning dolzarbligini qayta tekshiradi.", "Тўловни тасдиқлашдан олдин iumrah якуний нархнинг долзарблигини қайта текширади.")
+    } else {
+        t(language, "Авиабилеты и некоторые другие компоненты имеют динамическую стоимость и после окончания периода могут потребовать повторной проверки.", "Flights and some other components have dynamic pricing and may require a fresh check after this period.", "Aviachiptalar va ayrim boshqa qismlar dinamik narxga ega, muddat tugagach qayta tekshiruv talab qilinishi mumkin.", "Авиачипталар ва айрим бошқа қисмлар динамик нархга эга, муддат тугагач қайта текширув талаб қилиниши мумкин.")
+    }
+
+    LifecycleKind.PAYMENT_CONFIRMATION -> t(language,
+        "Оплата получена. Обычно проверка и окончательная фиксация бронирования занимают до 10 минут.",
+        "Payment received. Verification and final booking confirmation usually take up to 10 minutes.",
+        "To‘lov qabul qilindi. Tekshiruv va bronni yakuniy tasdiqlash odatda 10 daqiqagacha davom etadi.",
+        "Тўлов қабул қилинди. Текширув ва бронни якуний тасдиқлаш одатда 10 дақиқагача давом этади.",
+    )
+
+    LifecycleKind.DOCUMENTS -> t(language,
+        "Обычно доступные документы готовятся в течение 24 часов. Срок визы может зависеть от доступности официальных визовых систем Саудовской Аравии и внешних ограничений.",
+        "Available travel documents are usually prepared within 24 hours. Visa timing can depend on the availability of Saudi Arabia’s official visa systems and external restrictions.",
+        "Mavjud safar hujjatlari odatda 24 soat ichida tayyorlanadi. Viza muddati Saudiya Arabistonining rasmiy viza tizimlari mavjudligi va tashqi cheklovlarga bog‘liq bo‘lishi mumkin.",
+        "Мавжуд сафар ҳужжатлари одатда 24 соат ичида тайёрланади. Виза муддати Саудия Арабистонининг расмий виза тизимлари мавжудлиги ва ташқи чекловларга боғлиқ бўлиши мумкин.",
+    )
+}
+
+private fun lifecycleCountdown(ms: Long): String {
+    val total = (ms / 1000).coerceAtLeast(0)
+    val hours = total / 3600
+    val minutes = (total % 3600) / 60
+    val seconds = total % 60
+    return "%02d:%02d:%02d".format(hours, minutes, seconds)
+}
+
+private fun activeStageSubtitle(language: AppLanguage, session: StoredBookingSession, stage: ProgressStage): String =
+    when (lifecyclePhase(session)?.kind) {
+        LifecycleKind.PAYMENT_CONFIRMATION -> t(language, "Оплата получена · подтверждаем бронирование", "Payment received · confirming booking", "To‘lov qabul qilindi · bron tasdiqlanmoqda", "Тўлов қабул қилинди · брон тасдиқланмоқда")
+        LifecycleKind.DOCUMENTS -> t(language, "Бронирование подтверждено · готовим документы", "Booking confirmed · preparing documents", "Bron tasdiqlandi · hujjatlar tayyorlanmoqda", "Брон тасдиқланди · ҳужжатлар тайёрланмоқда")
+        else -> stageSubtitle(language, stage)
+    }
+
+private fun activeCardTitle(language: AppLanguage, session: StoredBookingSession, stage: ProgressStage): String =
+    when (lifecyclePhase(session)?.kind) {
+        LifecycleKind.PRICE_LOCK -> t(language, "Цена зафиксирована", "Price held", "Narx saqlandi", "Нарх сақланди")
+        LifecycleKind.PAYMENT_CONFIRMATION -> t(language, "Оплата получена", "Payment received", "To‘lov qabul qilindi", "Тўлов қабул қилинди")
+        LifecycleKind.DOCUMENTS -> t(language, "Подготавливаем документы", "Preparing documents", "Hujjatlar tayyorlanmoqda", "Ҳужжатлар тайёрланмоқда")
+        else -> stageCardTitle(language, stage)
+    }
+
+private fun activeCardBody(language: AppLanguage, session: StoredBookingSession, stage: ProgressStage): String =
+    when (lifecyclePhase(session)?.kind) {
+        LifecycleKind.AVAILABILITY -> t(language, "iumrah подтверждает перелёт, отель и выбранные услуги. Обычно это занимает 1–2 часа, максимальный срок — до 6 часов.", "iumrah is confirming your flight, hotel and selected services. This usually takes 1–2 hours, with a maximum target of 6 hours.", "iumrah parvoz, mehmonxona va tanlangan xizmatlarni tasdiqlamoqda. Odatda 1–2 soat, maksimal muddat 6 soatgacha.", "iumrah парвоз, меҳмонхона ва танланган хизматларни тасдиқламоқда. Одатда 1–2 соат, максимал муддат 6 соатгача.")
+        LifecycleKind.PRICE_LOCK -> t(language, "Итоговая цена пакета зафиксирована на время оплаты.", "Your package total is held during the payment window.", "Paketning yakuniy narxi to‘lov oynasi davomida saqlanadi.", "Пакетнинг якуний нархи тўлов ойнаси давомида сақланади.")
+        LifecycleKind.PAYMENT_CONFIRMATION -> t(language, "Проверяем полученную оплату и окончательно фиксируем бронирование.", "We are verifying the payment and finalizing your booking.", "Qabul qilingan to‘lov tekshirilmoqda va bron yakuniy tasdiqlanmoqda.", "Қабул қилинган тўлов текширилмоқда ва брон якуний тасдиқланмоқда.")
+        LifecycleKind.DOCUMENTS -> t(language, "Бронирование подтверждено. Теперь готовим доступные документы поездки.", "Your booking is confirmed. We are now preparing the available travel documents.", "Bron tasdiqlandi. Endi mavjud safar hujjatlari tayyorlanmoqda.", "Брон тасдиқланди. Энди мавжуд сафар ҳужжатлари тайёрланмоқда.")
+        null -> stageCardBody(language, stage)
+    }
+
 private fun progressIndex(status: String): Int = when (status.uppercase()) {
-    "NEW", "CREATED" -> 0
-    "AVAILABILITY_CHECK" -> 1
+    "NEW", "AVAILABILITY_CHECK" -> 1
     "PAYMENT_PENDING" -> 2
     "PAID", "BOOKING_CONFIRMED" -> 3
     "DOCUMENTS_READY", "READY_TO_TRAVEL" -> 4
     "IN_TRIP" -> 5
     "COMPLETED" -> 6
-    "CANCELLED" -> 0
+    "CANCELLED" -> 1
     else -> 1
 }
 
 private fun statusColor(status: String): Color = when (status.uppercase()) {
-    "NEW", "AVAILABILITY_CHECK" -> Color(0xFF007AFF)
-    "PAYMENT_PENDING" -> Color(0xFFFF9500)
-    "PAID", "BOOKING_CONFIRMED" -> Color(0xFF34C759)
-    "DOCUMENTS_READY", "READY_TO_TRAVEL" -> Color(0xFF32ADE6)
-    "IN_TRIP" -> Color(0xFFAF52DE)
-    "COMPLETED" -> Color(0xFF34C759)
-    "CANCELLED" -> Color(0xFFFF3B30)
-    else -> Color(0xFF8E8E93)
+    "NEW", "AVAILABILITY_CHECK" -> iOSYellow
+    "PAYMENT_PENDING" -> iOSOrange
+    "PAID", "BOOKING_CONFIRMED" -> iOSGreen
+    "DOCUMENTS_READY", "READY_TO_TRAVEL" -> iOSTeal
+    "IN_TRIP" -> iOSBlue
+    "COMPLETED" -> iOSIndigo
+    "CANCELLED" -> iOSRed
+    else -> iOSOrange
 }
 
 private fun statusIcon(status: String): CupertinoSymbol = when (status.uppercase()) {
-    "NEW", "AVAILABILITY_CHECK" -> CupertinoSymbol.CalendarClock
+    "NEW", "AVAILABILITY_CHECK" -> CupertinoSymbol.Hourglass
     "PAYMENT_PENDING" -> CupertinoSymbol.CreditCard
-    "PAID", "BOOKING_CONFIRMED" -> CupertinoSymbol.Document
-    "DOCUMENTS_READY", "READY_TO_TRAVEL" -> CupertinoSymbol.CheckCircle
-    "IN_TRIP" -> CupertinoSymbol.Airplane
+    "PAID", "BOOKING_CONFIRMED" -> CupertinoSymbol.CheckCircle
+    "DOCUMENTS_READY", "READY_TO_TRAVEL" -> CupertinoSymbol.ShieldCheck
+    "IN_TRIP" -> CupertinoSymbol.Location
     "COMPLETED" -> CupertinoSymbol.CheckCircle
     "CANCELLED" -> CupertinoSymbol.ExclamationCircle
-    else -> CupertinoSymbol.CalendarClock
+    else -> CupertinoSymbol.Suitcase
 }
 
-private fun activeCardTitle(language: AppLanguage, status: String): String = when (status.uppercase()) {
-    "NEW", "AVAILABILITY_CHECK" -> t(language, "Проверяем ваш пакет", "Checking your package", "Paketingiz tekshirilmoqda", "Пакетингиз текширилмоқда")
-    "PAYMENT_PENDING" -> t(language, "Наличие подтверждено", "Availability confirmed", "Mavjudlik tasdiqlandi", "Мавжудлик тасдиқланди")
-    "PAID", "BOOKING_CONFIRMED" -> t(language, "Бронирование подтверждено", "Booking confirmed", "Bron tasdiqlandi", "Брон тасдиқланди")
-    "DOCUMENTS_READY", "READY_TO_TRAVEL" -> t(language, "Готово к поездке", "Ready to travel", "Safarga tayyor", "Сафарга тайёр")
-    "IN_TRIP" -> t(language, "Ваша Umrah идёт", "Your Umrah is underway", "Umrangiz davom etmoqda", "Умрангиз давом этмоқда")
-    "COMPLETED" -> t(language, "Поездка завершена", "Trip completed", "Safar yakunlandi", "Сафар якунланди")
-    else -> L10n.status(status, language)
+private fun activeNodeForeground(status: String): Color = when (status.uppercase()) {
+    "NEW", "AVAILABILITY_CHECK" -> Color.Black.copy(alpha = .78f)
+    else -> Color.White
 }
 
-private fun activeCardBody(language: AppLanguage, status: String): String = when (status.uppercase()) {
-    "NEW", "AVAILABILITY_CHECK" -> t(language, "iumrah подтверждает выбранные позиции. Пока идёт проверка, можно заранее заполнить анкеты паломников.", "iumrah is confirming the selected items. While the check is running, you can complete pilgrim forms in advance.", "iumrah tanlangan xizmatlarni tasdiqlamoqda. Tekshiruv davomida ziyoratchilar anketalarini oldindan to‘ldirish mumkin.", "iumrah танланган хизматларни тасдиқламоқда. Текширув давомида зиёратчилар анкеталарини олдиндан тўлдириш мумкин.")
-    "PAYMENT_PENDING" -> t(language, "Проверьте данные паломников и перейдите к оплате, чтобы закрепить бронирование.", "Review pilgrim details and continue to payment to secure the booking.", "Bronni mustahkamlash uchun ziyoratchilar ma’lumotlarini tekshiring va to‘lovga o‘ting.", "Бронни мустаҳкамлаш учун зиёратчилар маълумотларини текширинг ва тўловга ўтинг.")
-    "PAID", "BOOKING_CONFIRMED" -> t(language, "Перелёт, проживание и выбранные услуги закреплены. Все детали доступны внутри бронирования.", "Flight, stay and selected services are secured. Full details are available inside the booking.", "Parvoz, yashash va tanlangan xizmatlar band qilindi. Barcha tafsilotlar bron ichida mavjud.", "Парвоз, яшаш ва танланган хизматлар банд қилинди. Барча тафсилотлар брон ичида мавжуд.")
-    "DOCUMENTS_READY", "READY_TO_TRAVEL" -> t(language, "Проверьте билеты, бронирования и документы перед выездом.", "Review tickets, reservations and travel documents before departure.", "Jo‘nashdan oldin chiptalar, bronlar va hujjatlarni tekshiring.", "Жўнашдан олдин чипталар, бронлар ва ҳужжатларни текширинг.")
-    "IN_TRIP" -> t(language, "Маршрут, отель, расписание и помощь iumrah остаются под рукой на протяжении поездки.", "Your route, hotel, schedule and iumrah support stay close throughout the trip.", "Yo‘nalish, mehmonxona, jadval va iumrah yordami safar davomida doimo yoningizda.", "Йўналиш, меҳмонхона, жадвал ва iumrah ёрдами сафар давомида доимо ёнингизда.")
-    else -> t(language, "Статус обновится автоматически при следующем изменении.", "The status will update automatically when it changes.", "Holat keyingi o‘zgarishda avtomatik yangilanadi.", "Ҳолат кейинги ўзгаришда автоматик янгиланади.")
+private fun stageTitle(language: AppLanguage, stage: ProgressStage): String =
+    t(language, stage.titleRu, stage.titleEn, stage.titleUz, stage.titleCy)
+
+private fun stageSubtitle(language: AppLanguage, stage: ProgressStage): String =
+    t(language, stage.subtitleRu, stage.subtitleEn, stage.subtitleUz, stage.subtitleCy)
+
+private fun stageCardTitle(language: AppLanguage, stage: ProgressStage): String =
+    t(language, stage.cardTitleRu, stage.cardTitleEn, stage.cardTitleUz, stage.cardTitleCy)
+
+private fun stageCardBody(language: AppLanguage, stage: ProgressStage): String =
+    t(language, stage.cardBodyRu, stage.cardBodyEn, stage.cardBodyUz, stage.cardBodyCy)
+
+private fun cancelledStage(language: AppLanguage): ProgressStage = ProgressStage(
+    "CANCELLED",
+    t(language, "Бронирование отменено", "Booking cancelled", "Bron bekor qilindi", "Брон бекор қилинди"),
+    t(language, "Booking cancelled", "Booking cancelled", "Booking cancelled", "Booking cancelled"),
+    t(language, "Bron bekor qilindi", "Bron bekor qilindi", "Bron bekor qilindi", "Bron bekor qilindi"),
+    t(language, "Брон бекор қилинди", "Брон бекор қилинди", "Брон бекор қилинди", "Брон бекор қилинди"),
+    t(language, "Поездка остановлена", "The trip has been stopped", "Safar to‘xtatildi", "Сафар тўхтатилди"),
+    t(language, "The trip has been stopped", "The trip has been stopped", "The trip has been stopped", "The trip has been stopped"),
+    t(language, "Safar to‘xtatildi", "Safar to‘xtatildi", "Safar to‘xtatildi", "Safar to‘xtatildi"),
+    t(language, "Сафар тўхтатилди", "Сафар тўхтатилди", "Сафар тўхтатилди", "Сафар тўхтатилди"),
+    cardBodyRu = "Откройте бронирование, чтобы посмотреть сохранённые детали поездки и доступные действия.",
+    cardBodyEn = "Open the booking to review the saved trip details and available actions.",
+    cardBodyUz = "Saqlangan safar tafsilotlari va mavjud amallarni ko‘rish uchun bronni oching.",
+    cardBodyCy = "Сақланган сафар тафсилотлари ва мавжуд амалларни кўриш учун бронни очинг.",
+)
+
+private fun progressCounter(language: AppLanguage, current: Int, total: Int): String =
+    when (language) {
+        AppLanguage.RUSSIAN -> "${current + 1} из $total"
+        AppLanguage.ENGLISH -> "${current + 1} of $total"
+        else -> "${current + 1} / $total"
+    }
+
+private fun stageTimestamp(index: Int, current: Int, session: StoredBookingSession, cancelled: Boolean): String? = when (index) {
+    0 -> session.booking.createdAt
+    1 -> if (cancelled) {
+        session.latestStatusTimestamp(setOf("cancelled"))
+            ?: transitionDate("cancelled", session)
+            ?: session.booking.updatedAt
+    } else {
+        session.availabilityStartedAt
+            ?: session.latestStatusTimestamp(setOf("availability_check", "new"))
+            ?: session.booking.createdAt
+    }
+    2 -> session.priceLockStartedAt
+        ?: session.latestStatusTimestamp(setOf("payment_pending"))
+        ?: session.booking.updatedAt
+    3 -> session.documentsStartedAt
+        ?: session.latestStatusTimestamp(setOf("booking_confirmed", "paid"))
+        ?: session.paymentReceivedAt
+        ?: session.booking.updatedAt
+    4 -> session.latestStatusTimestamp(setOf("ready_to_travel", "documents_ready"))
+        ?: transitionDate("ready_to_travel", session)
+        ?: session.booking.updatedAt
+    5 -> session.latestStatusTimestamp(setOf("in_trip"))
+        ?: transitionDate("in_trip", session)
+        ?: session.booking.updatedAt
+    6 -> session.latestStatusTimestamp(setOf("completed"))
+        ?: transitionDate("completed", session)
+        ?: session.booking.updatedAt
+    else -> null
 }
 
-private fun statusOverviewTitle(language: AppLanguage, session: StoredBookingSession, checkout: IumrahCheckoutResponse?): String {
-    val status = session.effectiveStatus.uppercase()
-    val total = checkout?.travelers?.size ?: session.booking.input.travelers.totalPeople
-    val completed = checkout?.travelers?.count { it.completed } ?: 0
-    val travelersReady = total > 0 && completed >= total
-    val receiptReady = !checkout?.receipts.isNullOrEmpty()
-    return when (status) {
-        "NEW", "AVAILABILITY_CHECK" -> t(language, "Проверяем наличие", "Checking availability", "Mavjudlik tekshirilmoqda", "Мавжудлик текширилмоқда")
-        "PAYMENT_PENDING" -> when {
-            receiptReady && travelersReady -> t(language, "Проверяем оплату", "Checking payment", "To‘lov tekshirilmoqda", "Тўлов текширилмоқда")
-            receiptReady -> t(language, "Ожидаем данные паломников", "Waiting for pilgrim details", "Ziyoratchilar ma’lumotlari kutilmoqda", "Зиёратчилар маълумотлари кутилмоқда")
-            travelersReady -> t(language, "Ожидаем оплату", "Waiting for payment", "To‘lov kutilmoqda", "Тўлов кутилмоқда")
-            else -> t(language, "Ожидаем оплату и данные паломников", "Waiting for payment and pilgrim details", "To‘lov va ziyoratchilar ma’lumotlari kutilmoqda", "Тўлов ва зиёратчилар маълумотлари кутилмоқда")
+private fun compactTimestamp(raw: String, language: AppLanguage): String {
+    val instant = runCatching { Instant.parse(raw) }.getOrNull() ?: return raw.take(10)
+    val locale = when (language) {
+        AppLanguage.RUSSIAN -> Locale("ru")
+        AppLanguage.ENGLISH -> Locale.ENGLISH
+        AppLanguage.UZBEK -> Locale("uz")
+        AppLanguage.UZBEK_CYRILLIC -> Locale("uz", "Cyrl")
+    }
+    return DateTimeFormatter.ofPattern("d MMM · HH:mm", locale)
+        .withZone(ZoneId.systemDefault())
+        .format(instant)
+}
+
+private fun previewItineraryItems(
+    session: StoredBookingSession,
+    remote: List<BookingItineraryItem>,
+): List<BookingItineraryItem> {
+    val distinctDays = remote.map { it.dateLocal }.toSet().size
+    val source = if (distinctDays >= 2) {
+        remote.sortedWith(compareBy<BookingItineraryItem> { it.dateLocal }.thenBy { it.sortOrder })
+    } else {
+        buildList {
+        add(
+            BookingItineraryItem(
+                id = "generated-outbound",
+                bookingID = session.id,
+                dateLocal = session.booking.input.startDate,
+                sortOrder = 0,
+                title = "${session.booking.route.originCode} → ${session.booking.route.outboundDestination}",
+                subtitle = session.booking.flight,
+                icon = "airplane",
+                location = session.booking.route.outboundDestination,
+                notes = "",
+                createdAt = session.booking.createdAt,
+                updatedAt = session.booking.updatedAt,
+            ),
+        )
+        add(
+            BookingItineraryItem(
+                id = "generated-makkah",
+                bookingID = session.id,
+                dateLocal = session.booking.stay.makkahCheckIn,
+                sortOrder = 10,
+                title = session.booking.hotelNames.makkah,
+                subtitle = "Makkah · ${session.booking.stay.makkahNights} nights",
+                icon = "building.2",
+                location = "Makkah",
+                notes = "",
+                createdAt = session.booking.createdAt,
+                updatedAt = session.booking.updatedAt,
+            ),
+        )
+        if (session.booking.input.includeMadinah && session.booking.hotelNames.madinah.isNotBlank()) {
+            add(
+                BookingItineraryItem(
+                    id = "generated-madinah",
+                    bookingID = session.id,
+                    dateLocal = session.booking.stay.madinahCheckIn ?: session.booking.input.endDate,
+                    sortOrder = 20,
+                    title = session.booking.hotelNames.madinah,
+                    subtitle = "Madinah · ${session.booking.stay.madinahNights ?: 0} nights",
+                    icon = "building.2",
+                    location = "Madinah",
+                    notes = "",
+                    createdAt = session.booking.createdAt,
+                    updatedAt = session.booking.updatedAt,
+                ),
+            )
         }
-        "PAID", "BOOKING_CONFIRMED" -> t(language, "Готовим документы", "Preparing documents", "Hujjatlar tayyorlanmoqda", "Ҳужжатлар тайёрланмоқда")
-        else -> L10n.status(session.effectiveStatus, language)
+        add(
+            BookingItineraryItem(
+                id = "generated-return",
+                bookingID = session.id,
+                dateLocal = session.booking.input.endDate,
+                sortOrder = 30,
+                title = "${session.booking.route.returnOrigin} → ${session.booking.route.originCode}",
+                subtitle = session.booking.flight,
+                icon = "airplane",
+                location = session.booking.route.originCode,
+                notes = "",
+                createdAt = session.booking.createdAt,
+                updatedAt = session.booking.updatedAt,
+            ),
+        )
+        }
+    }
+    if (source.isEmpty()) return emptyList()
+    val today = LocalDate.now(ZoneId.of("Asia/Riyadh")).toString()
+    val upcoming = source.filter { it.dateLocal >= today }
+    return if (upcoming.isNotEmpty()) upcoming.take(3) else source.takeLast(3)
+}
+
+private fun compactDate(raw: String, language: AppLanguage): String {
+    val date = runCatching { LocalDate.parse(raw) }.getOrNull() ?: return raw
+    val locale = when (language) {
+        AppLanguage.RUSSIAN -> Locale("ru")
+        AppLanguage.ENGLISH -> Locale.ENGLISH
+        AppLanguage.UZBEK -> Locale("uz")
+        AppLanguage.UZBEK_CYRILLIC -> Locale("uz", "Cyrl")
+    }
+    return DateTimeFormatter.ofPattern("d MMM", locale).format(date)
+}
+
+private fun safeItineraryIcon(raw: String): CupertinoSymbol {
+    val value = raw.lowercase()
+    return when {
+        "airplane" in value -> CupertinoSymbol.Airplane
+        "hotel" in value || "building" in value || "bed" in value -> CupertinoSymbol.Hotel
+        "car" in value || "bus" in value -> CupertinoSymbol.Car
+        "map" in value || "location" in value -> CupertinoSymbol.Route
+        "meal" in value || "fork" in value -> CupertinoSymbol.ForkKnife
+        "doc" in value || "ticket" in value -> CupertinoSymbol.Document
+        else -> CupertinoSymbol.CalendarClock
     }
 }
 
-private fun statusOverviewBody(language: AppLanguage, session: StoredBookingSession, checkout: IumrahCheckoutResponse?): String {
-    val status = session.effectiveStatus.uppercase()
-    val total = checkout?.travelers?.size ?: session.booking.input.travelers.totalPeople
-    val completed = checkout?.travelers?.count { it.completed } ?: 0
-    val travelersReady = total > 0 && completed >= total
-    val receiptReady = !checkout?.receipts.isNullOrEmpty()
-    return when (status) {
-        "NEW", "AVAILABILITY_CHECK" -> t(language, "Пока iumrah подтверждает авиабилеты, отель и услуги, можно заранее заполнить анкеты всех паломников — это ускорит следующий этап.", "While iumrah confirms flights, hotel and services, you can complete every pilgrim form in advance to make the next step faster.", "iumrah aviachiptalar, mehmonxona va xizmatlarni tasdiqlayotganda barcha ziyoratchilar anketalarini oldindan to‘ldirishingiz mumkin — keyingi bosqich tezroq o‘tadi.", "iumrah авиачипталар, меҳмонхона ва хизматларни тасдиқлаётганда барча зиёратчилар анкеталарини олдиндан тўлдиришингиз мумкин — кейинги босқич тезроқ ўтади.")
-        "PAYMENT_PENDING" -> when {
-            receiptReady && travelersReady -> t(language, "Чек и анкеты получены. Бронирование автоматически обновится после проверки оплаты.", "Receipt and pilgrim forms are received. The booking will update automatically after payment verification.", "Chek va anketalar qabul qilindi. To‘lov tekshirilgach bron avtomatik yangilanadi.", "Чек ва анкеталар қабул қилинди. Тўлов текширилгач брон автоматик янгиланади.")
-            receiptReady -> t(language, "Оплата получена. Осталось заполнить паспортные данные всех паломников.", "Payment is received. Complete the passport details for every pilgrim.", "To‘lov qabul qilindi. Endi barcha ziyoratchilarning pasport ma’lumotlarini to‘ldiring.", "Тўлов қабул қилинди. Энди барча зиёратчиларнинг паспорт маълумотларини тўлдиринг.")
-            travelersReady -> t(language, "Анкеты паломников заполнены. Осталось оплатить по реквизитам и прикрепить чек.", "Pilgrim forms are complete. Pay using the provided details and attach the receipt.", "Ziyoratchilar anketalari tayyor. Rekvizitlar bo‘yicha to‘lang va chekni biriktiring.", "Зиёратчилар анкеталари тайёр. Реквизитлар бўйича тўланг ва чекни бириктиринг.")
-            else -> t(language, "Заполните паспортные данные паломников и оплатите бронирование. Оба действия можно выполнить в любом порядке.", "Complete pilgrim passport details and pay for the booking. You can do these in either order.", "Ziyoratchilar pasport ma’lumotlarini to‘ldiring va bron uchun to‘lang. Ikkalasini istalgan tartibda bajarish mumkin.", "Зиёратчилар паспорт маълумотларини тўлдиринг ва брон учун тўланг. Иккаласини исталган тартибда бажариш мумкин.")
-        }
-        "PAID", "BOOKING_CONFIRMED" -> t(language, "Оплата и данные получены. iumrah готовит билеты, подтверждения и документы поездки.", "Payment and details are received. iumrah is preparing tickets, confirmations and travel documents.", "To‘lov va ma’lumotlar qabul qilindi. iumrah chiptalar, tasdiqlar va safar hujjatlarini tayyorlamoqda.", "Тўлов ва маълумотлар қабул қилинди. iumrah чипталар, тасдиқлар ва сафар ҳужжатларини тайёрламоқда.")
-        else -> t(language, "Статус обновится автоматически при следующем изменении.", "The status will update automatically when it changes.", "Holat keyingi o‘zgarishda avtomatik yangilanadi.", "Ҳолат кейинги ўзгаришда автоматик янгиланади.")
-    }
+private fun shortBookingNumber(language: AppLanguage, number: String): String = when (language) {
+    AppLanguage.RUSSIAN -> "Бронь $number"
+    AppLanguage.ENGLISH -> "Booking $number"
+    AppLanguage.UZBEK -> "Bron $number"
+    AppLanguage.UZBEK_CYRILLIC -> "Брон $number"
 }
-
-private fun stageTitle(language: AppLanguage, stage: ProgressStage) = t(language, stage.titleRu, stage.titleEn, stage.titleUz, stage.titleCy)
-private fun stageSubtitle(language: AppLanguage, stage: ProgressStage) = t(language, stage.subtitleRu, stage.subtitleEn, stage.subtitleUz, stage.subtitleCy)
 
 private fun formatPrice(amount: Double): String = NumberFormat.getCurrencyInstance(Locale.US).apply {
     currency = Currency.getInstance("USD")
@@ -969,6 +2388,25 @@ private fun pilgrimCount(language: AppLanguage, count: Int): String = when (lang
     AppLanguage.UZBEK_CYRILLIC -> "$count зиёратчи"
 }
 
+private fun parseInstantMs(raw: String?): Long? {
+    if (raw.isNullOrBlank()) return null
+    return try {
+        Instant.parse(raw).toEpochMilli()
+    } catch (_: DateTimeParseException) {
+        null
+    }
+}
+
+private fun isoTime(raw: String): String = runCatching {
+    DateTimeFormatter.ofPattern("HH:mm")
+        .withZone(ZoneId.systemDefault())
+        .format(Instant.parse(raw))
+}.getOrElse { raw.takeLast(5) }
+
+private fun makkahTime(nowMs: Long): String = DateTimeFormatter.ofPattern("HH:mm")
+    .withZone(ZoneId.of("Asia/Riyadh"))
+    .format(Instant.ofEpochMilli(nowMs))
+
 private fun t(language: AppLanguage, ru: String, en: String, uz: String, cy: String): String = when (language) {
     AppLanguage.RUSSIAN -> ru
     AppLanguage.ENGLISH -> en
@@ -976,4 +2414,26 @@ private fun t(language: AppLanguage, ru: String, en: String, uz: String, cy: Str
     AppLanguage.UZBEK_CYRILLIC -> cy
 }
 
-private fun Color.luminance(): Float = .2126f * red + .7152f * green + .0722f * blue
+@Composable
+private fun bookingDarkMode(): Boolean = MaterialTheme.colorScheme.background.iosLuminance() < .45f
+
+/** iOS systemBackground used by the SwiftUI Booking tab. */
+@Composable
+private fun bookingPageColor(): Color = if (bookingDarkMode()) Color.Black else Color.White
+
+/** iOS secondarySystemGroupedBackground used by the SwiftUI booking cards. */
+@Composable
+private fun bookingCardColor(): Color = if (bookingDarkMode()) Color(0xFF1C1C1E) else Color.White
+
+/** iOS tertiarySystemGroupedBackground used by raised controls and icon wells. */
+@Composable
+private fun bookingRaisedColor(): Color = if (bookingDarkMode()) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
+
+/** Mirrors Color.iumrahPrimaryButtonBackground / Text from the iOS design system. */
+@Composable
+private fun bookingPrimaryButtonColor(): Color = if (bookingDarkMode()) Color(0xFFF5F5F7) else Color.Black
+
+@Composable
+private fun bookingPrimaryButtonTextColor(): Color = if (bookingDarkMode()) Color(0xFF121316) else Color.White
+
+private fun Color.iosLuminance(): Float = .2126f * red + .7152f * green + .0722f * blue

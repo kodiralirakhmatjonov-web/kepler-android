@@ -289,10 +289,34 @@ data class ClientTripSnapshot(
     val confirmationNumber: String? = null,
     val startDate: String? = null,
     val endDate: String? = null,
+    val createdAt: String? = null,
     val updatedAt: String? = null,
+    val completedAt: String? = null,
+    val availabilityStartedAt: String? = null,
+    val availabilityDeadlineAt: String? = null,
+    val priceLockStartedAt: String? = null,
+    val priceLockExpiresAt: String? = null,
+    val paymentReceivedAt: String? = null,
+    val paymentConfirmationDeadlineAt: String? = null,
+    val documentsStartedAt: String? = null,
+    val documentsDeadlineAt: String? = null,
 )
 
-@Serializable data class ClientTripResponse(val ok: Boolean? = null, val trip: ClientTripSnapshot, val assignment: ClientBookingAssignment? = null, val esims: List<ClientESIMProfile>? = null)
+@Serializable
+data class BookingStatusHistoryEntry(
+    val oldStatus: String? = null,
+    val newStatus: String,
+    val createdAt: String,
+)
+
+@Serializable
+data class ClientTripResponse(
+    val ok: Boolean? = null,
+    val trip: ClientTripSnapshot,
+    val assignment: ClientBookingAssignment? = null,
+    val esims: List<ClientESIMProfile>? = null,
+    val statusHistory: List<BookingStatusHistoryEntry>? = null,
+)
 
 @Serializable
 data class StoredBookingSession(
@@ -313,9 +337,49 @@ data class StoredBookingSession(
     var pilgrimID: String? = null,
     var bookingNumber: Int? = null,
     var bookingDisplayNumber: String? = null,
+    var availabilityStartedAt: String? = null,
+    var availabilityDeadlineAt: String? = null,
+    var priceLockStartedAt: String? = null,
+    var priceLockExpiresAt: String? = null,
+    var paymentReceivedAt: String? = null,
+    var paymentConfirmationDeadlineAt: String? = null,
+    var documentsStartedAt: String? = null,
+    var documentsDeadlineAt: String? = null,
+    var statusHistory: List<BookingStatusHistoryEntry>? = null,
 ) {
     val displayBookingNumber: String get() = bookingDisplayNumber?.takeIf { it.isNotBlank() }
         ?: bookingNumber?.takeIf { it > 0 }?.let { "#%04d".format(it) } ?: "#----"
+
+    val orderedStatusHistory: List<BookingStatusHistoryEntry>
+        get() = statusHistory.orEmpty().sortedBy { it.createdAt }
+
+    fun latestStatusTimestamp(statuses: Set<String>): String? {
+        val normalized = statuses.map { it.trim().lowercase() }.toSet()
+        return orderedStatusHistory
+            .lastOrNull { it.newStatus.trim().lowercase() in normalized }
+            ?.createdAt
+    }
+
+    fun mergeOperationalTrip(
+        trip: ClientTripSnapshot,
+        history: List<BookingStatusHistoryEntry>? = null,
+        assignment: ClientBookingAssignment? = null,
+    ): StoredBookingSession = copy(
+        operationStatus = trip.status,
+        pilgrimID = trip.pilgrimID ?: pilgrimID,
+        bookingNumber = trip.bookingNumber ?: bookingNumber,
+        bookingDisplayNumber = trip.bookingDisplayNumber ?: bookingDisplayNumber,
+        guide = assignment?.guide ?: guide,
+        availabilityStartedAt = trip.availabilityStartedAt,
+        availabilityDeadlineAt = trip.availabilityDeadlineAt,
+        priceLockStartedAt = trip.priceLockStartedAt,
+        priceLockExpiresAt = trip.priceLockExpiresAt,
+        paymentReceivedAt = trip.paymentReceivedAt,
+        paymentConfirmationDeadlineAt = trip.paymentConfirmationDeadlineAt,
+        documentsStartedAt = trip.documentsStartedAt,
+        documentsDeadlineAt = trip.documentsDeadlineAt,
+        statusHistory = history ?: statusHistory,
+    )
 
     val effectiveStatus: String get() = when ((operationStatus ?: booking.status).lowercase()) {
         "new", "availability_check" -> "AVAILABILITY_CHECK"

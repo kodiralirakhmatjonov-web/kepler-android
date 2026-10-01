@@ -130,7 +130,7 @@ fun AppShell(
                 AppRoute.Root -> when (tab) {
                     AppTab.HOME -> HomeScreen(language, chrome)
                     AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, journey, airports, chrome)
-                    AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, accountService, chrome)
+                    AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, accountService, notifications, chrome)
                     AppTab.CARE -> CareHomeScreen(language, bookingStore, chatService, chrome)
                     AppTab.ACCOUNT -> AccountRootScreen(language, accountStore, bookingStore, settingsStore, notifications, chrome)
                 }
@@ -230,12 +230,14 @@ private fun IumrahBottomBar(
     val dark = MaterialTheme.colorScheme.background.red +
         MaterialTheme.colorScheme.background.green +
         MaterialTheme.colorScheme.background.blue < 1.5f
-    val glass = if (dark) Color(0xFF2C2C2E).copy(alpha = .90f) else Color.White.copy(alpha = .92f)
-    val border = if (dark) Color.White.copy(alpha = .12f) else Color.Black.copy(alpha = .10f)
-    val selectedTint = if (dark) Color(0xFF40C8E0) else Color(0xFF30B0C7)
-    val unselectedTint = if (dark) Color.White.copy(alpha = .62f) else Color.Black.copy(alpha = .54f)
-    val selectionFill = selectedTint.copy(alpha = if (dark) .17f else .12f)
-    val barShape = RoundedCornerShape(30.dp)
+    // iOS-style adaptive chrome: white glass in light mode, near-black glass in dark mode.
+    // The selected tab intentionally uses monochrome foreground instead of an Android accent.
+    val glass = if (dark) Color(0xFF1C1C1E).copy(alpha = .96f) else Color.White.copy(alpha = .96f)
+    val selectedTint = if (dark) Color.White else Color.Black
+    val unselectedTint = selectedTint.copy(alpha = if (dark) .52f else .46f)
+    val border = selectedTint.copy(alpha = if (dark) .13f else .08f)
+    val selectionFill = selectedTint.copy(alpha = if (dark) .095f else .055f)
+    val barShape = RoundedCornerShape(35.dp)
     val selectedIndex = items.indexOfFirst { it.first == selected }.coerceAtLeast(0)
     var dragPx by remember(selected) { androidx.compose.runtime.mutableFloatStateOf(0f) }
     var dragging by remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -244,15 +246,15 @@ private fun IumrahBottomBar(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 10.dp, vertical = 7.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.foundation.layout.BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(62.dp)
+                .height(68.dp)
                 .shadow(
-                    elevation = 10.dp,
+                    elevation = 14.dp,
                     shape = barShape,
                     clip = false,
                     ambientColor = Color.Black.copy(alpha = .12f),
@@ -261,7 +263,7 @@ private fun IumrahBottomBar(
                 .clip(barShape)
                 .background(glass)
                 .border(.7.dp, border, barShape)
-                .padding(horizontal = 5.dp, vertical = 5.dp),
+                .padding(horizontal = 5.dp, vertical = 6.dp),
         ) {
             val density = androidx.compose.ui.platform.LocalDensity.current
             val slotWidth = maxWidth / items.size
@@ -309,9 +311,9 @@ private fun IumrahBottomBar(
                     Modifier
                         .offset { androidx.compose.ui.unit.IntOffset(indicatorOffsetPx.roundToInt(), 0) }
                         .width(slotWidth)
-                        .height(52.dp)
+                        .height(56.dp)
                         .padding(horizontal = 1.dp)
-                        .clip(RoundedCornerShape(22.dp))
+                        .clip(RoundedCornerShape(28.dp))
                         .background(selectionFill),
                 )
 
@@ -351,7 +353,7 @@ private fun RowScope.BottomTabItem(
     Column(
         modifier = Modifier
             .weight(1f)
-            .height(52.dp)
+            .height(56.dp)
             .padding(horizontal = 1.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clickable(interactionSource = source, indication = null, onClick = onClick),
@@ -361,7 +363,7 @@ private fun RowScope.BottomTabItem(
         CupertinoIcon(
             symbol = icon,
             contentDescription = label,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(if (selected) 22.dp else 21.dp),
             tint = if (selected) selectedTint else unselectedTint,
         )
         Text(

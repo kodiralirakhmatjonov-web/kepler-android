@@ -24,16 +24,16 @@ import androidx.compose.ui.unit.dp
  * rendered locally and can be tuned centrally for pixel-parity work.
  */
 enum class CupertinoSymbol {
-    Home, Hotel, Suitcase, Heart, HeartFill, PersonCircle,
+    Home, Hotel, Suitcase, SuitcaseFill, TrayFill, Heart, HeartFill, PersonCircle,
     Menu, ChevronRight, ChevronLeft, ArrowRight,
     ChatBubble, Phone, Send, Lock, LockShield, ShieldCheck,
     CreditCard, UndoCircle, HandRaised, IdentityCard,
-    Gear, Globe, HalfCircle, BellSignal, BellBadge,
+    Gear, Globe, HalfCircle, Bell, BellSignal, BellBadge,
     Persons, Wallet, Airplane, AirplaneTakeoff, AirplaneLand, Location, Building,
     CheckCircle, ExclamationCircle, Passport, Key,
     SignOut, Sun, Moon, Device, Mail, Apple,
     InfoCircle, Message, TrashSlash, Document, NumberSquare,
-    CalendarClock, Close, Copy, Eye, EyeSlash, Sparkles,
+    CalendarClock, Hourglass, Close, Copy, Eye, EyeSlash, Sparkles,
     Route, Car, Refresh, PlusPerson, Lightbulb, Checkmark, SignalWave,
     Star, Sliders, Speaker, SpeakerSlash, ChevronDown, Plus, Minus,
     ArrowUpRight, ArrowDown, Paperclip, Bed, Play, ForkKnife, Share,
@@ -92,11 +92,31 @@ private fun DrawScope.drawCupertinoSymbol(symbol: CupertinoSymbol, color: Color)
             for (x in listOf(.33f,.5f,.67f)) for (y in listOf(.34f,.5f,.66f)) circle(Offset(ox+s*x,oy+s*y),s*.025f,true)
             line(Offset(c.x,oy+s*.7f),Offset(c.x,oy+s*.82f))
         }
-        CupertinoSymbol.Suitcase -> {
-            rr(ox+s*.18f, oy+s*.32f, s*.64f, s*.5f, s*.09f)
-            rr(ox+s*.38f, oy+s*.19f, s*.24f, s*.16f, s*.06f)
-            line(Offset(ox+s*.34f,oy+s*.36f),Offset(ox+s*.34f,oy+s*.78f),sw*.8f)
-            line(Offset(ox+s*.66f,oy+s*.36f),Offset(ox+s*.66f,oy+s*.78f),sw*.8f)
+        CupertinoSymbol.Suitcase, CupertinoSymbol.SuitcaseFill -> {
+            val filled = symbol == CupertinoSymbol.SuitcaseFill
+            rr(ox+s*.18f, oy+s*.32f, s*.64f, s*.5f, s*.09f, fill = filled)
+            rr(ox+s*.38f, oy+s*.19f, s*.24f, s*.16f, s*.06f, fill = filled)
+            if (!filled) {
+                line(Offset(ox+s*.34f,oy+s*.36f),Offset(ox+s*.34f,oy+s*.78f),sw*.8f)
+                line(Offset(ox+s*.66f,oy+s*.36f),Offset(ox+s*.66f,oy+s*.78f),sw*.8f)
+            } else {
+                drawLine(Color.White.copy(alpha = .34f), Offset(ox+s*.34f,oy+s*.39f), Offset(ox+s*.34f,oy+s*.75f), sw*.65f, StrokeCap.Round)
+                drawLine(Color.White.copy(alpha = .34f), Offset(ox+s*.66f,oy+s*.39f), Offset(ox+s*.66f,oy+s*.75f), sw*.65f, StrokeCap.Round)
+            }
+        }
+        CupertinoSymbol.TrayFill -> {
+            val p = Path().apply {
+                moveTo(ox+s*.16f, oy+s*.31f)
+                lineTo(ox+s*.84f, oy+s*.31f)
+                lineTo(ox+s*.78f, oy+s*.74f)
+                quadraticBezierTo(ox+s*.77f, oy+s*.81f, ox+s*.69f, oy+s*.81f)
+                lineTo(ox+s*.31f, oy+s*.81f)
+                quadraticBezierTo(ox+s*.23f, oy+s*.81f, ox+s*.22f, oy+s*.74f)
+                close()
+            }
+            drawPath(p, color)
+            rr(ox+s*.25f, oy+s*.52f, s*.5f, s*.12f, s*.05f, fill = true)
+            drawRoundRect(Color.White.copy(alpha = .32f), Offset(ox+s*.37f,oy+s*.52f), Size(s*.26f,s*.035f), CornerRadius(s*.018f,s*.018f))
         }
         CupertinoSymbol.Heart, CupertinoSymbol.HeartFill -> {
             val p=Path().apply{moveTo(c.x,oy+s*.82f); cubicTo(ox+s*.1f,oy+s*.58f,ox+s*.12f,oy+s*.24f,ox+s*.34f,oy+s*.24f); cubicTo(ox+s*.44f,oy+s*.24f,c.x,oy+s*.34f,c.x,oy+s*.39f); cubicTo(c.x,oy+s*.34f,ox+s*.56f,oy+s*.24f,ox+s*.66f,oy+s*.24f); cubicTo(ox+s*.88f,oy+s*.24f,ox+s*.9f,oy+s*.58f,c.x,oy+s*.82f)}
@@ -129,7 +149,7 @@ private fun DrawScope.drawCupertinoSymbol(symbol: CupertinoSymbol, color: Color)
         CupertinoSymbol.Gear -> { circle(c,s*.19f); circle(c,s*.08f); for(i in 0 until 8){ val a=Math.PI*2*i/8; val p1=Offset(c.x+(kotlin.math.cos(a)*s*.25).toFloat(),c.y+(kotlin.math.sin(a)*s*.25).toFloat()); val p2=Offset(c.x+(kotlin.math.cos(a)*s*.36).toFloat(),c.y+(kotlin.math.sin(a)*s*.36).toFloat()); line(p1,p2,sw*1.15f)} }
         CupertinoSymbol.Globe -> { circle(c,s*.34f); oval(Rect(ox+s*.38f,oy+s*.16f,ox+s*.62f,oy+s*.84f)); line(Offset(ox+s*.17f,c.y),Offset(ox+s*.83f,c.y)); arc(Rect(ox+s*.18f,oy+s*.28f,ox+s*.82f,oy+s*.62f),0f,180f); arc(Rect(ox+s*.18f,oy+s*.38f,ox+s*.82f,oy+s*.72f),180f,180f) }
         CupertinoSymbol.HalfCircle -> { circle(c,s*.34f); val p=Path().apply{moveTo(c.x,oy+s*.16f); arcTo(Rect(ox+s*.16f,oy+s*.16f,ox+s*.84f,oy+s*.84f),-90f,-180f,false); close()}; drawPath(p,color) }
-        CupertinoSymbol.BellSignal, CupertinoSymbol.BellBadge -> { val p=Path().apply{moveTo(ox+s*.28f,oy+s*.64f); quadraticBezierTo(ox+s*.33f,oy+s*.56f,ox+s*.34f,oy+s*.39f); quadraticBezierTo(ox+s*.36f,oy+s*.22f,c.x,oy+s*.2f); quadraticBezierTo(ox+s*.64f,oy+s*.22f,ox+s*.66f,oy+s*.39f); quadraticBezierTo(ox+s*.67f,oy+s*.56f,ox+s*.72f,oy+s*.64f); close()}; drawPath(p,color,style=stroke); line(Offset(ox+s*.25f,oy+s*.66f),Offset(ox+s*.75f,oy+s*.66f)); arc(Rect(ox+s*.42f,oy+s*.64f,ox+s*.58f,oy+s*.79f),0f,180f); if(symbol==CupertinoSymbol.BellBadge) circle(Offset(ox+s*.74f,oy+s*.25f),s*.09f,true) else { arc(Rect(ox+s*.7f,oy+s*.34f,ox+s*.92f,oy+s*.66f),-60f,120f) } }
+        CupertinoSymbol.Bell, CupertinoSymbol.BellSignal, CupertinoSymbol.BellBadge -> { val p=Path().apply{moveTo(ox+s*.28f,oy+s*.64f); quadraticBezierTo(ox+s*.33f,oy+s*.56f,ox+s*.34f,oy+s*.39f); quadraticBezierTo(ox+s*.36f,oy+s*.22f,c.x,oy+s*.2f); quadraticBezierTo(ox+s*.64f,oy+s*.22f,ox+s*.66f,oy+s*.39f); quadraticBezierTo(ox+s*.67f,oy+s*.56f,ox+s*.72f,oy+s*.64f); close()}; drawPath(p,color,style=stroke); line(Offset(ox+s*.25f,oy+s*.66f),Offset(ox+s*.75f,oy+s*.66f)); arc(Rect(ox+s*.42f,oy+s*.64f,ox+s*.58f,oy+s*.79f),0f,180f); if(symbol==CupertinoSymbol.BellBadge) circle(Offset(ox+s*.74f,oy+s*.25f),s*.09f,true) else if(symbol==CupertinoSymbol.BellSignal) { arc(Rect(ox+s*.7f,oy+s*.34f,ox+s*.92f,oy+s*.66f),-60f,120f) } }
         CupertinoSymbol.Persons, CupertinoSymbol.PlusPerson -> { circle(Offset(ox+s*.4f,oy+s*.38f),s*.105f); circle(Offset(ox+s*.67f,oy+s*.42f),s*.085f); arc(Rect(ox+s*.2f,oy+s*.48f,ox+s*.59f,oy+s*.82f),205f,130f); arc(Rect(ox+s*.52f,oy+s*.52f,ox+s*.82f,oy+s*.78f),205f,130f); if(symbol==CupertinoSymbol.PlusPerson){ line(Offset(ox+s*.72f,oy+s*.2f),Offset(ox+s*.9f,oy+s*.2f)); line(Offset(ox+s*.81f,oy+s*.11f),Offset(ox+s*.81f,oy+s*.29f)) } }
         CupertinoSymbol.Wallet -> { rr(ox+s*.16f,oy+s*.28f,s*.68f,s*.48f,s*.09f); rr(ox+s*.54f,oy+s*.4f,s*.3f,s*.22f,s*.06f); circle(Offset(ox+s*.63f,oy+s*.51f),s*.025f,true) }
         CupertinoSymbol.Airplane, CupertinoSymbol.AirplaneTakeoff, CupertinoSymbol.AirplaneLand -> { val p=Path().apply{moveTo(ox+s*.14f,oy+s*.56f); lineTo(ox+s*.43f,oy+s*.49f); lineTo(ox+s*.68f,oy+s*.2f); lineTo(ox+s*.77f,oy+s*.22f); lineTo(ox+s*.65f,oy+s*.5f); lineTo(ox+s*.84f,oy+s*.55f); lineTo(ox+s*.82f,oy+s*.63f); lineTo(ox+s*.6f,oy+s*.61f); lineTo(ox+s*.45f,oy+s*.82f); lineTo(ox+s*.37f,oy+s*.8f); lineTo(ox+s*.44f,oy+s*.59f); lineTo(ox+s*.16f,oy+s*.64f); close()}; drawPath(p,color,style=stroke) }
@@ -146,6 +166,23 @@ private fun DrawScope.drawCupertinoSymbol(symbol: CupertinoSymbol, color: Color)
         CupertinoSymbol.Document -> { rr(ox+s*.24f,oy+s*.13f,s*.52f,s*.74f,s*.05f); line(Offset(ox+s*.34f,oy+s*.36f),Offset(ox+s*.66f,oy+s*.36f)); line(Offset(ox+s*.34f,oy+s*.5f),Offset(ox+s*.66f,oy+s*.5f)); line(Offset(ox+s*.34f,oy+s*.64f),Offset(ox+s*.58f,oy+s*.64f)) }
         CupertinoSymbol.NumberSquare -> { rr(ox+s*.18f,oy+s*.18f,s*.64f,s*.64f,s*.12f); line(Offset(ox+s*.42f,oy+s*.34f),Offset(ox+s*.36f,oy+s*.66f)); line(Offset(ox+s*.61f,oy+s*.34f),Offset(ox+s*.55f,oy+s*.66f)); line(Offset(ox+s*.3f,oy+s*.45f),Offset(ox+s*.68f,oy+s*.45f)); line(Offset(ox+s*.28f,oy+s*.57f),Offset(ox+s*.66f,oy+s*.57f)) }
         CupertinoSymbol.CalendarClock -> { rr(ox+s*.16f,oy+s*.2f,s*.68f,s*.62f,s*.08f); line(Offset(ox+s*.16f,oy+s*.36f),Offset(ox+s*.84f,oy+s*.36f)); line(Offset(ox+s*.32f,oy+s*.13f),Offset(ox+s*.32f,oy+s*.27f)); line(Offset(ox+s*.68f,oy+s*.13f),Offset(ox+s*.68f,oy+s*.27f)); circle(Offset(ox+s*.64f,oy+s*.61f),s*.12f); line(Offset(ox+s*.64f,oy+s*.61f),Offset(ox+s*.64f,oy+s*.54f),sw*.75f); line(Offset(ox+s*.64f,oy+s*.61f),Offset(ox+s*.7f,oy+s*.65f),sw*.75f) }
+        CupertinoSymbol.Hourglass -> {
+            line(Offset(ox+s*.26f,oy+s*.18f),Offset(ox+s*.74f,oy+s*.18f))
+            line(Offset(ox+s*.26f,oy+s*.82f),Offset(ox+s*.74f,oy+s*.82f))
+            val p = Path().apply {
+                moveTo(ox+s*.31f, oy+s*.22f)
+                cubicTo(ox+s*.31f, oy+s*.36f, ox+s*.41f, oy+s*.43f, c.x, oy+s*.5f)
+                cubicTo(ox+s*.41f, oy+s*.57f, ox+s*.31f, oy+s*.64f, ox+s*.31f, oy+s*.78f)
+                moveTo(ox+s*.69f, oy+s*.22f)
+                cubicTo(ox+s*.69f, oy+s*.36f, ox+s*.59f, oy+s*.43f, c.x, oy+s*.5f)
+                cubicTo(ox+s*.59f, oy+s*.57f, ox+s*.69f, oy+s*.64f, ox+s*.69f, oy+s*.78f)
+            }
+            drawPath(p, color, style = stroke)
+            val sand = Path().apply {
+                moveTo(ox+s*.40f, oy+s*.69f); lineTo(c.x, oy+s*.57f); lineTo(ox+s*.60f, oy+s*.69f); close()
+            }
+            drawPath(sand, color.copy(alpha = .75f))
+        }
         CupertinoSymbol.Close -> { line(Offset(ox+s*.25f,oy+s*.25f),Offset(ox+s*.75f,oy+s*.75f)); line(Offset(ox+s*.75f,oy+s*.25f),Offset(ox+s*.25f,oy+s*.75f)) }
         CupertinoSymbol.Copy -> { rr(ox+s*.2f,oy+s*.28f,s*.48f,s*.5f,s*.07f); rr(ox+s*.34f,oy+s*.16f,s*.46f,s*.5f,s*.07f) }
         CupertinoSymbol.Eye, CupertinoSymbol.EyeSlash -> { val p=Path().apply{moveTo(ox+s*.14f,c.y); quadraticBezierTo(c.x,oy+s*.2f,ox+s*.86f,c.y); quadraticBezierTo(c.x,oy+s*.8f,ox+s*.14f,c.y)}; drawPath(p,color,style=stroke); circle(c,s*.1f); if(symbol==CupertinoSymbol.EyeSlash) line(Offset(ox+s*.18f,oy+s*.18f),Offset(ox+s*.82f,oy+s*.82f)) }

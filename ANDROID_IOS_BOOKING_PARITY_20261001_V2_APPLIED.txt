@@ -1,0 +1,18 @@
+Iumrah Android — Booking tab iOS parity patch v2
+Date: 2026-10-01
+
+Scope intentionally limited to Booking + shared bottom navigation + Cupertino renderer required by Booking.
+
+Included:
+- Booking root rebuilt to mirror current iOS BookingsHomeView hierarchy and spacing.
+- Booking / Booking Status segmented control.
+- Branded/standard page headers with Makkah time, notifications and menu.
+- Booking identity hero, 7-stage lifecycle, active stage card, timers and exact CTA hierarchy.
+- Server lifecycle deadlines + status history retained on Android for timer parity.
+- Fulfillment, flight status, trip plan, management, other trips and empty state parity.
+- Cupertino-only semantic icons for Booking; adds bell/tray/suitcase-fill/hourglass glyphs.
+- Availability hourglass pulse animation.
+- Bottom tab bar rounded iOS-like glass shape; monochrome black/white adaptive theme colors.
+- No Material Icons used by Booking or bottom navigation.
+
+Patch files are rooted at repository root; overlay/unzip directly into kepler-android-main.
