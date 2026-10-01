@@ -59,6 +59,10 @@ import com.iumrah.beta.domain.trip.PackageTier
 import com.iumrah.beta.models.flight.LiveFlightCandidate
 import com.iumrah.beta.models.hotel.HotelSummary
 import com.iumrah.beta.ui.components.IumrahPressable
+import com.iumrah.beta.ui.generator.GeneratorGeometry
+import com.iumrah.beta.ui.generator.GeneratorHeader
+import com.iumrah.beta.ui.generator.GeneratorStage
+import com.iumrah.beta.ui.generator.generatorPageColor
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.time.ZoneId
@@ -108,13 +112,13 @@ fun FinalPackageScreen(language: AppLanguage, journey: JourneyStore, chrome: App
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(generatorPageColor())
             .verticalScroll(rememberScrollState())
             .statusBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 10.dp),
+            .padding(horizontal = GeneratorGeometry.pagePadding, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        GeneratorReadyHeader(language = language, onBack = chrome::back)
+        GeneratorHeader(GeneratorStage.READY, language, chrome, currentPriceText = "${quote.totalPackagePrice.setScale(0, java.math.RoundingMode.HALF_UP)} ${quote.currency}")
         FinalPackageHeader(language)
         PackageTierSection(language, state, quote)
         PackageRecommendationCard(language, state.trip.packageTier)
@@ -571,9 +575,16 @@ private fun IncludedServicesCard(language: AppLanguage, state: JourneyState) {
             onToggle = { expanded = if (expanded == it) null else it },
             icon = CupertinoSymbol.Car,
             title = finalText(language, "Полный трансфер", "Full transfer", "To‘liq transfer", "Тўлиқ трансфер"),
-            subtitle = "Kia Carnival",
+            subtitle = state.resolvedTransferVehicle.modelName,
             detail = finalText(language, "Аэропорт → отель → межгородской маршрут → аэропорт. Маршрут адаптируется под выбранные города.", "Airport → hotel → intercity route → airport. The route adapts to your selected cities.", "Aeroport → mehmonxona → shaharlararo yo‘nalish → aeroport. Yo‘nalish tanlangan shaharlarga moslashadi.", "Аэропорт → меҳмонхона → шаҳарлараро йўналиш → аэропорт. Йўналиш танланган шаҳарларга мослашади."),
         )
+        if (state.haramainTrainSelected) {
+            StaticServiceRow(
+                CupertinoSymbol.Route,
+                "Haramain High Speed Railway",
+                "${state.haramainFareClass.wireValue.replaceFirstChar { it.uppercase() }} · ${state.haramainTicketCount} ${finalText(language, "бил.", "tickets", "chipta", "чипта")}",
+            )
+        }
 
         StaticServiceRow(CupertinoSymbol.Location, finalText(language, "Зияраты в Мекке", "Makkah ziyarat", "Makka ziyoratlari", "Макка зиёратлари"), finalText(language, "Включено", "Included", "Kiritilgan", "Киритилган"))
         if (state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH) {
@@ -599,8 +610,8 @@ private fun IncludedServicesCard(language: AppLanguage, state: JourneyState) {
             onToggle = { expanded = if (expanded == it) null else it },
             icon = CupertinoSymbol.ForkKnife,
             title = finalText(language, "Питание", "Meals", "Ovqatlanish", "Овқатланиш"),
-            subtitle = mealsSummary(language, state.trip.packageTier),
-            detail = mealsDetail(language, state.trip.packageTier),
+            subtitle = mealsSummary(language, state),
+            detail = mealsDetail(language, state),
         )
 
         Row(
@@ -924,15 +935,51 @@ private fun hotelDetail(language: AppLanguage, hotel: HotelSummary, roomName: St
     return "${hotel.name}\n${hotel.city}$stars$rating$room"
 }
 
-private fun mealsSummary(language: AppLanguage, tier: PackageTier): String = when (tier) {
-    PackageTier.COMFORT, PackageTier.LUXURY -> finalText(language, "Завтрак включён", "Breakfast included", "Nonushta kiritilgan", "Нонушта киритилган")
-    else -> finalText(language, "Питание в пакете", "Meals in package", "Ovqat paketda", "Овқат пакетда")
+private fun mealsSummary(language: AppLanguage, state: JourneyState): String {
+    val selectable = state.trip.packageTier == PackageTier.COMFORT || state.trip.packageTier == PackageTier.LUXURY
+    val selection = state.trip.effectiveMealSelection
+    val makkahCount = if (selectable) 1 + (if (selection.makkahLunch) 1 else 0) + (if (selection.makkahDinner) 1 else 0) else 3
+    val madinahCount = if (selectable) 1 + (if (selection.madinahDinner) 1 else 0) else 2
+    val makkah = mealsPerDay(language, makkahCount)
+    return if (state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH) {
+        finalText(
+            language,
+            "Мекка · $makkah · Медина · ${mealsPerDay(language, madinahCount)}",
+            "Makkah · $makkah · Madinah · ${mealsPerDay(language, madinahCount)}",
+            "Makka · $makkah · Madina · ${mealsPerDay(language, madinahCount)}",
+            "Макка · $makkah · Мадина · ${mealsPerDay(language, madinahCount)}",
+        )
+    } else {
+        finalText(language, "Мекка · $makkah", "Makkah · $makkah", "Makka · $makkah", "Макка · $makkah")
+    }
 }
 
-private fun mealsDetail(language: AppLanguage, tier: PackageTier): String = when (tier) {
-    PackageTier.COMFORT -> finalText(language, "Для Comfort завтрак включён. Дополнительные приёмы пищи формируются по выбранному составу поездки.", "Comfort includes breakfast. Additional meals follow the selected trip setup.", "Comfort paketida nonushta bor. Qo‘shimcha ovqatlar tanlangan safar tarkibiga ko‘ra shakllanadi.", "Comfort пакетида нонушта бор. Қўшимча овқатлар танланган сафар таркибига кўра шаклланади.")
-    PackageTier.LUXURY -> finalText(language, "Для Luxury завтрак включён, а питание рассчитано на более высокий уровень сервиса.", "Luxury includes breakfast, with meals budgeted for a higher service level.", "Luxury paketida nonushta bor va ovqatlanish yuqoriroq xizmat darajasiga hisoblangan.", "Luxury пакетида нонушта бор ва овқатланиш юқорироқ хизмат даражасига ҳисобланган.")
-    else -> finalText(language, "Питание учтено в структуре пакета согласно выбранному уровню поездки.", "Meals are included in the package structure according to the selected trip level.", "Ovqatlanish tanlangan safar darajasiga muvofiq paket tarkibida hisobga olingan.", "Овқатланиш танланган сафар даражасига мувофиқ пакет таркибида ҳисобга олинган.")
+private fun mealsDetail(language: AppLanguage, state: JourneyState): String {
+    val selectable = state.trip.packageTier == PackageTier.COMFORT || state.trip.packageTier == PackageTier.LUXURY
+    return if (selectable) {
+        finalText(
+            language,
+            "Завтрак включён без доплаты. В цену пакета входят только выбранные Вами обеды и ужины; отключённые позиции сразу исключаются из расчёта.",
+            "Breakfast is included at no extra charge. Only the lunches and dinners you selected are included in the package price; disabled items are removed from pricing immediately.",
+            "Nonushta qo‘shimcha to‘lovsiz kiritilgan. Paket narxiga faqat Siz tanlagan tushlik va kechki ovqatlar kiradi; o‘chirilgan variantlar hisobdan darhol chiqariladi.",
+            "Нонушта қўшимча тўловсиз киритилган. Пакет нархига фақат Сиз танлаган тушлик ва кечки овқатлар киради; ўчирилган вариантлар ҳисобдан дарҳол чиқарилади.",
+        )
+    } else {
+        finalText(
+            language,
+            "Питание включено в программу пакета. Конкретные рестораны и время приёмов пищи подтверждаются в деталях поездки.",
+            "Meals are included in the package program. Specific restaurants and meal times are confirmed in your trip details.",
+            "Ovqatlanish paket dasturiga kiritilgan. Aniq restoranlar va vaqtlar safar tafsilotlarida tasdiqlanadi.",
+            "Овқатланиш пакет дастурига киритилган. Аниқ ресторанлар ва вақтлар сафар тафсилотларида тасдиқланади.",
+        )
+    }
+}
+
+private fun mealsPerDay(language: AppLanguage, count: Int): String = when (language) {
+    AppLanguage.RUSSIAN -> if (count == 1) "1 раз в день" else "$count раза в день"
+    AppLanguage.ENGLISH -> "$count meals/day"
+    AppLanguage.UZBEK -> "kuniga $count mahal"
+    AppLanguage.UZBEK_CYRILLIC -> "кунига $count маҳал"
 }
 
 private fun money(amount: BigDecimal, currencyCode: String, language: AppLanguage): String {

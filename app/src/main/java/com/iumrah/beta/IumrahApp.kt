@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.iumrah.beta.core.design.IumrahMotion
 import com.iumrah.beta.core.design.IumrahTheme
@@ -92,14 +94,17 @@ fun IumrahApp() {
 
 @Composable
 private fun LaunchSurface() {
+    val dark = androidx.compose.foundation.isSystemInDarkTheme()
     Box(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        Modifier
+            .fillMaxSize()
+            .background(if (dark) Color(0xFF1B1D20) else Color(0xFFF6F7F8)),
         contentAlignment = Alignment.Center,
     ) {
         Image(
-            painter = painterResource(if (androidx.compose.foundation.isSystemInDarkTheme()) R.drawable.iumrah_header_wordmark_light else R.drawable.iumrah_header_wordmark_dark),
+            painter = painterResource(R.drawable.iumrah_launch_wordmark),
             contentDescription = "iumrah",
-            modifier = Modifier.height(34.dp),
+            modifier = Modifier.width(220.dp).height(90.dp),
             contentScale = ContentScale.Fit,
         )
     }

@@ -29,7 +29,7 @@ object BookingDraftBuilder {
         val madinahHotel = if (includeMadinah) state.madinahHotel else null
         val stay = TripStayPlanner.breakdown(trip)
         val windows = TripStayPlanner.windows(trip)
-        val usesHaramain = includeMadinah && (trip.packageTier == PackageTier.COMFORT || trip.packageTier == PackageTier.LUXURY)
+        val usesHaramain = includeMadinah && state.haramainTrainSelected
         val services = buildList {
             add("flight")
             add("makkahHotel")

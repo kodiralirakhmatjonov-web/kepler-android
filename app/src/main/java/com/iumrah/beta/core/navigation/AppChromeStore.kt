@@ -13,6 +13,9 @@ sealed interface AppRoute {
     data class HotelDetail(val hotelId: String) : AppRoute
     data class FlightPackageDetail(val packageId: String) : AppRoute
     data object Flights : AppRoute
+    data object ReturnFlights : AppRoute
+    data class FlightDetails(val journeyId: String, val direction: String) : AppRoute
+    data object TransferSelection : AppRoute
     data object FinalPackage : AppRoute
     data object BookingCheckout : AppRoute
     data class BookingDetail(val bookingID: String) : AppRoute
@@ -50,6 +53,9 @@ class AppChromeStore {
     fun openHotel(id: String) = push(AppRoute.HotelDetail(id), tab = AppTab.HOTELS)
     fun openFlightPackage(id: String) = push(AppRoute.FlightPackageDetail(id), tab = AppTab.HOTELS)
     fun openFlights() = push(AppRoute.Flights, tab = AppTab.BOOKING)
+    fun openReturnFlights() = push(AppRoute.ReturnFlights, tab = AppTab.BOOKING)
+    fun openFlightDetails(id: String, direction: String) = push(AppRoute.FlightDetails(id, direction), tab = AppTab.BOOKING)
+    fun openTransferSelection() = push(AppRoute.TransferSelection, tab = AppTab.BOOKING)
     fun openFinalPackage() = push(AppRoute.FinalPackage, tab = AppTab.BOOKING)
     fun openBookingCheckout() = push(AppRoute.BookingCheckout, tab = AppTab.BOOKING)
     fun openBookingDetail(id: String) = push(AppRoute.BookingDetail(id), tab = AppTab.BOOKING)
@@ -59,6 +65,7 @@ class AppChromeStore {
     fun openNotifications() = push(AppRoute.Notifications)
     fun openAccountTravelers() = push(AppRoute.AccountTravelers, tab = AppTab.ACCOUNT)
     fun openAccountPolicy(kind: String) = push(AppRoute.AccountPolicy(kind), tab = AppTab.ACCOUNT)
+    fun openBookingPolicy(kind: String) = push(AppRoute.AccountPolicy(kind), tab = AppTab.BOOKING)
     fun openAccountSecurity() = push(AppRoute.AccountSecurity, tab = AppTab.ACCOUNT)
     fun openAccountAppearance() = push(AppRoute.AccountAppearance, tab = AppTab.ACCOUNT)
     fun openAccountLanguage() = push(AppRoute.AccountLanguage, tab = AppTab.ACCOUNT)

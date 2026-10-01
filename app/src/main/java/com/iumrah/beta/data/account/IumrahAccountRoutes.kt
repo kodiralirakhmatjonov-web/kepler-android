@@ -5,6 +5,8 @@ object IumrahAccountRoutes {
     const val LOGIN = "/api/package/client/account/login"
     const val PHONE_LOGIN_START = "/api/package/client/account/login/sms/start"
     const val PHONE_LOGIN_CONFIRM = "/api/package/client/account/login/sms/confirm"
+    const val REGISTER_SMS_START = "/api/package/client/account/register/sms/start"
+    const val REGISTER_SMS_CONFIRM = "/api/package/client/account/register/sms/confirm"
     const val REGISTER_EMAIL_START = "/api/package/client/account/register/email/start"
     const val REGISTER_EMAIL_CONFIRM = "/api/package/client/account/register/email/confirm"
     const val SESSION = "/api/catalog/hotels/client/account/session"

@@ -1,0 +1,23 @@
+Iumrah Android · iOS Account parity · 2026-09-30 · v1
+
+Scope: Account tab only.
+
+Implemented:
+- Current iOS Account composition/order and Cupertino-only iconography.
+- Current black animated iumrah ID hero, flip/back details, copy and fullscreen presentation.
+- Current locked guest iumrah ID presentation.
+- iumrah Wallet entry using the exact iOS leather-wallet asset and wallet pages.
+- Active trip, Active/Past trip switcher, travel companions, profile, settings and payment/security sections.
+- Account header notification badge + menu controls.
+- SMS account registration backend flow, matching the iOS registration endpoints.
+- Account Security parity surface: animated security hero, primary-device claim, verified-email flow and session termination.
+- iumrah Signal parity: hero, New/Earlier groups, Home visibility controls and destination routing.
+- Exact iOS wallet/boarding image assets copied into Android drawable-nodpi.
+
+Verification:
+- scripts/verify-stage1.sh passed, including Stage 1 through Stage 8 structural checks.
+- Patch is verified by overlaying it on a clean copy of the supplied Android repository and rerunning the structural suite.
+
+Platform note:
+- Apple Wallet pass installation itself is iOS-only; Android keeps the equivalent Account surface without pretending PKPass installation is available.
+- Native Apple/Google credential acquisition was not present in the supplied Android project; provider status UI remains platform-safe rather than fabricating credentials.

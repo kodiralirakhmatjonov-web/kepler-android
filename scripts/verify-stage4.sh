@@ -17,6 +17,6 @@ for f in "${required[@]}"; do test -s "$f" || { echo "STOP: missing Stage 004 fi
 grep -q '/api/catalog/hotels' app/src/main/java/com/iumrah/beta/data/hotel/HotelCatalogService.kt
 grep -q '/api/package/hotel/\$hotelID/room-categories' app/src/main/java/com/iumrah/beta/data/hotel/RemotePackageEngineClient.kt
 grep -q 'providerDisplayName: String get() = "iumrah Hotels"' app/src/main/java/com/iumrah/beta/models/hotel/HotelModels.kt
-grep -q 'BigDecimal("0.20")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
+grep -q 'BigDecimal("0.50")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
 
 echo 'Stage 004 hotel checks passed.'

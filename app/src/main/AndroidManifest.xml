@@ -7,7 +7,8 @@
     <application
         android:name=".IumrahApplication"
         android:allowBackup="false"
-        android:icon="@drawable/iumrah_app_icon"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="iumrah Beta"
         android:supportsRtl="true"
         android:theme="@style/Theme.Iumrah">
@@ -15,7 +16,7 @@
             android:name=".MainActivity"
             android:exported="true" />
 
-        <activity-alias android:name=".LauncherStandard" android:enabled="true" android:exported="true" android:icon="@drawable/iumrah_app_icon" android:label="iumrah" android:targetActivity=".MainActivity">
+        <activity-alias android:name=".LauncherStandard" android:enabled="true" android:exported="true" android:icon="@mipmap/ic_launcher" android:label="iumrah" android:targetActivity=".MainActivity">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity-alias>
         <activity-alias android:name=".LauncherBlue" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_blue_preview" android:label="iumrah" android:targetActivity=".MainActivity">

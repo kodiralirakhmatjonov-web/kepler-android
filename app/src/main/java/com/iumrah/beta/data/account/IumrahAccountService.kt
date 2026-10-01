@@ -22,6 +22,15 @@ class IumrahAccountService(
     suspend fun confirmPhoneLogin(challengeID: String, code: String, locale: String): IumrahAccountAuthResponse =
         api.post(IumrahAccountRoutes.PHONE_LOGIN_CONFIRM, IumrahPhoneLoginConfirmRequest(challengeID, code, deviceIdentity.current(locale)))
 
+    suspend fun startPhoneRegistration(phone: String, firstName: String, lastName: String, locale: String): IumrahPhoneLoginStartResponse =
+        api.post(IumrahAccountRoutes.REGISTER_SMS_START, IumrahPhoneRegistrationStartRequest(phone, firstName, lastName, locale))
+
+    suspend fun confirmPhoneRegistration(challengeID: String, code: String, password: String, locale: String): IumrahAccountAuthResponse =
+        api.post(
+            IumrahAccountRoutes.REGISTER_SMS_CONFIRM,
+            IumrahPhoneRegistrationConfirmRequest(challengeID, code, password, deviceIdentity.current(locale)),
+        )
+
     suspend fun startEmailRegistration(email: String, locale: String): IumrahEmailChallengeStartResponse =
         api.post(IumrahAccountRoutes.REGISTER_EMAIL_START, IumrahEmailChallengeStartRequest(email, locale))
 

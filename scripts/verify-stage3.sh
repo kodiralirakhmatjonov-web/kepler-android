@@ -15,6 +15,6 @@ grep -q 'const val PressedScale' app/src/main/java/com/iumrah/beta/core/design/I
 grep -q 'const val CardPressedScale' app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
 grep -q 'val vapor' app/src/main/java/com/iumrah/beta/core/design/IumrahMotion.kt
 grep -q 'replace("%@", "%s")' app/src/main/java/com/iumrah/beta/core/localization/L10n.kt
-grep -q 'packageMarkupRate: BigDecimal = BigDecimal("0.20")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
+grep -q 'packageMarkupRate: BigDecimal = BigDecimal("0.50")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
 
 echo 'Stage 003 shell/motion structural checks passed.'

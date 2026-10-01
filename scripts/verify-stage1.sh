@@ -13,7 +13,7 @@ require_file app/build.gradle.kts
 require_file app/src/main/java/com/iumrah/beta/core/config/AppConfig.kt
 require_file app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
 grep -F 'const val API_BASE_URL = "https://iumrah.app"' app/src/main/java/com/iumrah/beta/core/config/AppConfig.kt >/dev/null
-grep -F 'BigDecimal("0.20")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt >/dev/null
+grep -F 'BigDecimal("0.50")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt >/dev/null
 if grep -R -nE 'jdbc:|sqlite:|RoomDatabase|createFromAsset' app/src/main/java >/dev/null; then
   echo 'STOP: Android-local business database implementation detected.'
   exit 1

@@ -68,6 +68,9 @@ import com.iumrah.beta.data.hotel.RemotePackageEngineClient
 import com.iumrah.beta.domain.journey.JourneyStore
 import com.iumrah.beta.domain.pricing.PackageGenerator
 import com.iumrah.beta.ui.flights.FlightSearchScreen
+import com.iumrah.beta.ui.flights.ReturnFlightScreen
+import com.iumrah.beta.ui.flights.FlightDetailsScreen
+import com.iumrah.beta.ui.packageflow.TransferSelectionScreen
 import com.iumrah.beta.ui.packageflow.FinalPackageScreen
 import com.iumrah.beta.ui.booking.BookingCheckoutScreen
 import com.iumrah.beta.ui.booking.BookingDetailScreen
@@ -172,9 +175,11 @@ fun AppShell(
                     language = language,
                     journey = journey,
                     provider = flightInventory,
-                    generator = packageGenerator,
                     chrome = chrome,
                 )
+                AppRoute.ReturnFlights -> ReturnFlightScreen(language, journey, chrome)
+                is AppRoute.FlightDetails -> FlightDetailsScreen(route.journeyId, route.direction, language, journey, chrome)
+                AppRoute.TransferSelection -> TransferSelectionScreen(language, journey, packageGenerator, chrome)
 
                 AppRoute.FinalPackage -> FinalPackageScreen(language, journey, chrome)
                 AppRoute.BookingCheckout -> BookingCheckoutScreen(language, journey, bookingStore, accountStore, chrome)

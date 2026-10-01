@@ -18,6 +18,12 @@ enum class JourneyScope(val wireValue: String) { MAKKAH_ONLY("makkahOnly"), MAKK
 enum class SaudiArrivalAirport(val iata: String) { JEDDAH("JED"), MADINAH("MED") }
 enum class FlightTripType(val wireValue: String) { ROUND_TRIP("roundTrip"), ONE_WAY("oneWay") }
 
+data class PackageMealSelection(
+    val makkahLunch: Boolean = false,
+    val makkahDinner: Boolean = false,
+    val madinahDinner: Boolean = false,
+)
+
 @Serializable
 enum class FlightFareScope(val wireValue: String) {
     PER_PASSENGER("perPassenger"), TOTAL_PARTY("totalParty"), UNKNOWN("unknown");
@@ -38,8 +44,9 @@ data class TripDraft(
     val children: Int = 0,
     val infants: Int = 0,
     val rooms: Int = 1,
-    val hotelStars: Int = 4,
+    val hotelStars: Int = 3,
     val packageTier: PackageTier = PackageTier.STANDARD,
+    val mealSelection: PackageMealSelection? = null,
     val scope: JourneyScope = JourneyScope.MAKKAH_AND_MADINAH,
     val flightFilters: FlightSearchFilters? = null,
     val flightTripType: FlightTripType? = null,
@@ -47,6 +54,7 @@ data class TripDraft(
     val travelerCount: Int get() = adults + children + infants
     val hotelStayStartDate: LocalDate get() = saudiArrivalDate ?: departureDate
     val effectiveFlightFilters: FlightSearchFilters get() = flightFilters ?: FlightSearchFilters()
+    val effectiveMealSelection: PackageMealSelection get() = mealSelection ?: PackageMealSelection()
     val resolvedFlightTripType: FlightTripType get() = flightTripType ?: FlightTripType.ROUND_TRIP
     val isRoundTripFlight: Boolean get() = resolvedFlightTripType == FlightTripType.ROUND_TRIP
     val isWeekendUmrah: Boolean get() = flexibility == DateFlexibility.WEEKEND

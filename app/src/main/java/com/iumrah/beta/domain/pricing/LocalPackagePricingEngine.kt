@@ -12,16 +12,15 @@ import java.time.ZoneOffset
 import kotlin.math.ceil
 
 /**
- * Android port of Sources/Services/LocalPackagePricingEngine.swift.
- *
- * TEST-BUILD EXCEPTION requested for the Android port:
- * package markup = 20% instead of the current iOS 50%.
- * Every other launch-pricing rule is intentionally kept aligned with Swift.
+ * Legacy local parity fallback for diagnostics/offline development.
+ * Production configurator quotes are server-authoritative through PackageEngine.
+ * Keep this arithmetic aligned with the iOS fallback to prevent divergent totals
+ * if a developer explicitly invokes it outside the production user flow.
  */
 object LocalPackagePricingEngine {
     private val mc = MathContext.DECIMAL128
 
-    val packageMarkupRate: BigDecimal = BigDecimal("0.20")
+    val packageMarkupRate: BigDecimal = BigDecimal("0.50")
     val paymentFeeRate: BigDecimal = BigDecimal("0.02")
     val publicRoundingStep: BigDecimal = BigDecimal("5")
 
@@ -37,9 +36,7 @@ object LocalPackagePricingEngine {
     val sarPerUsd: BigDecimal = BigDecimal("3.75")
     const val sedanCapacity: Int = 3
 
-    // Different string on purpose: the arithmetic differs from iOS v6 only by
-    // the explicitly requested temporary Android test markup.
-    const val pricingVersion = "local-expedia-package-v6-android-test-20pct"
+    const val pricingVersion = "local-expedia-package-v6"
 
     fun calculate(
         trip: TripDraft,

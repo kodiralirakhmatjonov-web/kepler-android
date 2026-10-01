@@ -19,7 +19,7 @@ grep -q 'POST_NOTIFICATIONS' app/src/main/AndroidManifest.xml
 if find . -iname 'google-services.json' -o -iname '*keystore*' | grep -q .; then
  echo 'STOP: credentials/signing material must not be shipped in update'; exit 1
 fi
-grep -q 'BigDecimal("0.20")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
+grep -q 'packageEngine.packageQuote(state)' app/src/main/java/com/iumrah/beta/domain/pricing/PackageGenerator.kt
 
 # Stable API 36 dependency matrix: keep libraries below their API 37 compileSdk cutovers.
 grep -q 'compileSdk = 36' app/build.gradle.kts

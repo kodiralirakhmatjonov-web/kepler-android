@@ -1,0 +1,22 @@
+Iumrah Android — iOS manual Configurator parity v5 FINAL
+Date: 2026-10-01
+
+This update completes the current manual/self-configured Umrah path on Android Compose against the current iOS source of truth:
+- shared iOS-style Generator chrome and 28pt/34pt geometry (Trip / Hotel / Flight / Transfer / Ready)
+- airport, route, date/weekend, travelers, room count, package tier and flight-filter setup
+- Primary Hotel selection for Makkah/Madinah with room categories and Comfort/Luxury selectable meals
+- verified outbound + paired return flight flow, immersive search states and flight details
+- Saudi arrival date synchronized from the selected outbound flight
+- transfer discovery with iOS-style randomized 20–40 second staged progress
+- Malibu / Carnival / Yukon selector using exact current iOS visual assets
+- Haramain current iOS flow: Standard $150/pilgrim, adult/child counters, branded mark/gallery, no stale Business selector
+- server-authoritative /api/package/quote pricing and quoteProof
+- final package + booking checkout wired to the canonical server quote
+- pricing report commit after canonical booking creation
+- Cupertino-only icons throughout the configurator UI
+- invalid explicit Compose weight imports removed to avoid the known Kotlin compile failure
+- Stage 10 parity verifier strengthened for current assets/pricing/navigation invariants
+
+The unrelated curated/published-direct storefront lane is intentionally not presented as a fake option inside this manual configurator. Published flight packages continue through their existing storefront/Flight First route.
+
+Production pricing is server-authoritative. The legacy local fallback is not used by PackageGenerator and is retained only for diagnostics; it is synchronized to the current 50% fallback markup instead of the obsolete Android 20% test value.

@@ -16,7 +16,7 @@ required=(
 for f in "${required[@]}"; do test -s "$f" || { echo "Missing $f"; exit 1; }; done
 
 grep -q 'https://iumrah.app' app/src/main/java/com/iumrah/beta/core/config/AppConfig.kt
-grep -q 'BigDecimal("0.20")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
+grep -q 'BigDecimal("0.50")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
 grep -q '/api/package/client/account/login' app/src/main/java/com/iumrah/beta/data/account/IumrahAccountRoutes.kt
 grep -q 'x-iumrah-device-secret' app/src/main/java/com/iumrah/beta/core/security/IumrahAccountDeviceIdentity.kt
 grep -q 'AndroidKeyStore' app/src/main/java/com/iumrah/beta/core/security/SecureJsonStore.kt

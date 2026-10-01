@@ -31,6 +31,6 @@ fi
 if grep -q 'AppRoute.Flights -> StagePlaceholderScreen' app/src/main/java/com/iumrah/beta/ui/shell/AppShell.kt; then
   echo 'STOP: Flights is still a placeholder.'; exit 1
 fi
-grep -q 'BigDecimal("0.20")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
+grep -q 'BigDecimal("0.50")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
 
 echo 'Stage 005 trip/flight structural checks passed.'

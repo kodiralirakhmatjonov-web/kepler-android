@@ -1,0 +1,14 @@
+iumrah Android Booking iOS parity v3
+2026-10-01
+
+Includes:
+- Booking v2 parity files.
+- Fixes compileDebugKotlin errors from logs_99751747684.zip:
+  1) removes invalid androidx.compose.foundation.layout.weight import;
+  2) adds AppChromeStore.openBookingPolicy() preserving Booking tab.
+- Exact standard app icon sourced from iOS AppIcon-1024.
+- Android legacy + adaptive launcher icon resources.
+- Splash uses exact iOS LaunchWordmark assets and LaunchBackground colors:
+  light #F6F7F8, dark #1B1D20.
+- Android 12+ system splash configured, with pre-Android-12 window background fallback.
+- Compose loading handoff uses the same 220x90 wordmark and background.

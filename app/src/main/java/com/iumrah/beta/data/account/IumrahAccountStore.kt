@@ -80,6 +80,16 @@ class IumrahAccountStore(
         return response.account
     }
 
+    suspend fun startPhoneRegistration(phone: String, firstName: String, lastName: String, locale: String): IumrahPhoneLoginStartResponse =
+        service.startPhoneRegistration(phone, firstName, lastName, locale)
+
+    suspend fun confirmPhoneRegistration(challengeID: String, code: String, password: String, locale: String): IumrahAccountProfile {
+        val response = service.confirmPhoneRegistration(challengeID, code, password, locale)
+        setSession(response)
+        runCatching { service.registerCurrentSession(response.session.token, locale) }
+        return response.account
+    }
+
     suspend fun startEmailRegistration(email: String, locale: String): IumrahEmailChallengeStartResponse =
         service.startEmailRegistration(email, locale)
 

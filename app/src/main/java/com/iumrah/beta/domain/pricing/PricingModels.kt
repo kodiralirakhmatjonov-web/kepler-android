@@ -129,6 +129,7 @@ data class PackageQuote(
     val currency: String,
     val isEstimated: Boolean,
     val quoteId: String? = null,
+    val quoteProof: String? = null,
     val pricingSnapshot: GeneratorPricingSnapshot? = null,
 )
 

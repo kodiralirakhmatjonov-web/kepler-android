@@ -5,6 +5,7 @@ import com.iumrah.beta.core.security.SecureJsonStore
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.account.IumrahAccountStore
 import com.iumrah.beta.domain.booking.BookingDraftBuilder
+import com.iumrah.beta.data.hotel.RemotePackageEngineClient
 import com.iumrah.beta.domain.journey.JourneyState
 import com.iumrah.beta.domain.pricing.PackageQuote
 import com.iumrah.beta.models.booking.*
@@ -28,6 +29,7 @@ class BookingStore(
     val service: BookingService,
     private val accountStore: IumrahAccountStore,
     private val vault: SecureJsonStore,
+    private val packageEngine: RemotePackageEngineClient,
 ) {
     private val serializer = ListSerializer(StoredBookingSession.serializer())
     private val _state = MutableStateFlow(BookingStoreState(load()))
@@ -48,6 +50,10 @@ class BookingStore(
     ): StoredBookingSession {
         _state.update { it.copy(isMutating = true, lastError = null) }
         try {
+            val quoteProof = quote.quoteProof?.trim().orEmpty()
+            if (quote.quoteId?.startsWith("server-") != true || quoteProof.isEmpty()) {
+                throw IllegalStateException("The package price must be confirmed by the secure iumrah PackageEngine before booking.")
+            }
             val payload = BookingDraftBuilder.make(journey, quote, language, pilgrimProfile)
             val response = service.createBooking(payload)
             val token = response.accessToken?.trim().orEmpty()
@@ -63,6 +69,8 @@ class BookingStore(
                 hotelSelection = journey.makkahHotel?.let { BookingHotelSelectionSnapshot.from(it, journey.makkahRoom, journey.makkahRoomCategory) },
                 madinahHotelSelection = journey.madinahHotel?.let { BookingHotelSelectionSnapshot.from(it, journey.madinahRoom, journey.madinahRoomCategory) },
             )
+
+            commitPricingReportWithRetry(session.id, session.accessToken, quoteProof)
 
             accountStore.bearerToken?.takeIf { it.isNotBlank() }?.let {
                 runCatching { accountStore.linkBooking(session.id, session.accessToken) }.getOrNull()?.let { linked ->
@@ -113,6 +121,15 @@ class BookingStore(
             _state.update { it.copy(isMutating = false, lastError = error.message) }
             throw error
         }
+    }
+
+    private suspend fun commitPricingReportWithRetry(id: String, accessToken: String, quoteProof: String): Boolean {
+        repeat(3) { attempt ->
+            val ok = runCatching { packageEngine.commitPricingReport(id, accessToken, quoteProof); true }.getOrDefault(false)
+            if (ok) return true
+            if (attempt < 2) delay(350L * (attempt + 1))
+        }
+        return false
     }
 
     suspend fun refresh(id: String): StoredBookingSession? {

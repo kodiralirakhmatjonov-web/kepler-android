@@ -15,7 +15,6 @@ import com.iumrah.beta.data.flight.*
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.data.hotel.RemotePackageEngineClient
 import com.iumrah.beta.data.notification.ClientNotificationStore
-import com.iumrah.beta.data.pricing.LocalFXRateService
 import com.iumrah.beta.domain.journey.JourneyStore
 import com.iumrah.beta.domain.pricing.PackageGenerator
 
@@ -33,10 +32,9 @@ class IumrahAppContainer(context: Context) {
     val flightFareCalendarService = FlightFareCalendarService(apiClient)
     val flightInventoryProvider = IgnavFlightInventoryProvider(apiClient)
     val journeyStore = JourneyStore()
-    val fxRateService = LocalFXRateService()
-    val packageGenerator = PackageGenerator(fxRateService)
+    val packageGenerator = PackageGenerator(packageEngine)
     val bookingService = BookingService(apiClient)
-    val bookingStore = BookingStore(bookingService, accountStore, secureStore)
+    val bookingStore = BookingStore(bookingService, accountStore, secureStore, packageEngine)
     val chatService = ChatService(apiClient)
     val notificationStore = ClientNotificationStore(appContext, apiClient)
     val settingsStore = AppSettingsStore(appContext)

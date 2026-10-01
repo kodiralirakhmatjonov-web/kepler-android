@@ -22,9 +22,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
@@ -48,6 +49,9 @@ import com.iumrah.beta.models.flight.FlightSearchFilters
 import com.iumrah.beta.models.flight.FlightStopsPreference
 import com.iumrah.beta.models.flight.FlightTimeWindow
 import com.iumrah.beta.ui.components.IumrahPressable
+import com.iumrah.beta.ui.generator.generatorCardColor
+import com.iumrah.beta.ui.generator.generatorRaisedColor
+import com.iumrah.beta.ui.generator.generatorPageColor
 
 @Composable
 fun FlightSearchFiltersCard(
@@ -62,7 +66,7 @@ fun FlightSearchFiltersCard(
     val copy = remember(language) { FilterCopy(language) }
 
     Column(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(30.dp)).padding(18.dp),
+        Modifier.fillMaxWidth().background(generatorCardColor(), RoundedCornerShape(28.dp)).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         IumrahPressable(
@@ -72,11 +76,11 @@ fun FlightSearchFiltersCard(
             },
             modifier = Modifier.fillMaxWidth(),
             cornerRadius = 20.dp,
-            background = MaterialTheme.colorScheme.surface,
+            background = Color.Transparent,
             pressedScale = .985f,
         ) {
             Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(38.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(38.dp).background(generatorRaisedColor(), RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
                     Icon(CupertinoSymbol.Sliders, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
                 Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -145,12 +149,22 @@ fun FlightSearchFiltersCard(
                         Text(copy.protectedConnections, style = MaterialTheme.typography.titleSmall)
                         Text(copy.protectedConnectionsBody, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha=.50f))
                     }
-                    Switch(
-                        checked = !filters.allowSelfTransfer,
-                        onCheckedChange = { protected ->
-                            onChange(filters.copy(allowSelfTransfer = !protected)); IumrahHaptics.selection(view)
+                    IumrahPressable(
+                        onClick = {
+                            onChange(filters.copy(allowSelfTransfer = !filters.allowSelfTransfer))
+                            IumrahHaptics.selection(view)
                         },
-                    )
+                        modifier = Modifier.size(width = 51.dp, height = 31.dp),
+                        cornerRadius = 99.dp,
+                        background = if (!filters.allowSelfTransfer) Color(0xFF34C759) else MaterialTheme.colorScheme.onSurface.copy(alpha = .14f),
+                    ) {
+                        Box(Modifier.fillMaxWidth().height(31.dp).padding(2.dp)) {
+                            Box(
+                                Modifier.align(if (!filters.allowSelfTransfer) Alignment.CenterEnd else Alignment.CenterStart)
+                                    .size(27.dp).background(Color.White, CircleShape)
+                            )
+                        }
+                    }
                 }
 
                 if (infantCount > 0) {
@@ -186,13 +200,13 @@ fun FlightSearchFiltersCard(
             IumrahPressable(
                 onClick = { onSelect(value) },
                 cornerRadius = 99.dp,
-                background = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                background = if (isSelected) MaterialTheme.colorScheme.onSurface else generatorRaisedColor(),
                 pressedScale = .965f,
             ) {
                 Text(
                     label(value),
                     modifier = Modifier.padding(horizontal = 13.dp, vertical = 10.dp),
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    color = if (isSelected) generatorPageColor() else MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
@@ -201,7 +215,7 @@ fun FlightSearchFiltersCard(
 }
 
 @Composable private fun BagCounter(title: String, value: Int, modifier: Modifier, onValue: (Int) -> Unit) {
-    Column(modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier.background(generatorRaisedColor(), RoundedCornerShape(16.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(CupertinoSymbol.Suitcase, contentDescription = null, modifier = Modifier.size(17.dp))
             Text(title, modifier = Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelMedium)
@@ -215,7 +229,7 @@ fun FlightSearchFiltersCard(
 }
 
 @Composable private fun MiniCounter(icon: CupertinoSymbol, enabled: Boolean, onClick: () -> Unit) {
-    IumrahPressable(onClick = onClick, enabled = enabled, modifier = Modifier.size(34.dp), cornerRadius = 99.dp, background = MaterialTheme.colorScheme.surface, pressedScale = .9f) {
+    IumrahPressable(onClick = onClick, enabled = enabled, modifier = Modifier.size(34.dp), cornerRadius = 99.dp, background = generatorPageColor(), pressedScale = .9f) {
         Box(Modifier.fillMaxWidth().height(34.dp), contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp)) }
     }
 }
@@ -244,14 +258,14 @@ private enum class AirlineMode { ALL, INCLUDE, EXCLUDE }
                     },
                     modifier = Modifier.weight(1f),
                     cornerRadius = 99.dp,
-                    background = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    background = if (active) MaterialTheme.colorScheme.onSurface else generatorRaisedColor(),
                     pressedScale = .96f,
                 ) {
                     Text(
                         when(candidate) { AirlineMode.ALL -> copy.allAirlines; AirlineMode.INCLUDE -> copy.only; AirlineMode.EXCLUDE -> copy.exclude },
                         modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                        color = if (active) generatorPageColor() else MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.labelMedium,
                     )
                 }
@@ -267,10 +281,10 @@ private enum class AirlineMode { ALL, INCLUDE, EXCLUDE }
                             onChange(if (mode == AirlineMode.EXCLUDE) filters.copy(airlinesExclude = values, airlinesInclude = emptyList()) else filters.copy(airlinesInclude = values, airlinesExclude = emptyList()))
                         },
                         cornerRadius = 99.dp,
-                        background = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        background = if (active) MaterialTheme.colorScheme.onSurface else generatorRaisedColor(),
                         pressedScale = .96f,
                     ) {
-                        Text("${airline.iata} · ${airline.name}", modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp), color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelMedium)
+                        Text("${airline.iata} · ${airline.name}", modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp), color = if (active) generatorPageColor() else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
