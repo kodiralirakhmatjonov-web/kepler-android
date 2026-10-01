@@ -87,7 +87,7 @@ fun AccountRootScreen(
     var signOutConfirm by remember { mutableStateOf(false) }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding(),
         contentPadding = PaddingValues(start = PagePad, end = PagePad, top = 12.dp, bottom = 130.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
@@ -122,7 +122,7 @@ fun AccountRootScreen(
             item { GuestLoginCard(language, accountStore, bookingStore) }
             item { TelegramIntegrationCard(language) { chrome.navigate(AppTab.BOOKING) } }
             item { PaymentSecuritySection(language, bookings.sessions.firstOrNull(), false, chrome) }
-            item { SettingsSection(language, settings.appearance, signalState.unreadCount, chrome, context) }
+            item { GuestSettingsSection(language, settings.appearance, signalState.unreadCount, chrome, context) }
         }
     }
 
@@ -173,21 +173,24 @@ private fun AccountHeader(language: AppLanguage, authenticated: Boolean, unread:
 @Composable
 private fun WalletSection(profile: IumrahAccountProfile, language: AppLanguage) {
     CardBlock {
-        Row(horizontalArrangement = Arrangement.spacedBy(13.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconBadge(CupertinoSymbol.Wallet, Color.White, 48.dp, 20.dp, darkFill = true)
-            Column(Modifier.weight(1f)) {
-                Text(tr(language, "iumrah ID in Apple Wallet", "iumrah ID в Apple Wallet", "iumrah ID Apple Wallet’da", "iumrah ID Apple Wallet’да"), fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                Text(tr(language, "Keep your digital pilgrim ID and QR code available from Wallet.", "Храните цифровую ID-карту паломника и QR-код прямо в Wallet.", "Raqamli ziyoratchi ID va QR-kodni Wallet’da saqlang.", "Рақамли зиёратчи ID ва QR-кодни Wallet’да сақланг."), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+            Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Color.Black), contentAlignment = Alignment.Center) {
+                CupertinoIcon(CupertinoSymbol.Wallet, null, Modifier.size(19.dp), Color.White)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(tr(language, "iumrah ID in Apple Wallet", "iumrah ID в Apple Wallet", "iumrah ID Apple Wallet’da", "iumrah ID Apple Wallet’да"), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(tr(language, "Keep your digital pilgrim ID and QR code available from Wallet.", "Храните цифровую ID-карту паломника и QR-код прямо в Wallet.", "Raqamli ziyoratchi ID va QR-kodni Wallet’da saqlang.", "Рақамли зиёратчи ID ва QR-кодни Wallet’да сақланг."), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, lineHeight = 18.sp)
             }
         }
+        Spacer(Modifier.height(16.dp))
         Row(
-            Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+            Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(15.dp)).background(Color.Black).padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
-            CupertinoIcon(CupertinoSymbol.Apple, null, Modifier.size(18.dp), IosGray)
+            CupertinoIcon(CupertinoSymbol.Apple, null, Modifier.size(19.dp), Color.White)
             Spacer(Modifier.width(9.dp))
-            Text(tr(language, "Wallet unavailable", "Wallet недоступен", "Wallet mavjud emas", "Wallet мавжуд эмас"), fontSize = 18.sp, color = IosGray, fontWeight = FontWeight.SemiBold)
+            Text("Wallet", fontSize = 17.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -210,7 +213,7 @@ private fun ActiveTripCard(session: StoredBookingSession, language: AppLanguage,
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(tr(language,"Active trip","Активная поездка","Faol safar","Фаол сафар"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = IosGray)
                     Text("${session.booking.route.originCode} → ${session.booking.route.outboundDestination}", fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                    Text(tr(language,"Booking ${session.displayBookingNumber}","Бронь ${session.displayBookingNumber}","Bron ${session.displayBookingNumber}","Брон ${session.displayBookingNumber}"), fontSize = 12.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold, color = IosGray)
+                    Text("Бронь ${session.displayBookingNumber}", fontSize = 12.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold, color = IosGray)
                 }
                 CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.padding(top = 16.dp).size(15.dp), IosGray.copy(alpha=.7f))
             }
@@ -279,42 +282,50 @@ private fun TripsSection(sessions: List<StoredBookingSession>, language: AppLang
 
 @Composable
 private fun TelegramIntegrationCard(language: AppLanguage, onOpen: () -> Unit) {
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(24.dp)
     Surface(
         onClick = onOpen,
         shape = shape,
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 3.dp,
-        border = androidx.compose.foundation.BorderStroke(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .075f)),
+        shadowElevation = 0.dp,
+        border = androidx.compose.foundation.BorderStroke(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .06f)),
     ) {
-        Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-            Box(Modifier.size(50.dp).clip(RoundedCornerShape(17.dp)).background(Color(0xFF229ED9).copy(alpha = .12f)), contentAlignment = Alignment.Center) {
-                CupertinoIcon(CupertinoSymbol.Send, null, Modifier.size(21.dp), Color(0xFF229ED9))
+        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Image(
+                painter = painterResource(R.drawable.telegram_integration_hero),
+                contentDescription = null,
+                modifier = Modifier.width(84.dp).height(70.dp).clip(RoundedCornerShape(18.dp)),
+                contentScale = ContentScale.Crop,
+            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(tr(language, "iumrah in Telegram", "iumrah в Telegram", "iumrah Telegram’da", "iumrah Telegram’да"), fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
+                Text(tr(language, "Status and booking notifications", "Статус и уведомления по брони", "Bron statusi va bildirishnomalar", "Брон статуси ва билдиришномалар"), fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Telegram", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF229ED9))
-                Text(tr(language, "Booking status in Telegram", "Статус бронирования в Telegram", "Bron holati Telegram’da", "Брон ҳолати Telegram’да"), fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold)
-                Text(tr(language, "Status, payment, confirmation and document updates in Telegram.", "Статус, оплата, подтверждение и документы — прямо в Telegram.", "Status, to‘lov, tasdiq va hujjatlar — Telegram’da.", "Статус, тўлов, тасдиқ ва ҳужжатлар — Telegram’да."), fontSize = 12.sp, lineHeight = 16.sp, color = IosGray, maxLines = 2)
-            }
-            CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(14.dp), IosGray.copy(alpha = .7f))
+            CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(13.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .30f))
         }
     }
 }
 
 @Composable
 private fun TravelCompanionsParityCard(language: AppLanguage, onOpen: () -> Unit) {
-    val shape=RoundedCornerShape(CardRadius)
-    Surface(onClick=onOpen, shape=shape, color=MaterialTheme.colorScheme.surface, shadowElevation=3.dp, border=androidx.compose.foundation.BorderStroke(.7.dp,MaterialTheme.colorScheme.onSurface.copy(alpha=.075f))) {
-        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement=Arrangement.spacedBy(15.dp)) {
-            Row(verticalAlignment=Alignment.Top, horizontalArrangement=Arrangement.spacedBy(13.dp)) {
+    val shape = RoundedCornerShape(CardRadius)
+    Surface(onClick = onOpen, shape = shape, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp, border = androidx.compose.foundation.BorderStroke(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .075f))) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Image(
+                painterResource(R.drawable.travel_companions_cover),
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth().height(94.dp).clip(RoundedCornerShape(18.dp)),
+                contentScale = ContentScale.Crop,
+            )
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
                 IconBadge(CupertinoSymbol.Persons, Care, 50.dp, 20.dp)
-                Column(Modifier.weight(1f), verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(tr(language,"Who is traveling with you","Кто едет с Вами","Siz bilan kim bormoqda","Сиз билан ким бормоқда"), fontSize=20.sp, fontWeight=FontWeight.Bold)
-                    Text(tr(language,"Your family and loved ones","Ваша семья и близкие","Oilangiz va yaqinlaringiz","Оилангиз ва яқинларингиз"), fontSize=14.sp, color=IosGray)
+                    Text(tr(language,"Your family and loved ones","Ваша семья и близкие","Oilangiz va yaqinlaringiz","Оилангиз ва яқинларингиз"), fontSize=14.sp, color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                CupertinoIcon(CupertinoSymbol.ChevronRight,null,Modifier.padding(top=17.dp).size(14.dp),IosGray.copy(alpha=.7f))
+                CupertinoIcon(CupertinoSymbol.ChevronRight,null,Modifier.padding(top=17.dp).size(14.dp),MaterialTheme.colorScheme.onSurface.copy(alpha=.30f))
             }
-            Text(tr(language,"Keep each traveler’s passport details in a separate, clear card and reuse them for the booking.","Храните данные каждого участника в отдельной понятной карточке и используйте их в бронировании.","Har bir sayohatchi ma’lumotini alohida kartada saqlang va bronda ishlating.","Ҳар бир саёҳатчи маълумотини алоҳида картада сақланг ва бронда ишлатинг."), fontSize=12.sp, color=IosGray)
+            Text(tr(language,"Keep each traveler’s passport details in a separate, clear card and reuse them for the booking.","Храните данные каждого участника в отдельной понятной карточке и используйте их в бронировании.","Har bir sayohatchi ma’lumotini alohida kartada saqlang va bronda ishlating.","Ҳар бир саёҳатчи маълумотини алоҳида картада сақланг ва бронда ишлатинг."), fontSize=12.sp, lineHeight=16.sp, color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -357,7 +368,7 @@ private fun statusTint(status:String):Color = when(status.uppercase()) {
 private fun ProfileSection(profile: IumrahAccountProfile, language: AppLanguage, onEdit: () -> Unit) {
     CardBlock {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { SectionHeader(CupertinoSymbol.PersonCircle, tr(language,"Account details","Данные аккаунта","Akkaunt ma’lumotlari","Аккаунт маълумотлари"), tr(language,"Identity and contact details","Личные и контактные данные","Shaxsiy va aloqa ma’lumotlari","Шахсий ва алоқа маълумотлари")) }
+            Column(Modifier.weight(1f)) { SectionHeader(CupertinoSymbol.IdentityCard, tr(language,"Account details","Данные аккаунта","Akkaunt ma’lumotlari","Аккаунт маълумотлари"), tr(language,"Used for your profile and future trips","Используются в профиле и новых поездках","Profil va yangi safarlarda ishlatiladi","Профил ва янги сафарларда ишлатилади")) }
             Surface(onClick=onEdit, shape=RoundedCornerShape(18.dp), color=MaterialTheme.colorScheme.onSurface.copy(alpha=.06f)) { Text(tr(language,"Edit","Изменить","Tahrirlash","Таҳрирлаш"), Modifier.padding(horizontal=12.dp,vertical=10.dp), fontSize=12.sp,fontWeight=FontWeight.Bold) }
         }
         Spacer(Modifier.height(12.dp))
@@ -393,7 +404,27 @@ private fun SettingsSection(language: AppLanguage, appearance: AppAppearance, un
         HorizontalDivider(Modifier.padding(start=54.dp))
         SettingsRow(CupertinoSymbol.HalfCircle,tr(language,"Appearance","Оформление","Ko‘rinish","Кўриниш"),appearanceTitle(appearance,language)){chrome.openAccountAppearance()}
         HorizontalDivider(Modifier.padding(start=54.dp))
-        SettingsRow(CupertinoSymbol.BellSignal,"iumrah Signal",if(unread>0) tr(language,"$unread new","$unread новых","$unread yangi","$unread янги") else tr(language,"All caught up","Новых нет","Yangi yo‘q","Янги йўқ")){chrome.openAccountSignals()}
+        SettingsRow(CupertinoSymbol.BellSignal,tr(language,"Umrah status signal","Umra статус сигнал","Umra holat signali","Умра ҳолат сигнали"),if(unread>0) tr(language,"$unread new","$unread новых","$unread yangi","$unread янги") else tr(language,"All caught up","Новых нет","Yangi yo‘q","Янги йўқ")){chrome.openAccountSignals()}
+        HorizontalDivider(Modifier.padding(start=54.dp))
+        SettingsRow(CupertinoSymbol.BellBadge,tr(language,"Notifications","Уведомления","Bildirishnomalar","Билдиришномалар"),tr(language,"System notification settings","Системные настройки уведомлений","Tizim bildirishnoma sozlamalari","Тизим билдиришнома созламалари")){
+            val intent=Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,context.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); runCatching{context.startActivity(intent)}
+        }
+    }
+}
+
+@Composable
+private fun GuestSettingsSection(language: AppLanguage, appearance: AppAppearance, unread: Int, chrome: AppChromeStore, context: android.content.Context) {
+    CardBlock {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            IconBadge(CupertinoSymbol.Sliders, Care, 42.dp, 17.dp)
+            Text(tr(language,"App settings","Настройки приложения","Ilova sozlamalari","Илова созламалари"), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(18.dp))
+        SettingsRow(CupertinoSymbol.Globe,tr(language,"Language","Язык","Til","Тил"),languageTitle(language)){chrome.openAccountLanguage()}
+        HorizontalDivider(Modifier.padding(start=54.dp))
+        SettingsRow(CupertinoSymbol.HalfCircle,tr(language,"Appearance","Оформление","Ko‘rinish","Кўриниш"),appearanceTitle(appearance,language)){chrome.openAccountAppearance()}
+        HorizontalDivider(Modifier.padding(start=54.dp))
+        SettingsRow(CupertinoSymbol.BellSignal,tr(language,"Umrah status signal","Umra статус сигнал","Umra holat signali","Умра ҳолат сигнали"),if(unread>0) tr(language,"$unread new","$unread новых","$unread yangi","$unread янги") else tr(language,"All caught up","Новых нет","Yangi yo‘q","Янги йўқ")){chrome.openAccountSignals()}
         HorizontalDivider(Modifier.padding(start=54.dp))
         SettingsRow(CupertinoSymbol.BellBadge,tr(language,"Notifications","Уведомления","Bildirishnomalar","Билдиришномалар"),tr(language,"System notification settings","Системные настройки уведомлений","Tizim bildirishnoma sozlamalari","Тизим билдиришнома созламалари")){
             val intent=Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,context.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); runCatching{context.startActivity(intent)}
@@ -407,7 +438,11 @@ private fun GuestLoginCard(language:AppLanguage,accountStore:IumrahAccountStore,
     var identifier by remember{mutableStateOf("")};var password by remember{mutableStateOf("")};var code by remember{mutableStateOf("")};var challenge by remember{mutableStateOf<String?>(null)}
     var first by remember{mutableStateOf("")};var last by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)};var error by remember{mutableStateOf<String?>(null)}
     CardBlock{
-        SectionHeader(if(register) CupertinoSymbol.PlusPerson else CupertinoSymbol.Key,if(register) tr(language,"Register","Регистрация","Ro‘yxatdan o‘tish","Рўйхатдан ўтиш") else tr(language,"Sign in","Вход","Kirish","Кириш"),if(register) tr(language,"Create your permanent iumrah account","Создайте постоянный аккаунт iumrah","Doimiy iumrah akkauntini yarating","Доимий iumrah аккаунтини яратинг") else tr(language,"Restore trips and your digital ID","Восстановите поездки и цифровой ID","Safarlar va raqamli ID-ni tiklang","Сафарлар ва рақамли ID-ни тикланг"))
+        SectionHeader(
+            if(register) CupertinoSymbol.PlusPerson else CupertinoSymbol.Key,
+            if(register) tr(language,"Create account","Регистрация","Ro‘yxatdan o‘tish","Рўйхатдан ўтиш") else tr(language,"Sign in","Вход","Kirish","Кириш"),
+            if(register) tr(language,"Create one permanent account for all future trips","Создайте один постоянный аккаунт для всех будущих поездок","Barcha keyingi safarlar uchun bitta doimiy akkaunt yarating","Барча кейинги сафарлар учун битта доимий аккаунт яратинг") else tr(language,"Use the method linked to your permanent iumrah account","Используйте способ, привязанный к Вашему постоянному аккаунту iumrah","Doimiy iumrah akkauntingizga ulangan usuldan foydalaning","Доимий iumrah аккаунтингизга уланган усулдан фойдаланинг")
+        )
         Spacer(Modifier.height(14.dp));Segmented(listOf(tr(language,"Register","Регистрация","Ro‘yxatdan o‘tish","Рўйхатдан ўтиш"),tr(language,"Sign in","Вход","Kirish","Кириш")),if(register)0 else 1){register=it==0;challenge=null;error=null}
         Spacer(Modifier.height(12.dp));Segmented(listOf("SMS","Email","iumrah ID"),when(method){"sms"->0;"email"->1;else->2}){method=listOf("sms","email","id")[it];challenge=null;error=null}
         Spacer(Modifier.height(14.dp))
@@ -430,13 +465,48 @@ private fun GuestLoginCard(language:AppLanguage,accountStore:IumrahAccountStore,
                 !register && (method=="email" || method=="id") -> accountStore.login(identifier.trim(),password,language.localeTag)
                 else -> throw IllegalStateException(tr(language,"iumrah ID registration is completed from an active booking.","Регистрация по iumrah ID завершается из активного бронирования.","iumrah ID orqali ro‘yxatdan o‘tish faol bron ichida yakunlanadi.","iumrah ID орқали рўйхатдан ўтиш фаол брон ичида якунланади."))
             }
-        }.onFailure{error=it.message ?: "Error"};busy=false}},modifier=Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(18.dp),enabled=!busy,colors=ButtonDefaults.buttonColors(containerColor=Color.Black)){if(busy) CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=Color.White) else Text(if(challenge==null) tr(language,"Continue","Продолжить","Davom etish","Давом этиш") else tr(language,"Confirm","Подтвердить","Tasdiqlash","Тасдиқлаш"),fontWeight=FontWeight.Bold)}
+        }.onFailure{error=it.message ?: "Error"};busy=false}},modifier=Modifier.fillMaxWidth().height(56.dp),shape=RoundedCornerShape(19.dp),enabled=!busy,colors=ButtonDefaults.buttonColors(containerColor=Color.Black)){if(busy) CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=Color.White) else Text(if(challenge==null) tr(language,"Continue","Продолжить","Davom etish","Давом этиш") else tr(language,"Confirm","Подтвердить","Tasdiqlash","Тасдиқлаш"),fontWeight=FontWeight.Bold)}
         if(register && method=="id" && bookingStore.state.value.sessions.isNotEmpty()){Spacer(Modifier.height(10.dp));Text(tr(language,"Use the active booking to finish creating this account.","Используйте активную бронь, чтобы завершить создание аккаунта.","Akkaunt yaratishni yakunlash uchun faol brondan foydalaning.","Аккаунт яратишни якунлаш учун фаол брондан фойдаланинг."),fontSize=12.sp,color=IosGray)}
-        Spacer(Modifier.height(14.dp));HorizontalDivider();Spacer(Modifier.height(12.dp));ProviderButton(CupertinoSymbol.Apple,if(register)tr(language,"Continue with Apple","Продолжить с Apple","Apple orqali davom etish","Apple орқали давом этиш") else tr(language,"Sign in with Apple","Войти с Apple","Apple orqali kirish","Apple орқали кириш"));Spacer(Modifier.height(9.dp));ProviderButton(CupertinoSymbol.Globe,if(register)tr(language,"Continue with Google","Продолжить с Google","Google orqali davom etish","Google орқали давом этиш") else tr(language,"Sign in with Google","Войти с Google","Google orqali kirish","Google орқали кириш"))
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface.copy(alpha = .20f))
+            Text(tr(language,"or","или","yoki","ёки"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface.copy(alpha = .20f))
+        }
+        Spacer(Modifier.height(16.dp))
+        ProviderButton(CupertinoSymbol.Apple,if(register)tr(language,"Continue with Apple","Продолжить с Apple","Apple bilan davom etish","Apple билан давом этиш") else tr(language,"Sign in with Apple","Войти с Apple","Apple orqali kirish","Apple орқали кириш"))
+        Spacer(Modifier.height(10.dp))
+        ProviderButton(CupertinoSymbol.Globe,if(register)tr(language,"Continue with Google","Продолжить с Google","Google bilan davom etish","Google билан давом этиш") else tr(language,"Sign in with Google","Войти с Google","Google orqali kirish","Google орқали кириш"))
+        Spacer(Modifier.height(12.dp))
+        Text(
+            tr(language,
+                "Apple and Google use the same permanent iumrah account; they do not create a separate trip profile.",
+                "Apple и Google используют тот же постоянный аккаунт iumrah и не создают отдельный профиль поездки.",
+                "Apple va Google aynan shu doimiy iumrah akkauntidan foydalanadi va alohida safar profili yaratmaydi.",
+                "Apple ва Google айнан шу доимий iumrah аккаунтидан фойдаланади ва алоҳида сафар профили яратмайди."),
+            fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
-@Composable private fun ProviderButton(icon:CupertinoSymbol,title:String){Surface(shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.onSurface.copy(alpha=.055f)){Row(Modifier.fillMaxWidth().height(50.dp).padding(horizontal=15.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){CupertinoIcon(icon,null,Modifier.size(19.dp),MaterialTheme.colorScheme.onSurface);Text(title,fontWeight=FontWeight.SemiBold)}}}
+@Composable
+private fun ProviderButton(icon: CupertinoSymbol, title: String) {
+    val isApple = icon == CupertinoSymbol.Apple
+    val shape = RoundedCornerShape(19.dp)
+    Surface(
+        shape = shape,
+        color = if (isApple) Color.Black else Color.White,
+        border = if (isApple) null else androidx.compose.foundation.BorderStroke(.8.dp, Color.Black.copy(alpha = .20f)),
+        shadowElevation = if (isApple) 0.dp else 2.dp,
+    ) {
+        Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            if (isApple) CupertinoIcon(CupertinoSymbol.Apple, null, Modifier.size(21.dp), Color.White)
+            else Text("G", color = Color(0xFF4285F4), fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(11.dp))
+            Text(title, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, color = if (isApple) Color.White else Color.Black.copy(alpha = .90f), maxLines = 1)
+        }
+    }
+}
 
 @Composable
 fun AccountProfileEditorScreen(language:AppLanguage,accountStore:IumrahAccountStore,chrome:AppChromeStore){
@@ -445,7 +515,7 @@ fun AccountProfileEditorScreen(language:AppLanguage,accountStore:IumrahAccountSt
     AccountPage(tr(language,"Account details","Данные аккаунта","Akkaunt ma’lumotlari","Аккаунт маълумотлари"),chrome){
         CardBlock{AccountField(first,{first=it},tr(language,"First name","Имя","Ism","Исм"));Spacer(Modifier.height(10.dp));AccountField(last,{last=it},tr(language,"Last name","Фамилия","Familiya","Фамилия"));Spacer(Modifier.height(10.dp));AccountField(phone,{phone=it},tr(language,"Phone","Телефон","Telefon","Телефон"),KeyboardType.Phone);Spacer(Modifier.height(10.dp));AccountField(email,{email=it},"Email",KeyboardType.Email);Spacer(Modifier.height(10.dp));AccountField(telegram,{telegram=it},"Telegram");Spacer(Modifier.height(10.dp));AccountField(whatsapp,{whatsapp=it},"WhatsApp")}
         error?.let{Text(it,color=Danger,fontSize=12.sp)}
-        Button(onClick={busy=true;scope.launch{runCatching{accountStore.updateProfile(first,last,phone,email,telegram,whatsapp)}.onSuccess{chrome.back()}.onFailure{error=it.message};busy=false}},modifier=Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(18.dp),enabled=!busy,colors=ButtonDefaults.buttonColors(containerColor=Color.Black)){Text(tr(language,"Save","Сохранить","Saqlash","Сақлаш"),fontWeight=FontWeight.Bold)}
+        Button(onClick={busy=true;scope.launch{runCatching{accountStore.updateProfile(first,last,phone,email,telegram,whatsapp)}.onSuccess{chrome.back()}.onFailure{error=it.message};busy=false}},modifier=Modifier.fillMaxWidth().height(56.dp),shape=RoundedCornerShape(19.dp),enabled=!busy,colors=ButtonDefaults.buttonColors(containerColor=Color.Black)){Text(tr(language,"Save","Сохранить","Saqlash","Сақлаш"),fontWeight=FontWeight.Bold)}
     }
 }
 

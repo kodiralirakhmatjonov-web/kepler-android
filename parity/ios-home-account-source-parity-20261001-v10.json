@@ -1,0 +1,28 @@
+{
+  "version": 10,
+  "date": "2026-10-01",
+  "scope": ["home", "account", "iumrah-id-motion"],
+  "ios_source": "kepler-ios-main(10).zip",
+  "ios_source_sha256": "f6022357ff26e015ec431247ab1828b01b466c6e1b285aa360b1d058fb49a76e",
+  "android_base_patch": "iumrah-android-update-ios-current-parity-20261001-v9.zip",
+  "android_base_patch_sha256": "8863c51f4bca5202f0524ec8bc8554ce14cf9e13f4bf081ccf6d32d58ab127e8",
+  "changed_sources": [
+    "app/src/main/java/com/iumrah/beta/ui/home/HomeScreen.kt",
+    "app/src/main/java/com/iumrah/beta/ui/account/AccountIdentityWallet.kt",
+    "app/src/main/java/com/iumrah/beta/ui/account/AccountScreens.kt",
+    "app/src/main/res/drawable-nodpi/travel_companions_cover.jpg"
+  ],
+  "motion": {
+    "identity_dome_seconds": 4.6,
+    "identity_flip_spring_response": 0.66,
+    "identity_flip_spring_damping": 0.84,
+    "locked_identity_shimmer_seconds": 3.2,
+    "backend_network_phase_seconds": 4.2
+  },
+  "qa": {
+    "structural_stage_1_to_10": "pass",
+    "api_36_environment": "pass",
+    "kotlin_parse_smoke": "pass",
+    "same_viewport_screenshot_diff": "not_run"
+  }
+}

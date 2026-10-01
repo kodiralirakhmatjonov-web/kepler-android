@@ -1,0 +1,36 @@
+iumrah Android — iOS Home + Account parity v10
+Date: 2026-10-01
+Source of truth: kepler-ios-main(10).zip
+Source SHA-256: f6022357ff26e015ec431247ab1828b01b466c6e1b285aa360b1d058fb49a76e
+Base Android state: iOS current parity v9 patch applied
+Base v9 patch SHA-256: 8863c51f4bca5202f0524ec8bc8554ce14cf9e13f4bf081ccf6d32d58ab127e8
+
+Scope intentionally limited to Home + Account visual/motion parity.
+
+Home:
+- current SwiftUI section order and card geometry retained/aligned
+- video carousel corrected to current iOS sizing, radius, dots and active CTA behavior
+- Signal cards and emotional CTA aligned
+- Audience, Services, Build My Umrah, Integrations, Products, Confidence, Philosophy,
+  Connected Trip, FAQ and About aligned to current iOS source metrics/copy
+- iumrah Advisor aura follows current SwiftUI TimelineView motion coefficients
+- iumrah System compact backend network follows current iOS 4.2 s phase,
+  seven-particle packet trails and reverse packets
+
+Account:
+- iumrah ID front/back geometry aligned to current IumrahIdentityDomeCard
+- living spectral dome cycle: 4.6 s, current ring/point/depth formulas
+- 3D flip uses iOS spring response 0.66 / damping 0.84 and soft haptic
+- removed Android-only flip/fullscreen helper row
+- public identity QR/back layout aligned
+- guest locked-ID seal/shimmer animation aligned (3.2 s) with split doors/microdots
+- Travel Companions cover restored from current iOS asset
+- compact Telegram integration, Wallet entry, guest settings/login surfaces aligned
+
+QA performed in repository:
+- verify-stage1.sh through verify-stage10.sh: PASS
+- verify-build-env.sh (compileSdk/targetSdk 36): PASS
+- Kotlin syntax parse-smoke on HomeScreen.kt, AccountScreens.kt, AccountIdentityWallet.kt: PASS
+
+Note: this marker certifies source/layout/asset/motion parity work, not an instrumented
+same-viewport screenshot pixel-diff on physical iOS and Android devices.
