@@ -73,6 +73,7 @@ import com.iumrah.beta.domain.journey.JourneyStore
 import com.iumrah.beta.models.hotel.HotelDetail
 import com.iumrah.beta.models.hotel.HotelImage
 import com.iumrah.beta.models.hotel.HotelRoom
+import com.iumrah.beta.models.hotel.HotelSummary
 import com.iumrah.beta.models.hotel.IumrahRoomCategory
 import com.iumrah.beta.models.hotel.IumrahRoomCategoryOption
 import com.iumrah.beta.models.hotel.StorefrontPackageSnapshot
@@ -98,6 +99,8 @@ fun HotelDetailScreen(
     journey: JourneyStore,
     onBack: () -> Unit,
     onOpenConfigurator: (String) -> Unit = {},
+    selectionRole: String? = null,
+    onSelectionDone: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -116,12 +119,29 @@ fun HotelDetailScreen(
     var careOpen by remember { mutableStateOf(false) }
     var favorite by remember(hotelId) { mutableStateOf(hotelId in favoritePrefs.getStringSet("hotel_ids", emptySet()).orEmpty()) }
     var selectedPackage by remember(hotelId) { mutableIntStateOf(0) }
+    var selectionSummary by remember(hotelId, selectionRole) { mutableStateOf<HotelSummary?>(null) }
 
     suspend fun loadAll() {
         loading = true
         error = null
         val detailResult = runCatching { catalog.hotelDetail(hotelId) }
         detail = detailResult.getOrNull()
+        selectionSummary = detail?.let { value ->
+            HotelSummary(
+                id = value.id,
+                name = value.name,
+                city = value.city,
+                stars = value.stars,
+                rating = value.rating,
+                reviewCount = value.reviewCount,
+                status = value.status,
+                coverImageURL = value.images.firstOrNull { it.isCover }?.url ?: value.images.firstOrNull()?.url,
+                imageCount = value.images.size,
+                roomCount = value.rooms.size,
+                price = value.price,
+                updatedAt = Instant.now().toString(),
+            )
+        }
         if (detailResult.isFailure) error = detailText(language, "load_error")
         loading = false
 
@@ -199,6 +219,21 @@ fun HotelDetailScreen(
                     onCare = { careOpen = true },
                     onOpenConfigurator = onOpenConfigurator,
                     onRetryRooms = { scope.launch { loadAll() } },
+                    selectionMode = selectionRole != null,
+                    selectedRoomId = if (selectionRole.equals("madinah", true)) journeyState.madinahRoom?.id else journeyState.makkahRoom?.id,
+                    selectedCategoryId = if (selectionRole.equals("madinah", true)) journeyState.madinahRoomCategory?.id else journeyState.makkahRoomCategory?.id,
+                    onSelectRoom = { room ->
+                        val summary = selectionSummary
+                        if (summary != null) journey.selectHotel(summary)
+                        journey.selectRoom(room, selectionRole.equals("madinah", true))
+                        onSelectionDone()
+                    },
+                    onSelectCategory = { option ->
+                        val summary = selectionSummary
+                        if (summary != null) journey.selectHotel(summary)
+                        journey.selectRoomCategory(option, selectionRole.equals("madinah", true))
+                        onSelectionDone()
+                    },
                 )
             }
             loading -> LoadingDetail(language)
@@ -278,6 +313,11 @@ private fun HotelDetailBody(
     onCare: () -> Unit,
     onOpenConfigurator: (String) -> Unit,
     onRetryRooms: () -> Unit,
+    selectionMode: Boolean,
+    selectedRoomId: String?,
+    selectedCategoryId: String?,
+    onSelectRoom: (HotelRoom) -> Unit,
+    onSelectCategory: (IumrahRoomCategoryOption) -> Unit,
 ) {
     val images = remember(hotel.images) { propertyImages(hotel.images) }
     LazyColumn(
@@ -292,13 +332,14 @@ private fun HotelDetailBody(
                 verticalArrangement = Arrangement.spacedBy(30.dp),
             ) {
                 IdentitySection(hotel, language)
-                PackageSection(packages, selectedPackage, onPackageChange, language, onOpenConfigurator)
+                if (selectionMode) HotelSelectionRefundPolicy(language)
+                else PackageSection(packages, selectedPackage, onPackageChange, language, onOpenConfigurator)
                 QualitySection(hotel, language)
                 ReceptionClocks(language)
                 PhotoOverview(hotel, language, onGallery)
                 AmenitiesSection(hotel, language)
-                PrimaryRoomSection(categories, categoryLoading, categoryError, language, onRetryRooms)
-                ActualRoomsSection(hotel, language)
+                PrimaryRoomSection(categories, categoryLoading, categoryError, language, onRetryRooms, selectionMode, selectedCategoryId, onSelectCategory)
+                ActualRoomsSection(hotel, language, selectionMode, selectedRoomId, onSelectRoom)
                 if (hotel.description.isNotBlank()) AboutSection(hotel, language)
                 MapSection(hotel, language)
                 PracticalSection(hotel, language)
@@ -630,6 +671,9 @@ private fun PrimaryRoomSection(
     error: String?,
     language: AppLanguage,
     onRetry: () -> Unit,
+    selectionMode: Boolean,
+    selectedCategoryId: String?,
+    onSelect: (IumrahRoomCategoryOption) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         SectionTitle(detailText(language, "prepared_rooms"))
@@ -643,15 +687,22 @@ private fun PrimaryRoomSection(
                 Text(error, fontSize = 14.sp, color = secondaryText())
                 SecondaryDetailButton(detailText(language, "retry"), onRetry)
             }
-            else -> categories.forEach { RoomCategoryCard(it, language) }
+            else -> categories.forEach { RoomCategoryCard(it, language, selectionMode, selectedCategoryId == it.id, onSelect) }
         }
     }
 }
 
 @Composable
-private fun RoomCategoryCard(option: IumrahRoomCategoryOption, language: AppLanguage) {
+private fun RoomCategoryCard(
+    option: IumrahRoomCategoryOption,
+    language: AppLanguage,
+    selectionMode: Boolean,
+    selected: Boolean,
+    onSelect: (IumrahRoomCategoryOption) -> Unit,
+) {
+    val shape = RoundedCornerShape(28.dp)
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(cardColor()).border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), RoundedCornerShape(28.dp)).padding(18.dp),
+        Modifier.fillMaxWidth().clip(shape).background(cardColor()).border(if (selected) 1.2.dp else .6.dp, if (selected) Color(0xFF74A187).copy(alpha = .62f) else MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), shape).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -662,29 +713,33 @@ private fun RoomCategoryCard(option: IumrahRoomCategoryOption, language: AppLang
                 Text(roomCategoryName(option.category, language), fontSize = 21.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
                 Text(roomCategoryBody(option.category, language), fontSize = 12.sp, lineHeight = 15.sp, color = secondaryText(), maxLines = 2)
             }
+            if (selected) CupertinoIcon(CupertinoSymbol.CheckCircleFill, null, Modifier.size(22.dp), Color(0xFF74A187))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CompactFact(CupertinoSymbol.Persons, option.maxGuests.toString())
             CompactFact(CupertinoSymbol.Bed, localizedBeds(option.category, language))
         }
+        if (selectionMode) {
+            RoomSelectionButton(if (selected) selectionText(language, "room_chosen") else selectionText(language, "choose_room"), selected) { onSelect(option) }
+        }
     }
 }
 
 @Composable
-private fun ActualRoomsSection(hotel: HotelDetail, language: AppLanguage) {
+private fun ActualRoomsSection(hotel: HotelDetail, language: AppLanguage, selectionMode: Boolean, selectedRoomId: String?, onSelect: (HotelRoom) -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         SectionTitle(detailText(language, "hotel_rooms"))
         Text(detailText(language, "hotel_rooms_body"), fontSize = 14.sp, lineHeight = 19.sp, color = secondaryText())
         if (hotel.rooms.isEmpty()) {
             Text(detailText(language, "rooms_empty"), Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(cardColor()).padding(20.dp), fontSize = 14.sp, color = secondaryText())
         } else {
-            hotel.rooms.forEach { room -> ActualRoomCard(room, hotel, language) }
+            hotel.rooms.forEach { room -> ActualRoomCard(room, hotel, language, selectionMode, selectedRoomId == room.id, onSelect) }
         }
     }
 }
 
 @Composable
-private fun ActualRoomCard(room: HotelRoom, hotel: HotelDetail, language: AppLanguage) {
+private fun ActualRoomCard(room: HotelRoom, hotel: HotelDetail, language: AppLanguage, selectionMode: Boolean, selected: Boolean, onSelect: (HotelRoom) -> Unit) {
     val images = remember(room.id, hotel.images) { roomImages(room, hotel.images) }
     val pager = rememberPagerState(pageCount = { maxOf(1, images.size) })
     Row(
@@ -711,8 +766,37 @@ private fun ActualRoomCard(room: HotelRoom, hotel: HotelDetail, language: AppLan
             }
             room.sizeM2?.let { CompactFact(CupertinoSymbol.NumberSquare, String.format(Locale.US, "%.0f m²", it)) }
             room.description?.let { cleanRoomDescription(it) }?.takeIf { it.isNotBlank() }?.let {
-                Text(it, fontSize = 11.sp, lineHeight = 14.sp, color = secondaryText(), maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(it, fontSize = 11.sp, lineHeight = 14.sp, color = secondaryText(), maxLines = if (selectionMode) 1 else 3, overflow = TextOverflow.Ellipsis)
             }
+            if (selectionMode) RoomSelectionButton(if (selected) selectionText(language, "room_chosen") else selectionText(language, "choose_room"), selected) { onSelect(room) }
+        }
+    }
+}
+
+@Composable
+private fun RoomSelectionButton(title: String, selected: Boolean, onClick: () -> Unit) {
+    val fg = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
+    val bg = if (selected) Color(0xFF74A187) else raisedColor()
+    Row(
+        Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(16.dp)).background(bg).clickable(onClick = onClick).padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = fg)
+        CupertinoIcon(if (selected) CupertinoSymbol.Checkmark else CupertinoSymbol.ArrowRight, null, Modifier.size(14.dp), fg)
+    }
+}
+
+@Composable
+private fun HotelSelectionRefundPolicy(language: AppLanguage) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(cardColor()).border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), RoundedCornerShape(24.dp)).padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(13.dp)).background(raisedColor()), contentAlignment = Alignment.Center) { CupertinoIcon(CupertinoSymbol.ShieldCheck, null, Modifier.size(18.dp), secondaryText()) }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(selectionText(language, "refund_policy"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(selectionText(language, "refund_policy_body"), fontSize = 11.sp, lineHeight = 15.sp, color = secondaryText())
         }
     }
 }
@@ -1025,6 +1109,13 @@ private fun shareHotelDetail(context: Context, hotel: HotelDetail) {
         hotel.googleMapsURL?.takeIf { it.isNotBlank() }?.let { AppConfig.absoluteUrl(it)?.let { url -> append("\n$url") } }
     }
     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }, hotel.name))
+}
+
+private fun selectionText(language: AppLanguage, key: String): String = when (key) {
+    "room_chosen" -> when(language){ AppLanguage.RUSSIAN->"Номер выбран"; AppLanguage.ENGLISH->"Room chosen"; AppLanguage.UZBEK->"Xona tanlandi"; AppLanguage.UZBEK_CYRILLIC->"Хона танланди" }
+    "choose_room" -> when(language){ AppLanguage.RUSSIAN->"Выбрать номер"; AppLanguage.ENGLISH->"Choose room"; AppLanguage.UZBEK->"Xonani tanlash"; AppLanguage.UZBEK_CYRILLIC->"Хонани танлаш" }
+    "refund_policy" -> when(language){ AppLanguage.RUSSIAN->"Условия отеля"; AppLanguage.ENGLISH->"Hotel refund policy"; AppLanguage.UZBEK->"Mehmonxona qaytarish siyosati"; AppLanguage.UZBEK_CYRILLIC->"Меҳмонхона қайтариш сиёсати" }
+    else -> when(language){ AppLanguage.RUSSIAN->"Условия возврата показываются до оплаты пакета."; AppLanguage.ENGLISH->"Refund terms are shown before package payment."; AppLanguage.UZBEK->"Qaytarish shartlari paket to‘lovidan oldin ko‘rsatiladi."; AppLanguage.UZBEK_CYRILLIC->"Қайтариш шартлари пакет тўловидан олдин кўрсатилади." }
 }
 
 private fun detailText(language: AppLanguage, key: String, vararg args: Any): String {

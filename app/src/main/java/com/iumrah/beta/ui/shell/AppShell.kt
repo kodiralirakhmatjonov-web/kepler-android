@@ -98,6 +98,7 @@ import com.iumrah.beta.ui.hotels.HotelDetailScreen
 import com.iumrah.beta.ui.hotels.HotelsScreen
 import com.iumrah.beta.ui.hotels.HotelsBoard
 import com.iumrah.beta.ui.trip.HotelSelectionScreen
+import com.iumrah.beta.ui.trip.ConfiguratorHotelSelectionScreen
 import com.iumrah.beta.ui.trip.TripBuilderScreen
 
 @Composable
@@ -168,6 +169,26 @@ fun AppShell(
                     onOpenConfigurator = { chrome.openFinalPackage() },
                 )
 
+                is AppRoute.ConfiguratorHotelSelection -> ConfiguratorHotelSelectionScreen(
+                    role = route.role,
+                    language = language,
+                    journey = journey,
+                    catalog = hotelCatalog,
+                    chrome = chrome,
+                )
+
+                is AppRoute.ConfiguratorHotelDetail -> HotelDetailScreen(
+                    hotelId = route.hotelId,
+                    language = language,
+                    catalog = hotelCatalog,
+                    packageEngine = packageEngine,
+                    journey = journey,
+                    onBack = chrome::back,
+                    onOpenConfigurator = {},
+                    selectionRole = route.role,
+                    onSelectionDone = { chrome.back() },
+                )
+
                 is AppRoute.FlightPackageDetail -> FlightFirstPackageDetailScreen(
                     packageId = route.packageId,
                     language = language,
@@ -189,13 +210,14 @@ fun AppShell(
                     language = language,
                     journey = journey,
                     provider = flightInventory,
+                    packageEngine = packageEngine,
                     chrome = chrome,
                 )
-                AppRoute.ReturnFlights -> ReturnFlightScreen(language, journey, chrome)
+                AppRoute.ReturnFlights -> ReturnFlightScreen(language, journey, packageEngine, chrome)
                 is AppRoute.FlightDetails -> FlightDetailsScreen(route.journeyId, route.direction, language, journey, chrome)
                 AppRoute.TransferSelection -> TransferSelectionScreen(language, journey, packageGenerator, chrome)
 
-                AppRoute.FinalPackage -> FinalPackageScreen(language, journey, chrome)
+                AppRoute.FinalPackage -> FinalPackageScreen(language, journey, hotelCatalog, packageEngine, chrome)
                 AppRoute.BookingCheckout -> BookingCheckoutScreen(language, journey, bookingStore, accountStore, chrome)
                 is AppRoute.BookingDetail -> BookingDetailScreen(route.bookingID, language, bookingStore, chrome)
                 is AppRoute.BookingHotelChange -> BookingHotelChangeScreen(route.bookingID, route.role, language, bookingStore, hotelCatalog, packageEngine, chrome)

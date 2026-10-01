@@ -9,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +31,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iumrah.beta.R
 import com.iumrah.beta.core.localization.L10n
+import com.iumrah.beta.data.hotel.HotelCatalogService
+import com.iumrah.beta.data.hotel.RemotePackageEngineClient
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.domain.journey.JourneyState
@@ -56,6 +62,7 @@ import com.iumrah.beta.domain.journey.JourneyStore
 import com.iumrah.beta.domain.pricing.PackageQuote
 import com.iumrah.beta.domain.trip.JourneyScope
 import com.iumrah.beta.domain.trip.PackageTier
+import com.iumrah.beta.domain.trip.PackageMealSelection
 import com.iumrah.beta.models.flight.LiveFlightCandidate
 import com.iumrah.beta.models.hotel.HotelSummary
 import com.iumrah.beta.ui.components.IumrahPressable
@@ -76,10 +83,47 @@ private enum class PackageService {
 
 private enum class SupportExplainer { VISA, CARE, GUIDE }
 
+private data class TierComparisonOption(
+    val tier: PackageTier,
+    val quote: PackageQuote?,
+    val makkahHotel: HotelSummary?,
+    val madinahHotel: HotelSummary?,
+    val unavailableReason: String? = null,
+) {
+    val isAvailable: Boolean get() = quote != null && makkahHotel != null
+}
+
 @Composable
-fun FinalPackageScreen(language: AppLanguage, journey: JourneyStore, chrome: AppChromeStore) {
+fun FinalPackageScreen(
+    language: AppLanguage,
+    journey: JourneyStore,
+    hotelCatalog: HotelCatalogService,
+    packageEngine: RemotePackageEngineClient,
+    chrome: AppChromeStore,
+) {
     val state by journey.state.collectAsState()
     val quote = state.quote
+    var comparisonOptions by remember { mutableStateOf<List<TierComparisonOption>>(emptyList()) }
+    var focusedTier by remember { mutableStateOf(state.trip.packageTier) }
+    var isLoadingComparisons by remember { mutableStateOf(false) }
+    var isApplyingComparison by remember { mutableStateOf(false) }
+
+    LaunchedEffect(
+        quote?.quoteId,
+        state.trip.packageTier,
+        state.makkahHotel?.id,
+        state.madinahHotel?.id,
+        state.selectedJourneyId,
+    ) {
+        if (quote != null && state.hasFinalGeneratorQuote) {
+            focusedTier = state.trip.packageTier
+            isLoadingComparisons = true
+            comparisonOptions = buildTierComparisons(state, hotelCatalog, packageEngine)
+            isLoadingComparisons = false
+        } else {
+            comparisonOptions = emptyList()
+        }
+    }
 
     if (quote == null) {
         Box(
@@ -120,18 +164,55 @@ fun FinalPackageScreen(language: AppLanguage, journey: JourneyStore, chrome: App
     ) {
         GeneratorHeader(GeneratorStage.READY, language, chrome, currentPriceText = "${quote.totalPackagePrice.setScale(0, java.math.RoundingMode.HALF_UP)} ${quote.currency}")
         FinalPackageHeader(language)
-        PackageTierSection(language, state, quote)
-        PackageRecommendationCard(language, state.trip.packageTier)
+        val displayOptions = comparisonOptions.ifEmpty { listOf(TierComparisonOption(state.trip.packageTier, quote, state.makkahHotel, state.madinahHotel)) }
+        val focusedOption = displayOptions.firstOrNull { it.tier == focusedTier } ?: displayOptions.first()
+        PackageTierSection(
+            language = language,
+            state = state,
+            options = displayOptions,
+            focusedTier = focusedTier,
+            loading = isLoadingComparisons,
+            applying = isApplyingComparison,
+            onFocused = { focusedTier = it },
+            onApply = { option ->
+                val optionQuote = option.quote
+                val makkah = option.makkahHotel
+                if (optionQuote != null && makkah != null) {
+                    isApplyingComparison = true
+                    journey.applyPackageTierComparison(option.tier, optionQuote, makkah, option.madinahHotel)
+                    focusedTier = option.tier
+                    isApplyingComparison = false
+                }
+            },
+        )
+        PackageRecommendationCard(language, focusedOption.tier)
+        PackageDifferenceCard(language, state, focusedOption)
         PackageSupportCard(language)
         IncludedServicesCard(language, state)
         RefundPolicyCard(language)
         ManualPaymentCard(language)
         CareReassuranceCard(language)
         NotificationCard(language)
-        FinalBlackButton(
-            title = finalText(language, "Продолжить бронирование", "Continue booking", "Bron qilishni davom ettirish", "Брон қилишни давом эттириш"),
-            onClick = chrome::openBookingCheckout,
-        )
+        if (focusedOption.tier == state.trip.packageTier) {
+            FinalBlackButton(
+                title = finalText(language, "Продолжить бронирование", "Continue booking", "Bron qilishni davom ettirish", "Брон қилишни давом эттириш"),
+                onClick = chrome::openBookingCheckout,
+            )
+        } else if (focusedOption.isAvailable) {
+            FinalBlackButton(
+                title = selectTierTitle(language, focusedOption),
+                onClick = {
+                    val optionQuote = focusedOption.quote
+                    val makkah = focusedOption.makkahHotel
+                    if (optionQuote != null && makkah != null) {
+                        isApplyingComparison = true
+                        journey.applyPackageTierComparison(focusedOption.tier, optionQuote, makkah, focusedOption.madinahHotel)
+                        focusedTier = focusedOption.tier
+                        isApplyingComparison = false
+                    }
+                },
+            )
+        }
         Spacer(Modifier.height(32.dp))
     }
 }
@@ -205,74 +286,87 @@ private fun FinalPackageHeader(language: AppLanguage) {
 }
 
 @Composable
-private fun PackageTierSection(language: AppLanguage, state: JourneyState, quote: PackageQuote) {
+private fun PackageTierSection(
+    language: AppLanguage,
+    state: JourneyState,
+    options: List<TierComparisonOption>,
+    focusedTier: PackageTier,
+    loading: Boolean,
+    applying: Boolean,
+    onFocused: (PackageTier) -> Unit,
+    onApply: (TierComparisonOption) -> Unit,
+) {
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = options.indexOfFirst { it.tier == focusedTier }.coerceAtLeast(0))
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val cardWidth = max(286f, screenWidth.value * .80f).dp
+    val sidePadding = max(0f, (screenWidth.value - cardWidth.value) / 2f).dp
+
+    LaunchedEffect(focusedTier, options.size) {
+        val index = options.indexOfFirst { it.tier == focusedTier }
+        if (index >= 0 && listState.firstVisibleItemIndex != index) listState.animateScrollToItem(index)
+    }
+    LaunchedEffect(listState, options) {
+        snapshotFlow { listState.firstVisibleItemIndex }.collect { index ->
+            options.getOrNull(index)?.tier?.let(onFocused)
+        }
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                finalText(language, "Уровень поездки", "Trip level", "Safar darajasi", "Сафар даражаси"),
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-            )
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(finalText(language, "Уровень поездки", "Trip level", "Safar darajasi", "Сафар даражаси"), fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
-            Text(
-                finalText(language, "Свайпните для сравнения", "Swipe to compare", "Taqqoslash uchun suring", "Таққослаш учун суринг"),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
-            )
+            Text(finalText(language, "Свайпните для сравнения", "Swipe to compare", "Taqqoslash uchun suring", "Таққослаш учун суринг"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
         }
 
-        val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-        val cardWidth = max(286f, (screenWidth.value * .80f)).dp
         LazyRow(
-            modifier = Modifier.fillMaxWidth(),
+            state = listState,
+            modifier = Modifier.fillMaxWidth().height(516.dp),
+            contentPadding = PaddingValues(horizontal = sidePadding, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
+            items(options, key = { it.tier.wireValue }) { option ->
+                val selected = option.tier == focusedTier
                 PackageTierCard(
                     language = language,
-                    tier = state.trip.packageTier,
-                    quote = quote,
+                    option = option,
+                    currentTier = state.trip.packageTier,
+                    currentQuote = state.quote,
                     travelers = state.trip.travelerCount,
-                    makkahHotel = state.makkahHotel,
-                    madinahHotel = state.madinahHotel,
                     needsMadinah = state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH,
+                    applying = applying,
+                    onApply = { onApply(option) },
                     modifier = Modifier.width(cardWidth).height(492.dp),
                 )
             }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             PackageTier.entries.forEach { tier ->
-                val selected = tier == state.trip.packageTier
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(99.dp))
-                        .background(if (selected) MaterialTheme.colorScheme.onBackground.copy(alpha = .08f) else Color.Transparent)
-                        .padding(horizontal = 9.dp, vertical = 7.dp),
+                val selected = tier == focusedTier
+                IumrahPressable(
+                    onClick = { onFocused(tier) },
+                    modifier = Modifier.height(30.dp),
+                    cornerRadius = 99.dp,
+                    background = if (selected) MaterialTheme.colorScheme.onBackground.copy(alpha = .08f) else Color.Transparent,
                 ) {
-                    Text(
-                        tierTitle(language, tier),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (selected) 1f else .48f),
-                    )
+                    Box(Modifier.padding(horizontal = 9.dp), contentAlignment = Alignment.Center) {
+                        Text(tierTitle(language, tier), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (selected) 1f else .48f), maxLines = 1)
+                    }
                 }
+                Spacer(Modifier.width(7.dp))
             }
         }
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(CupertinoSymbol.Airplane, null, modifier = Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
-            Text(
-                finalText(language, "Выбранный авиабилет и даты не меняются при сравнении", "Your selected flight and dates stay fixed while comparing", "Taqqoslashda tanlangan reys va sanalar o‘zgarmaydi", "Таққослашда танланган рейс ва саналар ўзгармайди"),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
-            )
+            Icon(CupertinoSymbol.Airplane, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+            Text(finalText(language, "Выбранный авиабилет и даты не меняются при сравнении", "Your selected flight and dates stay fixed while comparing", "Taqqoslashda tanlangan reys va sanalar o‘zgarmaydi", "Таққослашда танланган рейс ва саналар ўзгармайди"), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+        }
+
+        if (loading) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.material3.CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
+                Text(finalText(language, "Сравниваем уровни пакета…", "Comparing package levels…", "Paket darajalari taqqoslanmoqda…", "Пакет даражалари таққосланмоқда…"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+            }
         }
     }
 }
@@ -280,115 +374,126 @@ private fun PackageTierSection(language: AppLanguage, state: JourneyState, quote
 @Composable
 private fun PackageTierCard(
     language: AppLanguage,
-    tier: PackageTier,
-    quote: PackageQuote,
+    option: TierComparisonOption,
+    currentTier: PackageTier,
+    currentQuote: PackageQuote?,
     travelers: Int,
-    makkahHotel: HotelSummary?,
-    madinahHotel: HotelSummary?,
     needsMadinah: Boolean,
+    applying: Boolean,
+    onApply: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = tierGradient(tier)
+    val colors = tierGradient(option.tier)
+    val isCurrent = option.tier == currentTier
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(32.dp))
-            .background(Brush.linearGradient(colors))
-            .padding(21.dp),
+        modifier = modifier.clip(RoundedCornerShape(32.dp)).background(Brush.linearGradient(colors)).padding(21.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                tierTitle(language, tier).uppercase(language.locale),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.15.sp,
-                color = Color.White.copy(alpha = .78f),
-            )
-            Box(
-                Modifier.clip(RoundedCornerShape(99.dp)).background(Color.White.copy(alpha = .16f)).padding(horizontal = 9.dp, vertical = 5.dp),
-            ) {
-                Text(
-                    finalText(language, "Ваш пакет", "Your package", "Sizning paketingiz", "Сизнинг пакетингиз"),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                )
+            Text(tierTitle(language, option.tier).uppercase(language.locale), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.15.sp, color = Color.White.copy(alpha = .78f))
+            if (isCurrent) {
+                Box(Modifier.height(24.dp).clip(CircleShape).background(Color.White.copy(alpha = .16f)).padding(horizontal = 9.dp), contentAlignment = Alignment.Center) {
+                    Text(finalText(language, "Ваш пакет", "Your package", "Sizning paketingiz", "Сизнинг пакетингиз"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
             }
             Spacer(Modifier.weight(1f))
-            Row(
-                modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(Color.White.copy(alpha = .12f)).padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                Icon(CupertinoSymbol.PersonCircle, null, modifier = Modifier.size(13.dp), tint = Color.White)
+            Row(Modifier.height(28.dp).clip(CircleShape).background(Color.White.copy(alpha = .12f)).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Icon(CupertinoSymbol.PersonCircle, null, Modifier.size(13.dp), tint = Color.White)
                 Text("$travelers", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
 
         Spacer(Modifier.height(20.dp))
-        Text(
-            money(quote.totalPackagePrice, quote.currency, language),
-            fontSize = 50.sp,
-            lineHeight = 52.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = (-1.9).sp,
-            color = Color.White,
-            maxLines = 1,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                "${money(quote.pricePerPerson, quote.currency, language)} / ${finalText(language, "чел.", "person", "kishi", "киши")}",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = .76f),
-            )
-            Text("·", fontSize = 14.sp, color = Color.White.copy(alpha = .76f))
-            Text(
-                finalText(language, "пакет для $travelers", "package for $travelers", "$travelers kishi uchun paket", "$travelers киши учун пакет"),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = .76f),
-            )
+        val q = option.quote
+        if (q != null) {
+            Text(money(q.totalPackagePrice, q.currency, language), fontSize = 50.sp, lineHeight = 52.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.9).sp, color = Color.White, maxLines = 1)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("${money(q.pricePerPerson, q.currency, language)} / ${finalText(language, "чел.", "person", "kishi", "киши")}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = .76f))
+                Text("·", fontSize = 14.sp, color = Color.White.copy(alpha = .76f))
+                Text(finalText(language, "пакет для $travelers", "package for $travelers", "$travelers kishi uchun paket", "$travelers киши учун пакет"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = .76f))
+            }
+            if (!isCurrent && currentQuote != null) {
+                val delta = q.totalPackagePrice.subtract(currentQuote.totalPackagePrice)
+                val prefix = if (delta.signum() >= 0) "+" else "−"
+                val abs = delta.abs()
+                Box(Modifier.padding(top = 10.dp).height(30.dp).clip(CircleShape).background(Color.White.copy(alpha = .12f)).padding(horizontal = 11.dp), contentAlignment = Alignment.Center) {
+                    Text("$prefix${money(abs, q.currency, language)}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = .94f))
+                }
+            }
+        } else {
+            Text(finalText(language, "Цена временно недоступна", "Price temporarily unavailable", "Narx vaqtincha mavjud emas", "Нарх вақтинча мавжуд эмас"), fontSize = 31.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.8).sp, color = Color.White)
+            Text(finalText(language, "Этот уровень нельзя подтвердить прямо сейчас.", "This level cannot be confirmed right now.", "Bu darajani hozir tasdiqlab bo‘lmaydi.", "Бу даражани ҳозир тасдиқлаб бўлмайди."), modifier = Modifier.padding(top = 7.dp), fontSize = 14.sp, color = Color.White.copy(alpha = .68f))
         }
 
         Spacer(Modifier.height(13.dp))
-        Text(packagePositionTitle(language, tier), fontSize = 24.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        Text(
-            packagePositionBody(language, tier),
-            modifier = Modifier.padding(top = 6.dp),
-            fontSize = 13.sp,
-            lineHeight = 18.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = .72f),
-        )
-
+        Text(packagePositionTitle(language, option.tier), fontSize = 24.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(packagePositionBody(language, option.tier), Modifier.padding(top = 6.dp), fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = .72f))
         Spacer(Modifier.height(13.dp))
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            packageBenefits(language, tier, makkahHotel, madinahHotel, needsMadinah).forEach { benefit ->
+            packageBenefits(language, option.tier, option.makkahHotel, option.madinahHotel, needsMadinah).forEach { benefit ->
                 Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Icon(CupertinoSymbol.CheckCircle, null, modifier = Modifier.size(15.dp).padding(top = 1.dp), tint = Color.White.copy(alpha = .90f))
-                    Text(
-                        benefit,
-                        modifier = Modifier.weight(1f),
-                        fontSize = 13.sp,
-                        lineHeight = 17.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White.copy(alpha = .84f),
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Icon(CupertinoSymbol.CheckCircleFill, null, Modifier.size(15.dp).padding(top = 1.dp), tint = Color.White.copy(alpha = .9f))
+                    Text(benefit, Modifier.weight(1f), fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium, color = Color.White.copy(alpha = .84f), maxLines = 3, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
-
         Spacer(Modifier.weight(1f))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(CupertinoSymbol.ArrowDown, null, modifier = Modifier.size(15.dp), tint = Color.White.copy(alpha = .88f))
-            Text(
-                finalText(language, "Продолжение — внизу страницы", "Continue below on this page", "Davomi sahifa pastida", "Давоми саҳифа пастида"),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = .88f),
-            )
+        if (isCurrent) {
+            Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(CupertinoSymbol.ArrowDown, null, Modifier.size(14.dp), tint = Color.White.copy(alpha = .88f))
+                Text(finalText(language, "Продолжение — внизу страницы", "Continue below on this page", "Davomi sahifa pastida", "Давоми саҳифа пастида"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = .88f))
+            }
+        } else if (option.isAvailable) {
+            IumrahPressable(onClick = onApply, enabled = !applying, modifier = Modifier.fillMaxWidth().height(44.dp), cornerRadius = 16.dp, background = Color.White.copy(alpha = .12f)) {
+                Row(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (applying) androidx.compose.material3.CircularProgressIndicator(Modifier.size(14.dp), color = Color.White, strokeWidth = 2.dp)
+                    Text(selectTierTitle(language, option), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                    Spacer(Modifier.weight(1f))
+                    if (!applying) Icon(CupertinoSymbol.ArrowRight, null, Modifier.size(12.dp), tint = Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PackageDifferenceCard(language: AppLanguage, state: JourneyState, target: TierComparisonOption) {
+    if (target.tier == state.trip.packageTier || !target.isAvailable || state.makkahHotel == null || target.makkahHotel == null) return
+    val currentQuote = state.quote ?: return
+    val targetQuote = target.quote ?: return
+    val delta = targetQuote.totalPackagePrice.subtract(currentQuote.totalPackagePrice)
+    val up = target.tier.primaryHotelStars > state.trip.packageTier.primaryHotelStars
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(MaterialTheme.colorScheme.surface).padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    finalText(language, "Что изменится в ${tierTitle(language, target.tier)}", "What changes with ${tierTitle(language, target.tier)}", "${tierTitle(language, target.tier)} bilan nima o‘zgaradi", "${tierTitle(language, target.tier)} билан нима ўзгаради"),
+                    fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    (if (delta.signum() >= 0) "+" else "−") + money(delta.abs(), targetQuote.currency, language),
+                    fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f),
+                )
+            }
+            Icon(if (up) CupertinoSymbol.ArrowUpRight else CupertinoSymbol.ArrowDown, null, Modifier.size(15.dp).rotate(if (up) 0f else 45f), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f))
+        }
+        ComparisonFactRow(language, "Makkah", state.makkahHotel.name, target.makkahHotel.name)
+        if (state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH && state.madinahHotel != null && target.madinahHotel != null) {
+            ComparisonFactRow(language, "Madinah", state.madinahHotel.name, target.madinahHotel.name)
+        }
+    }
+}
+
+@Composable
+private fun ComparisonFactRow(language: AppLanguage, title: String, current: String, target: String) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .045f)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text(title, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .48f))
+        Text(current, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(CupertinoSymbol.ArrowRight, null, Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .42f))
+            Text(target, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -843,6 +948,110 @@ private fun FinalBlackButton(title: String, onClick: () -> Unit) {
             Icon(CupertinoSymbol.ArrowRight, null, modifier = Modifier.size(18.dp), tint = Color.White)
         }
     }
+}
+
+private suspend fun buildTierComparisons(
+    state: JourneyState,
+    hotelCatalog: HotelCatalogService,
+    packageEngine: RemotePackageEngineClient,
+): List<TierComparisonOption> {
+    val current = TierComparisonOption(
+        tier = state.trip.packageTier,
+        quote = state.quote,
+        makkahHotel = state.makkahHotel,
+        madinahHotel = state.madinahHotel,
+        unavailableReason = if (state.quote == null) "CURRENT_QUOTE_UNAVAILABLE" else null,
+    )
+    if (state.selectedJourney == null) {
+        return PackageTier.entries.map { if (it == state.trip.packageTier) current else TierComparisonOption(it, null, null, null, "FLIGHT_PRICE_UNAVAILABLE") }
+    }
+
+    val makkahCatalog = runCatching {
+        hotelCatalog.listHotels(listOf("Makkah", "Mecca", "Makka"))
+    }.getOrDefault(emptyList())
+    val madinahCatalog = if (state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH) {
+        runCatching { hotelCatalog.listHotels(listOf("Madinah", "Medina", "Madina", "Medinah", "Al Madinah", "Al Medina", "Madinah Al Munawwarah", "Al Madinah Al Munawwarah")) }.getOrDefault(emptyList())
+    } else emptyList()
+
+    val out = mutableListOf<TierComparisonOption>()
+    for (tier in PackageTier.entries) {
+        if (tier == state.trip.packageTier && current.isAvailable) {
+            out += current
+            continue
+        }
+        val makkah = comparisonHotel(tier, false, makkahCatalog, packageEngine)
+        if (makkah == null) {
+            out += TierComparisonOption(tier, null, null, null, "MAKKAH_PRIMARY_HOTEL_UNAVAILABLE")
+            continue
+        }
+        val madinah = if (state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH) comparisonHotel(tier, true, madinahCatalog, packageEngine) else null
+        if (state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH && madinah == null) {
+            out += TierComparisonOption(tier, null, makkah, null, "MADINAH_PRIMARY_HOTEL_UNAVAILABLE")
+            continue
+        }
+        val comparisonTrip = state.trip.copy(
+            packageTier = tier,
+            hotelStars = tier.primaryHotelStars,
+            mealSelection = if (tier == PackageTier.COMFORT || tier == PackageTier.LUXURY) PackageMealSelection() else null,
+        )
+        val comparisonState = state.copy(
+            trip = comparisonTrip,
+            makkahHotel = makkah,
+            makkahRoom = null,
+            makkahRoomCategory = null,
+            madinahHotel = madinah,
+            madinahRoom = null,
+            madinahRoomCategory = null,
+            quote = null,
+            packageError = null,
+        )
+        val q = runCatching { packageEngine.packageQuote(comparisonState) }.getOrNull()
+        out += TierComparisonOption(tier, q, makkah, madinah, if (q == null) "PACKAGE_PRICE_UNAVAILABLE" else null)
+    }
+    return out
+}
+
+private suspend fun comparisonHotel(
+    tier: PackageTier,
+    madinah: Boolean,
+    catalog: List<HotelSummary>,
+    packageEngine: RemotePackageEngineClient,
+): HotelSummary? {
+    fun fixed(vararg names: String): HotelSummary? {
+        val normalizedNames = names.map(::normalizeHotelName)
+        return catalog.firstOrNull { hotel ->
+            val h = normalizeHotelName(hotel.name)
+            normalizedNames.any { n -> h == n || h.contains(n) || n.contains(h) }
+        }
+    }
+    val fixed = when {
+        tier == PackageTier.STANDARD && !madinah -> fixed("Nawazi Hotel", "Nawazi Watheer Hotel")
+        (tier == PackageTier.STANDARD || tier == PackageTier.COMFORT) && madinah -> fixed("Mihrab Tayyiba", "Mihrab Tayba", "Mihrab Taiba")
+        tier == PackageTier.COMFORT && !madinah -> fixed("Shohada Hotel", "Al Shohada Hotel", "Shuhada Hotel", "Al Shuhada Hotel")
+        tier == PackageTier.LUXURY && !madinah -> fixed("Address Jabal Omar Makkah", "Address Jabal Omar", "Jabal Omar Address")
+        tier == PackageTier.LUXURY && madinah -> fixed("Pullman Zamzam Madina", "Pullman Zamzam Madinah", "Pullman Zamzam")
+        else -> null
+    }
+    if (fixed != null) return fixed
+    if (tier != PackageTier.ECONOMY) return null
+
+    val city = if (madinah) "Madinah" else "Makkah"
+    for (stars in listOf(2, 1)) {
+        val id = runCatching { packageEngine.primaryHotel(tier, stars, city).hotelId }.getOrNull()
+        if (!id.isNullOrBlank()) catalog.firstOrNull { it.id == id }?.let { return it }
+    }
+    for (stars in listOf(2, 1)) catalog.firstOrNull { it.stars == stars && it.hasFreshCatalogPrice }?.let { return it }
+    for (stars in listOf(2, 1)) catalog.firstOrNull { it.stars == stars }?.let { return it }
+    return null
+}
+
+private fun normalizeHotelName(value: String): String = value.lowercase()
+    .replace(Regex("[^a-z0-9]+"), " ")
+    .trim()
+
+private fun selectTierTitle(language: AppLanguage, option: TierComparisonOption): String {
+    val tier = tierTitle(language, option.tier)
+    return finalText(language, "Выбрать $tier", "Choose $tier", "$tier ni tanlash", "$tier ни танлаш")
 }
 
 private fun tierTitle(language: AppLanguage, tier: PackageTier): String = when (tier) {

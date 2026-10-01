@@ -82,4 +82,16 @@ grep -q 'data object StorefrontFlights' app/src/main/java/com/iumrah/beta/core/n
 grep -q 'HotelsBoard.FLIGHTS' app/src/main/java/com/iumrah/beta/ui/shell/AppShell.kt || { echo 'STOP: storefront flights route must render the Flights board'; exit 1; }
 grep -q 'listOf("Makkah", "Mecca", "Makka")' app/src/main/java/com/iumrah/beta/ui/hotels/HotelsScreen.kt || { echo 'STOP: Makkah alias catalogue parity missing'; exit 1; }
 
-echo 'Stage 010 iOS Configurator parity checks passed.'
+# Strict pixel/flow parity guards from the current SwiftUI Configurator.
+grep -q 'val pagePadding = 18.dp' app/src/main/java/com/iumrah/beta/ui/generator/GeneratorChrome.kt || { echo 'STOP: Generator page padding must mirror iOS 18pt'; exit 1; }
+grep -q 'val cardRadius = 28.dp' app/src/main/java/com/iumrah/beta/ui/generator/GeneratorChrome.kt || { echo 'STOP: Generator card radius must mirror iOS 28pt'; exit 1; }
+grep -q 'val heroRadius = 34.dp' app/src/main/java/com/iumrah/beta/ui/generator/GeneratorChrome.kt || { echo 'STOP: Generator hero radius must mirror iOS 34pt'; exit 1; }
+grep -q 'val controlHeight = 56.dp' app/src/main/java/com/iumrah/beta/ui/generator/GeneratorChrome.kt || { echo 'STOP: Generator control height must mirror iOS 56pt'; exit 1; }
+grep -q 'detectHorizontalDragGestures' app/src/main/java/com/iumrah/beta/ui/generator/GeneratorChrome.kt || { echo 'STOP: Generator header must preserve iOS swipe carousel behavior'; exit 1; }
+grep -q 'Посмотреть отель' app/src/main/java/com/iumrah/beta/ui/trip/HotelSelectionScreen.kt || { echo 'STOP: Primary Hotel View hotel action missing'; exit 1; }
+grep -q 'Сменить отель' app/src/main/java/com/iumrah/beta/ui/trip/HotelSelectionScreen.kt || { echo 'STOP: Primary Hotel Change hotel action missing'; exit 1; }
+grep -q 'height(340.dp)' app/src/main/java/com/iumrah/beta/ui/packageflow/TransferSelectionScreen.kt || { echo 'STOP: Transfer cinematic stage must mirror the iOS 340pt geometry'; exit 1; }
+grep -q 'PackageTier.entries.map' app/src/main/java/com/iumrah/beta/ui/packageflow/FinalPackageScreen.kt || { echo 'STOP: Final Package must resolve all iOS package tiers'; exit 1; }
+grep -q 'TierComparisonOption' app/src/main/java/com/iumrah/beta/ui/packageflow/FinalPackageScreen.kt || { echo 'STOP: Final Package tier carousel comparison is missing'; exit 1; }
+
+echo 'Stage 010 iOS Configurator strict pixel/flow parity checks passed.'

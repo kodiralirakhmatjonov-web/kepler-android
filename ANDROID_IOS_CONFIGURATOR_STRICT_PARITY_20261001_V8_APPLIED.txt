@@ -1,0 +1,15 @@
+IUMRAH ANDROID — STRICT iOS CONFIGURATOR PARITY V8
+Date: 2026-10-01
+
+This patch is cumulative against the clean Android repository and includes Account, Booking,
+launcher/splash fixes, server-backed storefront/package flow, and the strict Configurator pass.
+
+Strict Configurator checks covered by verify-stage10.sh:
+- SwiftUI-derived generator geometry: 18dp page padding, 28dp cards, 34dp hero, 56dp controls.
+- Circular/swipe generator header with depth/blur/drag behavior and Cupertino symbols.
+- Primary Hotel card with separate View hotel / Change hotel actions and full Hotel Detail room selection.
+- Published Direct as first-class D1-backed flow with recommendations + resolve.
+- Transfer cinematic 340dp vehicle stage and current iOS Standard Haramain path.
+- Server-authoritative PackageEngine quote / curated flight identity.
+- Final Package tier comparison resolves Economy / Standard / Comfort / Luxury independently.
+- Home/storefront reads real flight-first snapshots instead of Android-only placeholder search.

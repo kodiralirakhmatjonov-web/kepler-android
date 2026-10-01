@@ -12,7 +12,29 @@ enum class PackageFlightPath(val wireValue: String) {
     WEEKEND("weekend"),
 }
 
-enum class PackageTier(val wireValue: String) { ECONOMY("economy"), STANDARD("standard"), COMFORT("comfort"), LUXURY("luxury") }
+enum class PackageTier(val wireValue: String) {
+    ECONOMY("economy"), STANDARD("standard"), COMFORT("comfort"), LUXURY("luxury");
+
+    val primaryHotelStars: Int get() = when (this) {
+        ECONOMY -> 2
+        STANDARD -> 3
+        COMFORT -> 4
+        LUXURY -> 5
+    }
+
+    val selectableHotelStars: List<Int> get() = when (this) {
+        ECONOMY -> listOf(2, 1)
+        STANDARD -> listOf(3)
+        COMFORT -> listOf(4)
+        LUXURY -> listOf(5)
+    }
+
+    val optionalMealUnitPriceUsd: Int? get() = when (this) {
+        ECONOMY, STANDARD -> null
+        COMFORT -> 30
+        LUXURY -> 50
+    }
+}
 
 enum class DateFlexibility(val wireValue: String) {
     EXACT("exact"), PLUS_MINUS_ONE("plusMinusOne"), PLUS_MINUS_TWO("plusMinusTwo"), WEEKEND("weekend");

@@ -11,6 +11,8 @@ sealed interface AppRoute {
     data object TripBuilder : AppRoute
     data object HotelSelection : AppRoute
     data class HotelDetail(val hotelId: String) : AppRoute
+    data class ConfiguratorHotelSelection(val role: String) : AppRoute
+    data class ConfiguratorHotelDetail(val hotelId: String, val role: String) : AppRoute
     data class FlightPackageDetail(val packageId: String) : AppRoute
     data object Flights : AppRoute
     data object StorefrontFlights : AppRoute
@@ -52,6 +54,8 @@ class AppChromeStore {
     fun startNewTrip() = push(AppRoute.TripBuilder, tab = AppTab.BOOKING)
     fun openHotelSelection() = push(AppRoute.HotelSelection, tab = AppTab.BOOKING)
     fun openHotel(id: String) = push(AppRoute.HotelDetail(id), tab = AppTab.HOTELS)
+    fun openConfiguratorHotelSelection(role: String) = push(AppRoute.ConfiguratorHotelSelection(role), tab = AppTab.BOOKING)
+    fun openConfiguratorHotelDetail(id: String, role: String) = push(AppRoute.ConfiguratorHotelDetail(id, role), tab = AppTab.BOOKING)
     fun openFlightPackage(id: String) = push(AppRoute.FlightPackageDetail(id), tab = AppTab.HOTELS)
     fun openFlights() = push(AppRoute.Flights, tab = AppTab.BOOKING)
     fun openStorefrontFlights() = push(AppRoute.StorefrontFlights, tab = AppTab.HOTELS)

@@ -76,6 +76,10 @@ import com.iumrah.beta.ui.generator.generatorCardColor
 import com.iumrah.beta.ui.generator.generatorPageColor
 import com.iumrah.beta.ui.generator.generatorRaisedColor
 import java.math.RoundingMode
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.ceil
 import kotlin.random.Random
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -322,33 +326,40 @@ private fun TransferMatchedScreen(language: AppLanguage, journey: JourneyStore, 
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             GeneratorHeader(GeneratorStage.TRANSFER, language, chrome, currentPriceText = state.quote?.let(::quoteTitle))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("IUMRAH TRANSFER", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, color = fg.copy(alpha = .5f))
-                Text(
-                    if (selected == TransferVehicleKind.YUKON) transferTr(language, "Ваш VIP-трансфер", "Your VIP transfer", "VIP transferringiz", "VIP трансферингиз") else transferTr(language, "Трансфер найден", "Transfer matched", "Transfer topildi", "Трансфер топилди"),
-                    fontSize = 34.sp,
-                    lineHeight = 37.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = fg,
-                )
-                Text(
-                    transferTr(language, "Выберите автомобиль. Мы сохраняем один трансферный план для аэропорта, отелей и междугороднего маршрута.", "Choose your vehicle. One transfer plan covers the airport, hotels and intercity route.", "Avtomobilni tanlang. Bitta transfer rejasi aeroport, mehmonxonalar va shaharlararo yo‘lni qamrab oladi.", "Автомобилни танланг. Битта трансфер режаси аэропорт, меҳмонхоналар ва шаҳарлараро йўлни қамраб олади."),
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                    color = fg.copy(alpha = .58f),
+            TransferMatchedHeader(
+                language = language,
+                selected = selected,
+                selectedIndex = pager.currentPage,
+                total = vehicles.size,
+                routeTitle = transferRouteTitle(state.trip.scope, state.trip.arrivalAirport),
+                dateRangeTitle = transferDateRangeTitle(language, state.trip.departureDate, state.trip.returnDate),
+                fg = fg,
+            )
+
+            HorizontalPager(
+                state = pager,
+                contentPadding = PaddingValues(horizontal = 0.dp),
+                pageSpacing = 0.dp,
+                modifier = Modifier.fillMaxWidth().height(340.dp),
+            ) { page ->
+                VehicleStage(
+                    vehicle = vehicles[page],
+                    index = page,
+                    active = page == pager.currentPage,
                 )
             }
 
-            HorizontalPager(state = pager, contentPadding = PaddingValues(horizontal = 18.dp), pageSpacing = 12.dp, modifier = Modifier.fillMaxWidth().height(330.dp)) { page ->
-                VehicleHero(language, vehicles[page], state.trip.scope, active = page == pager.currentPage)
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                vehicles.forEachIndexed { index, _ ->
-                    Box(Modifier.padding(horizontal = 3.dp).width(if (index == pager.currentPage) 18.dp else 6.dp).height(6.dp).clip(CircleShape).background(fg.copy(alpha = if (index == pager.currentPage) .9f else .18f)))
-                }
-            }
+            VehicleInformationCard(
+                language = language,
+                selected = selected,
+                scope = state.trip.scope,
+                travelers = state.trip.travelerCount,
+                includesMadinah = state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH,
+                usesTrain = state.haramainTrainSelected,
+                currentPrice = state.quote?.let(::quoteTitle) ?: "—",
+            )
 
-            TransferIncludedCard(language, selected, state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH, state.haramainTrainSelected)
+            TransferRefundPolicyCard(language) { chrome.openBookingPolicy("refund") }
 
             if (state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH) {
                 HaramainCard(
@@ -376,8 +387,10 @@ private fun TransferMatchedScreen(language: AppLanguage, journey: JourneyStore, 
             }
             error?.let { Text(it, color = Color(0xFFFF453A), fontSize = 13.sp) }
 
-            GeneratorPrimaryButton(
-                title = if (confirming) transferTr(language, "Подтверждаем трансфер…", "Confirming transfer…", "Transfer tasdiqlanmoqda…", "Трансфер тасдиқланмоқда…") else transferTr(language, "Подтвердить трансфер", "Confirm transfer", "Transferni tasdiqlash", "Трансферни тасдиқлаш"),
+            TransferConfirmationButton(
+                language = language,
+                confirming = confirming,
+                currentPrice = state.quote?.let(::quoteTitle) ?: "—",
                 enabled = !confirming,
             ) {
                 if (!confirming) {
@@ -408,49 +421,192 @@ private fun TransferMatchedScreen(language: AppLanguage, journey: JourneyStore, 
 }
 
 @Composable
-private fun VehicleHero(language: AppLanguage, vehicle: TransferVehicleKind, scope: JourneyScope, active: Boolean) {
+private fun TransferMatchedHeader(
+    language: AppLanguage,
+    selected: TransferVehicleKind,
+    selectedIndex: Int,
+    total: Int,
+    routeTitle: String,
+    dateRangeTitle: String,
+    fg: Color,
+) {
+    val vip = selected == TransferVehicleKind.YUKON
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(CupertinoSymbol.CheckCircleFill, null, Modifier.size(17.dp), tint = if (vip) Color.White else Color(0xFF34C759))
+            Text(
+                if (vip) "VIP TRANSFER" else transferTr(language, "ТРАНСФЕР НАЙДЕН", "TRANSFER MATCHED", "TRANSFER TOPILDI", "ТРАНСФЕР ТОПИЛДИ"),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                color = fg.copy(alpha = .55f),
+            )
+            Spacer(Modifier.weight(1f))
+            Text("${selectedIndex + 1} / $total", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg.copy(alpha = .55f))
+        }
+        Text(
+            if (vip) transferTr(language, "VIP трансфер", "VIP transfer", "VIP transfer", "VIP трансфер")
+            else transferTr(language, "Мы нашли свободный автомобиль", "We found an available vehicle", "Bo‘sh avtomobil topildi", "Бўш автомобиль топилди"),
+            fontSize = if (vip) 38.sp else 32.sp,
+            lineHeight = if (vip) 40.sp else 35.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.9).sp,
+            color = fg,
+        )
+        Text("$routeTitle · $dateRangeTitle", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = fg.copy(alpha = .55f))
+    }
+}
+
+@Composable
+private fun VehicleStage(vehicle: TransferVehicleKind, index: Int, active: Boolean) {
     val vip = vehicle == TransferVehicleKind.YUKON
     val fg = if (vip) Color.White else Color.Black
-    val bg = if (vip) Brush.linearGradient(listOf(Color(0xFF121214), Color(0xFF28282C))) else Brush.linearGradient(listOf(Color.White, Color(0xFFEDEFF2)))
-    Column(
-        Modifier.fillMaxSize().clip(RoundedCornerShape(34.dp)).background(bg)
-            .border(if (active) 1.5.dp else .5.dp, fg.copy(alpha = if (active) .16f else .06f), RoundedCornerShape(34.dp)).padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    val shape = RoundedCornerShape(36.dp)
+    Box(
+        Modifier.fillMaxSize()
+            .clip(shape)
+            .background(if (vip) Color.Black else Color.White)
+            .border(.8.dp, if (vip) Color.White.copy(alpha = .12f) else Color.Black.copy(alpha = .055f), shape),
+        contentAlignment = Alignment.Center,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(vehicleClass(language, vehicle), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = .8.sp, color = fg.copy(alpha = .55f))
-                Text(vehicle.modelName, fontSize = 23.sp, fontWeight = FontWeight.Bold, color = fg)
+        if (vip) {
+            Box(
+                Modifier.size(300.dp)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(Color.White.copy(alpha = .45f), Color.White.copy(alpha = .12f), Color.Transparent),
+                        ),
+                        CircleShape,
+                    ),
+            )
+        }
+        Text(
+            String.format("%02d", index + 1),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
+            fontSize = 156.sp,
+            lineHeight = 156.sp,
+            fontWeight = FontWeight.Black,
+            color = fg.copy(alpha = if (vip) .055f else .035f),
+        )
+        Text(
+            vehicleClassRaw(vehicle).uppercase(),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 18.dp, vertical = 28.dp),
+            fontSize = if (vip) 104.sp else 72.sp,
+            lineHeight = if (vip) 104.sp else 72.sp,
+            fontWeight = FontWeight.Black,
+            color = fg.copy(alpha = if (vip) .12f else .06f),
+            maxLines = 1,
+        )
+        if (active) {
+            Box(
+                Modifier.align(Alignment.Center).padding(top = 130.dp)
+                    .width(if (vehicle == TransferVehicleKind.MALIBU) 260.dp else 300.dp)
+                    .height(38.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = if (vip) .18f else .12f)),
+            )
+        }
+        Image(
+            painterResource(vehicleDrawable(vehicle)),
+            vehicle.modelName,
+            Modifier.fillMaxWidth().padding(horizontal = if (vehicle == TransferVehicleKind.MALIBU) 20.dp else 8.dp),
+            contentScale = ContentScale.Fit,
+        )
+    }
+}
+
+@Composable
+private fun VehicleInformationCard(
+    language: AppLanguage,
+    selected: TransferVehicleKind,
+    scope: JourneyScope,
+    travelers: Int,
+    includesMadinah: Boolean,
+    usesTrain: Boolean,
+    currentPrice: String,
+) {
+    val vip = selected == TransferVehicleKind.YUKON
+    val fg = if (vip) Color.White else Color.Black
+    val shape = RoundedCornerShape(28.dp)
+    val requiredVehicles = maxOf(1, ceil(maxOf(1, travelers).toDouble() / selected.passengerCapacity.toDouble()).toInt())
+    val addOn = selected.publicUpgradeUsd(scope)
+    Column(
+        Modifier.fillMaxWidth().clip(shape).background(generatorCardColor())
+            .border(.7.dp, fg.copy(alpha = .06f), shape).padding(19.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(vehicleClass(language, selected), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = .85.sp, color = fg.copy(alpha = .55f))
+                Text(selected.modelName, fontSize = 28.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.45).sp, color = fg)
             }
-            if (vehicle == TransferVehicleKind.CARNIVAL) {
-                Box(Modifier.clip(CircleShape).background(Color(0xFF34C759).copy(alpha = .16f)).padding(horizontal = 10.dp, vertical = 6.dp)) {
-                    Text(transferTr(language, "Рекомендуем", "Recommended", "Tavsiya", "Тавсия"), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D7F3E))
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Icon(CupertinoSymbol.CheckCircleFill, null, Modifier.size(14.dp), tint = if (vip) Color.White else Color(0xFF34C759))
+                    Text(transferTr(language, "Свободен на ваши даты", "Available for your dates", "Sanalaringizda bo‘sh", "Саналарингизда бўш"), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (vip) Color.White else Color(0xFF34C759))
+                }
+                if (selected == TransferVehicleKind.CARNIVAL) {
+                    Box(Modifier.height(25.dp).clip(CircleShape).background(Color(0xFF74A187).copy(alpha = .14f)).padding(horizontal = 9.dp), contentAlignment = Alignment.Center) {
+                        Text(transferTr(language, "Рекомендуем", "Recommended", "Tavsiya", "Тавсия"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = fg)
+                    }
                 }
             }
         }
-        Image(painterResource(vehicleDrawable(vehicle)), vehicle.modelName, Modifier.fillMaxWidth().height(175.dp), contentScale = ContentScale.Fit)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            VehicleStat(CupertinoSymbol.Persons, "${vehicle.passengerCapacity}", fg)
-            VehicleStat(CupertinoSymbol.Suitcase, "${vehicle.luggageCapacity}", fg)
-            VehicleStat(CupertinoSymbol.Car, if (vehicle.publicUpgradeUsd(scope) > 0) "+$${vehicle.publicUpgradeUsd(scope)}" else transferTr(language, "Включён", "Included", "Kiritilgan", "Киритилган"), fg)
+
+        Text(vehicleRecommendationBody(language, selected), fontSize = 15.sp, lineHeight = 20.sp, color = fg.copy(alpha = .58f))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            VehicleMetricChip(CupertinoSymbol.Persons, "${minOf(travelers, selected.passengerCapacity)}/${selected.passengerCapacity}", fg)
+            VehicleMetricChip(CupertinoSymbol.Suitcase, "≤ ${selected.luggageCapacity}", fg)
+            if (requiredVehicles > 1) VehicleMetricChip(CupertinoSymbol.Car, "$requiredVehicles ×", fg)
+        }
+
+        TransferIncludedCard(language, selected, includesMadinah, usesTrain, embedded = true)
+
+        Box(Modifier.fillMaxWidth().height(1.dp).background(fg.copy(alpha = .10f)))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(transferTr(language, "Изменение пакета", "Package change", "Paket o‘zgarishi", "Пакет ўзгариши"), fontSize = 12.sp, color = fg.copy(alpha = .55f))
+                Text(if (addOn > 0) "+$$addOn" else "+$0", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = fg)
+            }
+            Spacer(Modifier.weight(1f))
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(transferTr(language, "Итог сейчас", "Current total", "Joriy jami", "Жорий жами"), fontSize = 12.sp, color = fg.copy(alpha = .55f))
+                Text(currentPrice, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = fg)
+            }
         }
     }
 }
 
 @Composable
-private fun VehicleStat(icon: CupertinoSymbol, text: String, fg: Color) {
-    Row(Modifier.clip(CircleShape).background(fg.copy(alpha = .08f)).padding(horizontal = 9.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        Icon(icon, null, Modifier.size(13.dp), tint = fg.copy(alpha = .75f))
-        Text(text, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = fg)
+private fun VehicleMetricChip(icon: CupertinoSymbol, text: String, fg: Color) {
+    Row(
+        Modifier.height(34.dp).clip(CircleShape).background(generatorRaisedColor()).padding(horizontal = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(icon, null, Modifier.size(13.dp), tint = fg)
+        Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg)
     }
 }
 
 @Composable
-private fun TransferIncludedCard(language: AppLanguage, selected: TransferVehicleKind, includesMadinah: Boolean, usesTrain: Boolean) {
+private fun TransferIncludedCard(
+    language: AppLanguage,
+    selected: TransferVehicleKind,
+    includesMadinah: Boolean,
+    usesTrain: Boolean,
+    embedded: Boolean = false,
+) {
     val fg = currentFg(selected)
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(generatorCardColor()).border(.7.dp, fg.copy(alpha = .06f), RoundedCornerShape(28.dp)).padding(19.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+    val modifier = if (embedded) {
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(generatorRaisedColor()).padding(14.dp)
+    } else {
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(generatorCardColor()).border(.7.dp, fg.copy(alpha = .06f), RoundedCornerShape(28.dp)).padding(19.dp)
+    }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(transferTr(language, "Что входит в трансфер", "Included in your transfer", "Transferga kiradi", "Трансферга киради"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = fg.copy(alpha = .55f))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.Center) {
             CoverageStop(CupertinoSymbol.AirplaneLand, transferTr(language, "Аэропорт", "Airport", "Aeroport", "Аэропорт"), fg)
             CoverageLine(fg)
             CoverageStop(CupertinoSymbol.Hotel, "Makkah", fg)
@@ -464,6 +620,97 @@ private fun TransferIncludedCard(language: AppLanguage, selected: TransferVehicl
             CoverageStop(CupertinoSymbol.AirplaneTakeoff, transferTr(language, "Вылет", "Departure", "Jo‘nab ketish", "Жўнаб кетиш"), fg)
         }
     }
+}
+
+@Composable
+private fun TransferRefundPolicyCard(language: AppLanguage, onClick: () -> Unit) {
+    val fg = MaterialTheme.colorScheme.onSurface
+    val shape = RoundedCornerShape(24.dp)
+    IumrahPressable(onClick = onClick, modifier = Modifier.fillMaxWidth(), cornerRadius = 24.dp, background = generatorCardColor()) {
+        Row(
+            Modifier.fillMaxWidth().clip(shape).border(.7.dp, fg.copy(alpha = .075f), shape).padding(17.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFF00C7BE).copy(alpha = .14f)), contentAlignment = Alignment.Center) {
+                Icon(CupertinoSymbol.Car, null, Modifier.size(19.dp), tint = Color(0xFF00A99D))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(transferTr(language, "Трансфер", "Transfer", "Transfer", "Трансфер"), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = fg)
+                Text(transferTr(language, "Бесплатно до 5 дней", "Free until 5 days before", "5 kun oldin bepul", "5 кун олдин бепул"), fontSize = 12.sp, color = fg.copy(alpha = .55f))
+            }
+            Icon(CupertinoSymbol.ChevronRight, null, Modifier.size(12.dp), tint = fg.copy(alpha = .28f))
+        }
+    }
+}
+
+@Composable
+private fun TransferConfirmationButton(
+    language: AppLanguage,
+    confirming: Boolean,
+    currentPrice: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val bg = MaterialTheme.colorScheme.onBackground
+    val text = MaterialTheme.colorScheme.background
+    IumrahPressable(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().height(GeneratorGeometry.controlHeight), cornerRadius = GeneratorGeometry.compactRadius, background = bg) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (confirming) CircularProgressIndicator(Modifier.size(17.dp), strokeWidth = 2.dp, color = text)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    if (confirming) transferTr(language, "Подтверждаем трансфер…", "Confirming transfer…", "Transfer tasdiqlanmoqda…", "Трансфер тасдиқланмоқда…")
+                    else transferTr(language, "Подтвердить трансфер", "Confirm transfer", "Transferni tasdiqlash", "Трансферни тасдиқлаш"),
+                    fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = text,
+                )
+                if (!confirming) Text(currentPrice, fontSize = 12.sp, color = text.copy(alpha = .74f))
+            }
+            Spacer(Modifier.weight(1f))
+            if (!confirming) Icon(CupertinoSymbol.ArrowRight, null, Modifier.size(14.dp), tint = text)
+        }
+    }
+}
+
+private fun vehicleRecommendationBody(language: AppLanguage, vehicle: TransferVehicleKind): String = when (vehicle) {
+    TransferVehicleKind.MALIBU -> transferTr(language,
+        "Компактный частный трансфер. Доступен без доплаты к текущему пакету.",
+        "A compact private transfer, available with no package surcharge.",
+        "Ixcham shaxsiy transfer. Joriy paketga qo‘shimcha to‘lovsiz.",
+        "Ихчам шахсий трансфер. Жорий пакетга қўшимча тўловсиз.")
+    TransferVehicleKind.CARNIVAL -> transferTr(language,
+        "Рекомендованный iumrah Family Transfer: больше пространства для семьи и багажа, без доплаты.",
+        "The recommended iumrah Family Transfer: more room for your party and luggage with no surcharge.",
+        "Tavsiya etilgan iumrah Family Transfer: oila va bagaj uchun ko‘proq joy, qo‘shimcha to‘lovsiz.",
+        "Тавсия этилган iumrah Family Transfer: оила ва багаж учун кўпроқ жой, қўшимча тўловсиз.")
+    TransferVehicleKind.YUKON -> transferTr(language,
+        "VIP-класс для поездки Мекка — Медина: больше пространства, приватности и отдельная премиальная подача.",
+        "VIP class for the Makkah–Madinah journey with more space, privacy and a dedicated premium experience.",
+        "Makka–Madina safari uchun VIP klass: ko‘proq joy, maxfiylik va premium tajriba.",
+        "Макка–Мадина сафари учун VIP класс: кўпроқ жой, махфийлик ва премиум тажриба.")
+}
+
+private fun transferRouteTitle(scope: JourneyScope, arrival: com.iumrah.beta.domain.trip.SaudiArrivalAirport): String {
+    if (scope != JourneyScope.MAKKAH_AND_MADINAH) return "JED → Makkah"
+    return if (arrival == com.iumrah.beta.domain.trip.SaudiArrivalAirport.MADINAH) "MED → Madinah → Makkah → JED" else "JED → Makkah → Madinah → MED"
+}
+
+private fun transferDateRangeTitle(language: AppLanguage, departure: LocalDate, returning: LocalDate): String =
+    "${shortTransferDate(language, departure)} – ${shortTransferDate(language, returning)}"
+
+private fun shortTransferDate(language: AppLanguage, date: LocalDate): String {
+    val locale = when (language) {
+        AppLanguage.RUSSIAN -> Locale("ru", "RU")
+        AppLanguage.ENGLISH -> Locale.US
+        AppLanguage.UZBEK -> Locale.forLanguageTag("uz-Latn-UZ")
+        AppLanguage.UZBEK_CYRILLIC -> Locale.forLanguageTag("uz-Cyrl-UZ")
+    }
+    return date.format(DateTimeFormatter.ofPattern("d MMM", locale)).replace(".", "")
+}
+
+private fun vehicleClassRaw(vehicle: TransferVehicleKind): String = when (vehicle) {
+    TransferVehicleKind.MALIBU -> "Sedan"
+    TransferVehicleKind.CARNIVAL -> "Family"
+    TransferVehicleKind.YUKON -> "VIP"
 }
 
 @Composable
@@ -607,8 +854,8 @@ private fun vehicleDrawable(vehicle: TransferVehicleKind) = when (vehicle) {
 }
 
 private fun vehicleClass(language: AppLanguage, vehicle: TransferVehicleKind) = when (vehicle) {
-    TransferVehicleKind.MALIBU -> transferTr(language, "PRIVATE", "PRIVATE", "PRIVATE", "PRIVATE")
-    TransferVehicleKind.CARNIVAL -> transferTr(language, "FAMILY", "FAMILY", "FAMILY", "FAMILY")
+    TransferVehicleKind.MALIBU -> transferTr(language, "Sedan", "Sedan", "Sedan", "Sedan")
+    TransferVehicleKind.CARNIVAL -> transferTr(language, "Family", "Family", "Family", "Family")
     TransferVehicleKind.YUKON -> "VIP"
 }
 

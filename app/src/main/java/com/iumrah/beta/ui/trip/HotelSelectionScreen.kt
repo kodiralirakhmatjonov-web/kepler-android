@@ -1,10 +1,5 @@
 package com.iumrah.beta.ui.trip
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -21,10 +16,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -57,20 +53,19 @@ import com.iumrah.beta.domain.trip.PackageFlightPath
 import com.iumrah.beta.domain.trip.PackageMealSelection
 import com.iumrah.beta.domain.trip.PackageTier
 import com.iumrah.beta.models.hotel.HotelSummary
-import com.iumrah.beta.models.hotel.IumrahRoomCategoryOption
 import com.iumrah.beta.ui.components.IumrahPressable
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 import com.iumrah.beta.ui.cupertino.Icon
-import com.iumrah.beta.ui.generator.GeneratorCard
 import com.iumrah.beta.ui.generator.GeneratorGeometry
 import com.iumrah.beta.ui.generator.GeneratorHeader
 import com.iumrah.beta.ui.generator.GeneratorPrimaryButton
 import com.iumrah.beta.ui.generator.GeneratorStage
+import com.iumrah.beta.ui.generator.generatorCardColor
 import com.iumrah.beta.ui.generator.generatorPageColor
 import com.iumrah.beta.ui.generator.generatorRaisedColor
 import kotlinx.coroutines.launch
 
-/** iOS PrimaryHotelView parity layer for Android. */
+/** SwiftUI PrimaryHotelView parity. */
 @Composable
 fun HotelSelectionScreen(
     language: AppLanguage,
@@ -82,14 +77,8 @@ fun HotelSelectionScreen(
 ) {
     val state by journey.state.collectAsState()
     val requiresMadinah = state.trip.scope == JourneyScope.MAKKAH_AND_MADINAH
-    var makkahHotels by remember { mutableStateOf<List<HotelSummary>>(emptyList()) }
-    var madinahHotels by remember { mutableStateOf<List<HotelSummary>>(emptyList()) }
-    var makkahRooms by remember { mutableStateOf<List<IumrahRoomCategoryOption>>(emptyList()) }
-    var madinahRooms by remember { mutableStateOf<List<IumrahRoomCategoryOption>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var showMakkahAlternatives by remember { mutableStateOf(false) }
-    var showMadinahAlternatives by remember { mutableStateOf(false) }
     var preparingDirectQuote by remember { mutableStateOf(false) }
     var directQuoteError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -98,54 +87,34 @@ fun HotelSelectionScreen(
         loading = true
         error = null
         runCatching {
-            val makkahList = catalog.listHotels(listOf("Makkah", "Mecca", "Makka"))
-            makkahHotels = makkahList
+            val makkah = catalog.listHotels(listOf("Makkah", "Mecca", "Makka"))
             if (state.makkahHotel == null) {
-                val primary = packageEngine.primaryHotel(state.trip.packageTier, state.trip.hotelStars, "Makkah")
-                val hotel = makkahList.firstOrNull { it.id == primary.hotelId } ?: makkahList.firstOrNull()
-                if (hotel != null) {
-                    journey.selectHotel(hotel)
-                    val rooms = packageEngine.roomCategories(hotel.id)
-                    makkahRooms = rooms
-                    rooms.firstOrNull { it.id == primary.roomId }?.let { journey.selectRoomCategory(it, false) }
-                        ?: rooms.firstOrNull()?.let { journey.selectRoomCategory(it, false) }
-                }
+                val primary = runCatching { packageEngine.primaryHotel(state.trip.packageTier, state.trip.hotelStars, "Makkah") }.getOrNull()
+                val chosen = primary?.let { row -> makkah.firstOrNull { it.id == row.hotelId } }
+                    ?: primaryCandidate(makkah, state.trip.packageTier)
+                chosen?.let(journey::selectHotel)
             }
             if (requiresMadinah) {
-                val madinahList = catalog.listHotels(listOf(
-                    "Madinah", "Medina", "Madina", "Medinah",
-                    "Al Madinah", "Al Medina", "Madinah Al Munawwarah", "Al Madinah Al Munawwarah",
-                ))
-                madinahHotels = madinahList
+                val madinah = catalog.listHotels(madinahAliases)
                 if (state.madinahHotel == null) {
-                    val primary = packageEngine.primaryHotel(state.trip.packageTier, state.trip.hotelStars, "Madinah")
-                    val hotel = madinahList.firstOrNull { it.id == primary.hotelId } ?: madinahList.firstOrNull()
-                    if (hotel != null) {
-                        journey.selectHotel(hotel)
-                        val rooms = packageEngine.roomCategories(hotel.id)
-                        madinahRooms = rooms
-                        rooms.firstOrNull { it.id == primary.roomId }?.let { journey.selectRoomCategory(it, true) }
-                            ?: rooms.firstOrNull()?.let { journey.selectRoomCategory(it, true) }
+                    var chosen: HotelSummary? = null
+                    for (alias in madinahAliases) {
+                        val primary = runCatching { packageEngine.primaryHotel(state.trip.packageTier, state.trip.hotelStars, alias) }.getOrNull()
+                        chosen = primary?.let { row -> madinah.firstOrNull { it.id == row.hotelId } }
+                        if (chosen != null) break
                     }
+                    (chosen ?: primaryCandidate(madinah, state.trip.packageTier))?.let(journey::selectHotel)
                 }
             }
-        }.onFailure { error = it.message ?: hotelTr(language, "Не удалось загрузить Primary Hotels.", "Could not load Primary Hotels.", "Primary Hotels yuklanmadi.", "Primary Hotels юкланмади.") }
+        }.onFailure {
+            error = it.message ?: hotelTr(language, "Не удалось загрузить Primary Hotels.", "Could not load Primary Hotels.", "Primary Hotels yuklanmadi.", "Primary Hotels юкланмади.")
+        }
         loading = false
     }
 
-    LaunchedEffect(state.makkahHotel?.id) {
-        val hotel = state.makkahHotel ?: return@LaunchedEffect
-        makkahRooms = runCatching { packageEngine.roomCategories(hotel.id) }.getOrElse { emptyList() }
-        if (!state.hasMakkahRoomSelection) makkahRooms.firstOrNull()?.let { journey.selectRoomCategory(it, false) }
-    }
-    LaunchedEffect(state.madinahHotel?.id) {
-        val hotel = state.madinahHotel ?: return@LaunchedEffect
-        madinahRooms = runCatching { packageEngine.roomCategories(hotel.id) }.getOrElse { emptyList() }
-        if (!state.hasMadinahRoomSelection) madinahRooms.firstOrNull()?.let { journey.selectRoomCategory(it, true) }
-    }
-
-    val canContinue = state.makkahHotel != null && state.hasMakkahRoomSelection &&
-        (!requiresMadinah || (state.madinahHotel != null && state.hasMadinahRoomSelection))
+    // iOS PrimaryHotelView deliberately requires the hotel only; a stale/missing
+    // room cache must never block this step. The quote pipeline re-reads hotel detail.
+    val canContinue = state.makkahHotel != null && (!requiresMadinah || state.madinahHotel != null)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(generatorPageColor()).statusBarsPadding(),
@@ -162,76 +131,145 @@ fun HotelSelectionScreen(
                     PrimaryStayCard(
                         language = language,
                         hotel = hotel,
-                        room = state.makkahRoomCategory,
-                        cityTitle = hotelTr(language, "Мекка", "Makkah", "Makka", "Макка"),
+                        roomName = state.makkahRoom?.name ?: state.makkahRoomCategory?.displayName,
+                        cityTitle = localizedMakkah(language),
                         meals = state.trip.effectiveMealSelection,
+                        tier = state.trip.packageTier,
                         isMadinah = false,
-                        showMeals = state.trip.packageTier == PackageTier.COMFORT || state.trip.packageTier == PackageTier.LUXURY,
+                        showMeals = state.hasSelectableHotelMeals,
                         onMealChange = journey::setMealSelection,
-                        onChangeHotel = { showMakkahAlternatives = !showMakkahAlternatives },
-                        onRoom = { room -> journey.selectRoomCategory(room, false) },
-                        rooms = makkahRooms,
+                        onViewHotel = { chrome.openConfiguratorHotelDetail(hotel.id, "makkah") },
+                        onChangeHotel = { chrome.openConfiguratorHotelSelection("makkah") },
                     )
                 }
-                item {
-                    AnimatedVisibility(showMakkahAlternatives, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-                        AlternativeHotels(language, makkahHotels, hotel.id) { selected -> journey.selectHotel(selected); showMakkahAlternatives = false }
-                    }
-                }
-            }
+            } ?: item { MissingHotelCard(language, false) { chrome.openConfiguratorHotelSelection("makkah") } }
+
             if (requiresMadinah) {
                 state.madinahHotel?.let { hotel ->
                     item {
                         PrimaryStayCard(
                             language = language,
                             hotel = hotel,
-                            room = state.madinahRoomCategory,
-                            cityTitle = hotelTr(language, "Медина", "Madinah", "Madina", "Мадина"),
+                            roomName = state.madinahRoom?.name ?: state.madinahRoomCategory?.displayName,
+                            cityTitle = localizedMadinah(language),
                             meals = state.trip.effectiveMealSelection,
+                            tier = state.trip.packageTier,
                             isMadinah = true,
-                            showMeals = state.trip.packageTier == PackageTier.COMFORT || state.trip.packageTier == PackageTier.LUXURY,
+                            showMeals = state.hasSelectableHotelMeals,
                             onMealChange = journey::setMealSelection,
-                            onChangeHotel = { showMadinahAlternatives = !showMadinahAlternatives },
-                            onRoom = { room -> journey.selectRoomCategory(room, true) },
-                            rooms = madinahRooms,
+                            onViewHotel = { chrome.openConfiguratorHotelDetail(hotel.id, "madinah") },
+                            onChangeHotel = { chrome.openConfiguratorHotelSelection("madinah") },
                         )
                     }
-                    item {
-                        AnimatedVisibility(showMadinahAlternatives, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-                            AlternativeHotels(language, madinahHotels, hotel.id) { selected -> journey.selectHotel(selected); showMadinahAlternatives = false }
-                        }
-                    }
-                }
+                } ?: item { MissingHotelCard(language, true) { chrome.openConfiguratorHotelSelection("madinah") } }
             }
         }
+
         error?.let { item { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp) } }
-        directQuoteError?.let { message ->
-            item { Text(message, color = MaterialTheme.colorScheme.error, fontSize = 13.sp) }
-        }
+        directQuoteError?.let { item { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp) } }
         item {
-            val isPublishedDirect = state.packageFlightPath == PackageFlightPath.PUBLISHED_DIRECT
+            val published = state.packageFlightPath == PackageFlightPath.PUBLISHED_DIRECT
             GeneratorPrimaryButton(
-                title = if (isPublishedDirect)
-                    hotelTr(language, "Продолжить к трансферу", "Continue to transfer", "Transferga davom etish", "Трансферга давом этиш")
+                title = if (published) hotelTr(language, "Продолжить к трансферу", "Continue to transfer", "Transferga davom etish", "Трансферга давом этиш")
                 else hotelTr(language, "Продолжить к перелёту", "Continue to flights", "Parvozga davom etish", "Парвозга давом этиш"),
-                enabled = canContinue && !loading && !preparingDirectQuote && (!isPublishedDirect || state.hasCompletePublishedFlightSelection),
+                enabled = canContinue && !loading && !preparingDirectQuote && (!published || state.hasCompletePublishedFlightSelection),
                 onClick = {
-                    if (!isPublishedDirect) {
-                        chrome.openFlights()
-                    } else {
-                        scope.launch {
-                            preparingDirectQuote = true
-                            directQuoteError = null
-                            journey.preparePublishedDirectPackage(curatedFlights, packageEngine)
-                                .onSuccess { chrome.openTransferSelection() }
-                                .onFailure { directQuoteError = it.message ?: hotelTr(language, "Не удалось подготовить пакет.", "Could not prepare the package.", "Paketni tayyorlab bo‘lmadi.", "Пакетни тайёрлаб бўлмади.") }
-                            preparingDirectQuote = false
-                        }
+                    if (!published) chrome.openFlights()
+                    else scope.launch {
+                        preparingDirectQuote = true
+                        directQuoteError = null
+                        journey.preparePublishedDirectPackage(curatedFlights, packageEngine)
+                            .onSuccess { chrome.openTransferSelection() }
+                            .onFailure { directQuoteError = it.message ?: publishedFallback(language) }
+                        preparingDirectQuote = false
                     }
                 },
             )
         }
         item { Spacer(Modifier.height(34.dp)) }
+    }
+}
+
+/** SwiftUI HotelSelectionView parity; it is a separate route, never an inline list. */
+@Composable
+fun ConfiguratorHotelSelectionScreen(
+    role: String,
+    language: AppLanguage,
+    journey: JourneyStore,
+    catalog: HotelCatalogService,
+    chrome: AppChromeStore,
+) {
+    val state by journey.state.collectAsState()
+    val madinah = role.equals("madinah", true)
+    var hotels by remember(role) { mutableStateOf<List<HotelSummary>>(emptyList()) }
+    var loading by remember(role) { mutableStateOf(true) }
+    var error by remember(role) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(role, state.trip.packageTier) {
+        loading = true
+        error = null
+        runCatching {
+            hotels = catalog.listHotels(if (madinah) madinahAliases else listOf("Makkah", "Mecca", "Makka"))
+        }.onFailure { error = it.message }
+        loading = false
+    }
+
+    val allowed = state.trip.packageTier.selectableHotelStars.toSet()
+    val filtered = remember(hotels, state.trip.packageTier) {
+        hotels.filter { it.stars in allowed }.sortedWith(
+            compareByDescending<HotelSummary> { it.stars == state.trip.packageTier.primaryHotelStars }
+                .thenByDescending { it.hasFreshCatalogPrice }
+                .thenByDescending { it.stars ?: 0 }
+                .thenBy { it.name.lowercase() },
+        )
+    }
+    val primary = filtered.filter { it.stars == state.trip.packageTier.primaryHotelStars }
+    val superEconomy = if (state.trip.packageTier == PackageTier.ECONOMY) filtered.filter { it.stars == 1 } else emptyList()
+    val selectedId = if (madinah) state.madinahHotel?.id else state.makkahHotel?.id
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(generatorPageColor()).statusBarsPadding(),
+        contentPadding = PaddingValues(horizontal = GeneratorGeometry.pagePadding, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        item {
+            IumrahPressable(onClick = { chrome.back() }, modifier = Modifier.size(42.dp), cornerRadius = 21.dp, background = generatorCardColor()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ChevronLeft, null, Modifier.size(20.dp)) }
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Text(
+                    if (madinah) hotelTr(language, "Выберите отель в Медине", "Choose a hotel in Madinah", "Madinadagi mehmonxonani tanlang", "Мадинадаги меҳмонхонани танланг")
+                    else hotelTr(language, "Выберите отель в Мекке", "Choose a hotel in Makkah", "Makkadagi mehmonxonani tanlang", "Маккадаги меҳмонхонани танланг"),
+                    fontSize = 32.sp, lineHeight = 35.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.7).sp,
+                )
+                Text(hotelTr(language, "Выберите отель и номер для вашего личного пакета.", "Choose the hotel and room for your personal package.", "Shaxsiy paketingiz uchun mehmonxona va xonani tanlang.", "Шахсий пакетингиз учун меҳмонхона ва хонани танланг."), fontSize = 16.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f))
+            }
+        }
+        item { HotelRefundPolicyCard(language) }
+
+        when {
+            loading && filtered.isEmpty() -> item { LoadingHotelCard(language) }
+            filtered.isEmpty() -> item {
+                Column(Modifier.fillMaxWidth().padding(vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Icon(CupertinoSymbol.Hotel, null, Modifier.size(38.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .42f))
+                    Text(error ?: hotelTr(language, "Нет доступных Primary Hotels.", "No Primary Hotels are available.", "Primary Hotels mavjud emas.", "Primary Hotels мавжуд эмас."), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f))
+                }
+            }
+            state.trip.packageTier == PackageTier.ECONOMY -> {
+                if (primary.isNotEmpty()) {
+                    item { HotelSectionHeader(hotelTr(language, "Эконом · 2★", "Economy · 2★", "Ekonom · 2★", "Эконом · 2★"), hotelTr(language, "Основной выбор категории — практичные 2★ отели.", "The main Economy selection: practical 2★ hotels.", "Ekonom toifasining asosiy tanlovi — amaliy 2★ mehmonxonalar.", "Эконом тоифасининг асосий танлови — амалий 2★ меҳмонхоналар.")) }
+                    primary.forEach { hotel -> item(key = "primary-${hotel.id}") { SelectorHotelCard(hotel, selectedId == hotel.id, language) { chrome.openConfiguratorHotelDetail(hotel.id, role) } } }
+                }
+                if (superEconomy.isNotEmpty()) {
+                    item { HotelSectionHeader("Super Economy · 1★", hotelTr(language, "Если важнее минимальная стоимость пакета — доступны и 1★ варианты.", "If the lowest package price matters most, 1★ options are also available.", "Paket narxini yanada kamaytirish muhim bo‘lsa, 1★ variantlar ham mavjud.", "Пакет нархини янада камайтириш муҳим бўлса, 1★ вариантлар ҳам мавжуд.")) }
+                    superEconomy.forEach { hotel -> item(key = "super-${hotel.id}") { SelectorHotelCard(hotel, selectedId == hotel.id, language, badge = "Super Economy · 1★") { chrome.openConfiguratorHotelDetail(hotel.id, role) } } }
+                }
+            }
+            else -> primary.forEach { hotel -> item(key = hotel.id) { SelectorHotelCard(hotel, selectedId == hotel.id, language) { chrome.openConfiguratorHotelDetail(hotel.id, role) } } }
+        }
+        item { Spacer(Modifier.height(42.dp)) }
     }
 }
 
@@ -244,11 +282,17 @@ fun HotelSelectionScreen(
 }
 
 @Composable private fun LoadingHotelCard(language: AppLanguage) {
-    GeneratorCard {
-        Row(Modifier.fillMaxWidth().height(74.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.2.dp)
-            Text(hotelTr(language, "Подбираем Primary Hotel…", "Finding your Primary Hotel…", "Primary Hotel tanlanmoqda…", "Primary Hotel танланмоқда…"), fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .6f))
-        }
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(generatorCardColor()).padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+        Text(hotelTr(language, "Подбираем Primary Hotel…", "Finding your Primary Hotel…", "Primary Hotel tanlanmoqda…", "Primary Hotel танланмоқда…"), fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f))
+    }
+}
+
+@Composable private fun MissingHotelCard(language: AppLanguage, madinah: Boolean, onChoose: () -> Unit) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(generatorCardColor()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(if (madinah) localizedMadinah(language) else localizedMakkah(language), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(hotelTr(language, "Primary Hotel пока недоступен. Выберите отель из каталога.", "The Primary Hotel is not available yet. Choose a hotel from the catalogue.", "Primary Hotel hozircha mavjud emas. Katalogdan mehmonxona tanlang.", "Primary Hotel ҳозирча мавжуд эмас. Каталогдан меҳмонхона танланг."), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f))
+        SoftHotelAction(language, CupertinoSymbol.Refresh, hotelTr(language, "Выбрать отель", "Choose hotel", "Mehmonxona tanlash", "Меҳмонхона танлаш"), Modifier.fillMaxWidth(), onChoose)
     }
 }
 
@@ -256,103 +300,149 @@ fun HotelSelectionScreen(
 private fun PrimaryStayCard(
     language: AppLanguage,
     hotel: HotelSummary,
-    room: IumrahRoomCategoryOption?,
+    roomName: String?,
     cityTitle: String,
     meals: PackageMealSelection,
+    tier: PackageTier,
     isMadinah: Boolean,
     showMeals: Boolean,
     onMealChange: (PackageMealSelection) -> Unit,
+    onViewHotel: () -> Unit,
     onChangeHotel: () -> Unit,
-    onRoom: (IumrahRoomCategoryOption) -> Unit,
-    rooms: List<IumrahRoomCategoryOption>,
 ) {
     val fg = MaterialTheme.colorScheme.onSurface
     val imageUrl = AppConfig.absoluteUrl(hotel.coverImageURL)
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).background(com.iumrah.beta.ui.generator.generatorCardColor()).padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        Modifier.fillMaxWidth().shadow(18.dp, RoundedCornerShape(30.dp)).clip(RoundedCornerShape(30.dp)).background(generatorCardColor()).border(.7.dp, fg.copy(alpha = .06f), RoundedCornerShape(30.dp)),
     ) {
-        Box(Modifier.fillMaxWidth().height(214.dp).clip(RoundedCornerShape(24.dp)).background(generatorRaisedColor())) {
+        Box(Modifier.fillMaxWidth().height(238.dp).padding(12.dp).clip(RoundedCornerShape(24.dp)).background(generatorRaisedColor())) {
             if (imageUrl != null) AsyncImage(imageUrl, hotel.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            else Icon(CupertinoSymbol.Hotel, null, Modifier.align(Alignment.Center).size(44.dp), tint = fg.copy(alpha=.45f))
-            Row(Modifier.align(Alignment.TopStart).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                HotelPill(hotelTr(language, "Рекомендуем iumrah", "iumrah Recommended", "iumrah tavsiyasi", "iumrah тавсияси"), Color.White, Color.Black)
-                HotelPill(cityTitle, Color.Black.copy(alpha=.72f), Color.White)
-            }
+            else Icon(CupertinoSymbol.Hotel, null, Modifier.align(Alignment.Center).size(44.dp), tint = fg.copy(alpha = .45f))
         }
-        Column(Modifier.padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(hotel.name, fontSize = 25.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.45).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+
+        Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.height(30.dp).clip(CircleShape).background(Color(0xFF74A187).copy(alpha = .16f)).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(CupertinoSymbol.Sparkles, null, Modifier.size(13.dp))
+                    Text(hotelTr(language, "Рекомендуем iumrah", "iumrah Recommended", "iumrah tavsiyasi", "iumrah тавсияси"), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.weight(1f))
+                Icon(CupertinoSymbol.CheckCircleFill, null, Modifier.size(20.dp), tint = Color(0xFF74A187))
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text("${hotelTr(language, "Primary Hotel", "Primary Hotel", "Primary Hotel", "Primary Hotel")} · ${hotel.stars ?: tier.primaryHotelStars}★ · $cityTitle", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg.copy(alpha = .56f))
+                Text(hotel.name, fontSize = 25.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.4).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                repeat((hotel.stars ?: 0).coerceIn(0,5)) { Icon(CupertinoSymbol.Star, null, Modifier.size(12.dp), tint = Color(0xFFFFB000)) }
-                hotel.rating?.let { Text(String.format("%.1f", it), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg.copy(alpha=.58f)) }
+                FactPill(CupertinoSymbol.Location, cityTitle)
+                roomName?.takeIf { it.isNotBlank() }?.let { FactPill(CupertinoSymbol.Bed, it) }
             }
-        }
-        if (rooms.isNotEmpty()) {
-            Column(Modifier.padding(horizontal=6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(hotelTr(language,"Номер","Room","Xona","Хона"), fontSize=11.sp, fontWeight=FontWeight.Bold, color=fg.copy(alpha=.5f), letterSpacing=.7.sp)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    rooms.take(3).forEach { option ->
-                        val active = room?.id == option.id
-                        IumrahPressable(onClick={onRoom(option)}, modifier=Modifier.weight(1f).height(48.dp), cornerRadius=16.dp, background=if(active) fg else generatorRaisedColor()) {
-                            Box(Modifier.fillMaxSize().padding(horizontal=6.dp), contentAlignment=Alignment.Center) {
-                                Text(option.displayName, fontSize=11.sp, fontWeight=FontWeight.SemiBold, color=if(active) generatorPageColor() else fg, maxLines=2, overflow=TextOverflow.Ellipsis)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if (showMeals) MealPlanCard(language, meals, isMadinah, onMealChange)
-        Row(Modifier.fillMaxWidth().padding(horizontal=6.dp), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            IumrahPressable(onClick=onChangeHotel, modifier=Modifier.weight(1f).height(52.dp), cornerRadius=18.dp, background=generatorRaisedColor()) {
-                Row(Modifier.fillMaxSize(), verticalAlignment=Alignment.CenterVertically, horizontalArrangement=Arrangement.Center) { Icon(CupertinoSymbol.Refresh,null,Modifier.size(17.dp)); Spacer(Modifier.width(7.dp)); Text(hotelTr(language,"Сменить отель","Change hotel","Mehmonxonani almashtirish","Меҳмонхонани алмаштириш"),fontSize=13.sp,fontWeight=FontWeight.SemiBold) }
+
+            if (showMeals) MealPlanCard(language, meals, tier, isMadinah, onMealChange)
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SoftHotelAction(language, CupertinoSymbol.InfoCircle, hotelTr(language, "Посмотреть отель", "View hotel", "Mehmonxonani ko‘rish", "Меҳмонхонани кўриш"), Modifier.weight(1f), onViewHotel)
+                SoftHotelAction(language, CupertinoSymbol.Refresh, hotelTr(language, "Сменить отель", "Change hotel", "Mehmonxonani almashtirish", "Меҳмонхонани алмаштириш"), Modifier.weight(1f), onChangeHotel)
             }
         }
     }
 }
 
-@Composable private fun MealPlanCard(language: AppLanguage, meals: PackageMealSelection, isMadinah: Boolean, onChange:(PackageMealSelection)->Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal=6.dp).clip(RoundedCornerShape(22.dp)).background(generatorRaisedColor()).padding(14.dp), verticalArrangement=Arrangement.spacedBy(11.dp)) {
-        Row(verticalAlignment=Alignment.CenterVertically) { Icon(CupertinoSymbol.ForkKnife,null,Modifier.size(20.dp)); Spacer(Modifier.width(9.dp)); Column{Text(hotelTr(language,"Питание в отеле","Hotel meals","Mehmonxona ovqati","Меҳмонхона овқати"),fontSize=15.sp,fontWeight=FontWeight.Bold);Text(hotelTr(language,"Завтрак включён","Breakfast included","Nonushta kiritilgan","Нонушта киритилган"),fontSize=11.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.5f))} }
-        MealRow(hotelTr(language,"Завтрак","Breakfast","Nonushta","Нонушта"), true, enabled=false) {}
+@Composable private fun FactPill(icon: CupertinoSymbol, text: String) {
+    Row(Modifier.height(32.dp).clip(CircleShape).background(generatorRaisedColor()).padding(horizontal = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(icon, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f))
+        Text(text, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable private fun SoftHotelAction(language: AppLanguage, icon: CupertinoSymbol, title: String, modifier: Modifier, onClick: () -> Unit) {
+    IumrahPressable(onClick = onClick, modifier = modifier.height(52.dp), cornerRadius = 18.dp, background = generatorRaisedColor()) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            Icon(icon, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(title, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable private fun MealPlanCard(language: AppLanguage, meals: PackageMealSelection, tier: PackageTier, isMadinah: Boolean, onChange: (PackageMealSelection) -> Unit) {
+    val price = tier.optionalMealUnitPriceUsd ?: 0
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(generatorRaisedColor().copy(alpha = .72f)).border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .045f), RoundedCornerShape(20.dp))) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.size(30.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ForkKnife, null, Modifier.size(15.dp)) }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(hotelTr(language, "Питание в отеле", "Hotel meals", "Mehmonxonada ovqatlanish", "Меҳмонхонада овқатланиш"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(if (isMadinah) hotelTr(language, "Медина · завтрак и ужин", "Madinah · breakfast and dinner", "Madina · nonushta va kechki ovqat", "Мадина · нонушта ва кечки овқат") else hotelTr(language, "Мекка · завтрак, обед и ужин", "Makkah · breakfast, lunch and dinner", "Makka · nonushta, tushlik va kechki ovqat", "Макка · нонушта, тушлик ва кечки овқат"), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f))
+            }
+        }
+        MealDivider()
+        MealParityRow(language, CupertinoSymbol.CupSaucerFill, hotelTr(language, "Завтрак", "Breakfast", "Nonushta", "Нонушта"), hotelTr(language, "Включено", "Included", "Kiritilgan", "Киритилган"), true, false) {}
         if (!isMadinah) {
-            MealRow(hotelTr(language,"Обед","Lunch","Tushlik","Тушлик"), meals.makkahLunch) { onChange(meals.copy(makkahLunch=it)) }
-            MealRow(hotelTr(language,"Ужин","Dinner","Kechki ovqat","Кечки овқат"), meals.makkahDinner) { onChange(meals.copy(makkahDinner=it)) }
-        } else {
-            MealRow(hotelTr(language,"Ужин","Dinner","Kechki ovqat","Кечки овқат"), meals.madinahDinner) { onChange(meals.copy(madinahDinner=it)) }
+            MealDivider(); MealParityRow(language, CupertinoSymbol.SunMaxFill, hotelTr(language, "Обед", "Lunch", "Tushlik", "Тушлик"), optionalMealText(language, price), meals.makkahLunch, true) { onChange(meals.copy(makkahLunch = it)) }
+        }
+        MealDivider(); MealParityRow(language, CupertinoSymbol.MoonStarsFill, hotelTr(language, "Ужин", "Dinner", "Kechki ovqat", "Кечки овқат"), optionalMealText(language, price), if (isMadinah) meals.madinahDinner else meals.makkahDinner, true) {
+            if (isMadinah) onChange(meals.copy(madinahDinner = it)) else onChange(meals.copy(makkahDinner = it))
         }
     }
 }
 
-@Composable private fun MealRow(title:String, selected:Boolean, enabled:Boolean=true, onChange:(Boolean)->Unit) {
-    IumrahPressable(onClick={if(enabled)onChange(!selected)}, enabled=enabled, modifier=Modifier.fillMaxWidth().height(38.dp), cornerRadius=13.dp, background=Color.Transparent) {
-        Row(Modifier.fillMaxSize(), verticalAlignment=Alignment.CenterVertically) { Text(title,fontSize=13.sp,fontWeight=FontWeight.Medium);Spacer(Modifier.weight(1f));IosToggle(selected, enabled) }
+@Composable private fun MealDivider() { Divider(Modifier.padding(start = 54.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = .08f)) }
+
+@Composable private fun MealParityRow(language: AppLanguage, icon: CupertinoSymbol, title: String, subtitle: String, selected: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    IumrahPressable(onClick = { if (enabled) onChange(!selected) }, enabled = enabled, modifier = Modifier.fillMaxWidth().height(58.dp), cornerRadius = 0.dp, background = Color.Transparent) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(icon, null, Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .54f))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) { Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold); Text(subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .54f)) }
+            if (enabled) IosToggle(selected) else Icon(CupertinoSymbol.CheckCircleFill, null, Modifier.size(20.dp), tint = Color(0xFF74A187))
+        }
     }
 }
 
-@Composable private fun IosToggle(on:Boolean, enabled:Boolean=true) {
-    val track = if(on) Color(0xFF34C759) else MaterialTheme.colorScheme.onSurface.copy(alpha=.16f)
-    Box(Modifier.width(51.dp).height(31.dp).clip(CircleShape).background(track.copy(alpha=if(enabled)1f else .55f)).padding(2.dp)) {
-        Box(Modifier.align(if(on)Alignment.CenterEnd else Alignment.CenterStart).size(27.dp).clip(CircleShape).background(Color.White))
+@Composable private fun IosToggle(on: Boolean) {
+    Box(Modifier.width(51.dp).height(31.dp).clip(CircleShape).background(if (on) Color(0xFF74A187) else MaterialTheme.colorScheme.onSurface.copy(alpha = .16f)).padding(2.dp)) {
+        Box(Modifier.align(if (on) Alignment.CenterEnd else Alignment.CenterStart).size(27.dp).clip(CircleShape).background(Color.White))
     }
 }
 
-@Composable private fun AlternativeHotels(language:AppLanguage, hotels:List<HotelSummary>, selectedId:String, onSelect:(HotelSummary)->Unit) {
-    GeneratorCard {
-        Column(verticalArrangement=Arrangement.spacedBy(11.dp)) {
-            Text(hotelTr(language,"Другие отели","Other hotels","Boshqa mehmonxonalar","Бошқа меҳмонхоналар"),fontSize=17.sp,fontWeight=FontWeight.Bold)
-            hotels.filter{it.id!=selectedId}.take(8).forEach { hotel ->
-                IumrahPressable(onClick={onSelect(hotel)},modifier=Modifier.fillMaxWidth().height(68.dp),cornerRadius=19.dp,background=generatorRaisedColor()) {
-                    Row(Modifier.fillMaxSize().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically){
-                        Box(Modifier.size(45.dp).clip(RoundedCornerShape(14.dp)).background(generatorPageColor()),contentAlignment=Alignment.Center){Icon(CupertinoSymbol.Hotel,null,Modifier.size(20.dp))}
-                        Spacer(Modifier.width(11.dp));Column(Modifier.weight(1f)){Text(hotel.name,fontSize=14.sp,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis);Text("${hotel.stars ?: 0}★ · ${hotel.city}",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.5f))};Icon(CupertinoSymbol.ChevronRight,null,Modifier.size(16.dp),tint=MaterialTheme.colorScheme.onSurface.copy(alpha=.42f))
-                    }
-                }
+@Composable private fun HotelRefundPolicyCard(language: AppLanguage) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(generatorCardColor()).border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), RoundedCornerShape(24.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(13.dp)).background(generatorRaisedColor()), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ShieldCheck, null, Modifier.size(18.dp)) }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(hotelTr(language, "Условия отеля", "Hotel refund policy", "Mehmonxona qaytarish siyosati", "Меҳмонхона қайтариш сиёсати"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(hotelTr(language, "Условия возврата показываются до оплаты пакета.", "Refund terms are shown before package payment.", "Qaytarish shartlari paket to‘lovidan oldin ko‘rsatiladi.", "Қайтариш шартлари пакет тўловидан олдин кўрсатилади."), fontSize = 11.sp, lineHeight = 15.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .54f))
+        }
+    }
+}
+
+@Composable private fun HotelSectionHeader(title: String, subtitle: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold); Text(subtitle, fontSize = 11.sp, lineHeight = 15.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f)) }
+}
+
+@Composable private fun SelectorHotelCard(hotel: HotelSummary, selected: Boolean, language: AppLanguage, badge: String? = null, onClick: () -> Unit) {
+    val fg = MaterialTheme.colorScheme.onSurface
+    IumrahPressable(onClick = onClick, modifier = Modifier.fillMaxWidth(), cornerRadius = 26.dp, background = Color.Transparent) {
+        Column(Modifier.fillMaxWidth().shadow(12.dp, RoundedCornerShape(26.dp)).clip(RoundedCornerShape(26.dp)).background(generatorCardColor()).border(if (selected) 1.2.dp else .6.dp, if (selected) Color(0xFF74A187).copy(alpha = .62f) else fg.copy(alpha = .055f), RoundedCornerShape(26.dp))) {
+            Box(Modifier.fillMaxWidth().height(174.dp).background(generatorRaisedColor())) {
+                AppConfig.absoluteUrl(hotel.coverImageURL)?.let { AsyncImage(it, hotel.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                val label = if (selected) hotelTr(language, "Выбрано", "Selected", "Tanlangan", "Танланган") else badge
+                label?.let { Box(Modifier.align(Alignment.TopLeading).padding(12.dp).height(28.dp).clip(CircleShape).background(Color.Black.copy(alpha = .66f)).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) { Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White) } }
+            }
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(hotel.name, fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text("${hotel.stars ?: 0}★ · ${hotel.city}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg.copy(alpha = .55f))
             }
         }
     }
 }
 
-@Composable private fun HotelPill(text:String,bg:Color,fg:Color){Box(Modifier.clip(CircleShape).background(bg).padding(horizontal=10.dp,vertical=6.dp)){Text(text,fontSize=10.sp,fontWeight=FontWeight.Bold,color=fg)}}
+private fun primaryCandidate(hotels: List<HotelSummary>, tier: PackageTier): HotelSummary? {
+    val exact = hotels.filter { it.stars == tier.primaryHotelStars }
+    return exact.firstOrNull { it.hasFreshCatalogPrice } ?: exact.firstOrNull()
+}
 
-private fun hotelTr(l:AppLanguage,ru:String,en:String,uz:String,uzCy:String)=when(l){AppLanguage.RUSSIAN->ru;AppLanguage.ENGLISH->en;AppLanguage.UZBEK->uz;AppLanguage.UZBEK_CYRILLIC->uzCy}
+private val madinahAliases = listOf("Madinah", "Medina", "Madina", "Medinah", "Al Madinah", "Al Medina", "Madinah Al Munawwarah", "Al Madinah Al Munawwarah")
+private fun localizedMakkah(l: AppLanguage) = hotelTr(l, "Мекка", "Makkah", "Makka", "Макка")
+private fun localizedMadinah(l: AppLanguage) = hotelTr(l, "Медина", "Madinah", "Madina", "Мадина")
+private fun optionalMealText(l: AppLanguage, price: Int) = hotelTr(l, "+$$price за человека / день", "+$$price per person / day", "+$$price kishi / kun", "+$$price киши / кун")
+private fun publishedFallback(l: AppLanguage) = hotelTr(l, "Не удалось получить опубликованный рейс или актуальную цену отеля. Попробуйте ещё раз.", "The published flight or current hotel price could not be resolved. Please try again.", "E’lon qilingan reys yoki mehmonxonaning dolzarb narxini olib bo‘lmadi. Qayta urinib ko‘ring.", "Эълон қилинган рейс ёки меҳмонхонанинг долзарб нархини олиб бўлмади. Қайта уриниб кўринг.")
+private fun hotelTr(l: AppLanguage, ru: String, en: String, uz: String, uzCy: String) = when (l) { AppLanguage.RUSSIAN -> ru; AppLanguage.ENGLISH -> en; AppLanguage.UZBEK -> uz; AppLanguage.UZBEK_CYRILLIC -> uzCy }

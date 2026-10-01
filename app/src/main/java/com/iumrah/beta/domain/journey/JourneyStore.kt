@@ -55,9 +55,11 @@ data class JourneyState(
     val resolvedTransferVehicle: TransferVehicleKind get() = selectedTransferVehicle ?: TransferVehicleKind.CARNIVAL
     val hasMakkahRoomSelection: Boolean get() = makkahRoom != null || makkahRoomCategory != null
     val hasMadinahRoomSelection: Boolean get() = madinahRoom != null || madinahRoomCategory != null
+    // Match iOS PrimaryHotelView: selection is not blocked by a stale room-list cache.
+    // PackageEngine re-reads current hotel detail and accepts a null room/category id.
     val hasRequiredHotels: Boolean get() =
-        makkahHotel != null && hasMakkahRoomSelection &&
-            (trip.scope != JourneyScope.MAKKAH_AND_MADINAH || (madinahHotel != null && hasMadinahRoomSelection))
+        makkahHotel != null &&
+            (trip.scope != JourneyScope.MAKKAH_AND_MADINAH || madinahHotel != null)
     val readyForPackage: Boolean get() = hasRequiredHotels && selectedJourney != null
     val hasCompletePublishedFlightSelection: Boolean get() =
         !selectedPublishedCompleteID.isNullOrBlank() ||
@@ -201,6 +203,36 @@ class JourneyStore {
         }
     }
 
+    /** Exact counterpart of iOS JourneyStore.applyPackageTierComparison.
+     * Keeps the verified flight and transfer choices fixed while replacing only
+     * the tier, primary hotels and the already server-authoritative quote. */
+    fun applyPackageTierComparison(
+        tier: PackageTier,
+        comparisonQuote: PackageQuote,
+        makkahHotel: HotelSummary,
+        madinahHotel: HotelSummary?,
+    ) {
+        _state.update { current ->
+            if (current.trip.scope == JourneyScope.MAKKAH_AND_MADINAH && madinahHotel == null) return@update current
+            val updatedTrip = current.trip.copy(
+                packageTier = tier,
+                hotelStars = tier.primaryHotelStars,
+                mealSelection = if (tier == PackageTier.COMFORT || tier == PackageTier.LUXURY) PackageMealSelection() else null,
+            )
+            current.copy(
+                trip = updatedTrip,
+                makkahHotel = makkahHotel,
+                makkahRoom = null,
+                makkahRoomCategory = null,
+                madinahHotel = madinahHotel,
+                madinahRoom = null,
+                madinahRoomCategory = null,
+                quote = comparisonQuote,
+                packageError = null,
+            )
+        }
+    }
+
     fun selectHotel(hotel: HotelSummary) {
         _state.update { current ->
             val normalizedCity = hotel.city.trim().lowercase()
@@ -287,6 +319,31 @@ class JourneyStore {
         }.onFailure { error ->
             _state.update { it.copy(isSearchingFlights = false, flightError = error.message ?: "SEARCH_FAILED") }
         }
+    }
+
+    /** Server-authoritative package-price previews used by the iOS flight cards.
+     * Each row is quoted as a complete itinerary; raw component airfare never becomes UI.
+     */
+    suspend fun packagePricePreviews(
+        packageEngine: RemotePackageEngineClient,
+        journeyIDs: Collection<String>,
+    ): Map<String, java.math.BigDecimal> {
+        val snapshot = _state.value
+        if (snapshot.makkahHotel == null || (snapshot.trip.scope == JourneyScope.MAKKAH_AND_MADINAH && snapshot.madinahHotel == null)) return emptyMap()
+        val unique = journeyIDs.distinct()
+        val result = linkedMapOf<String, java.math.BigDecimal>()
+        for (id in unique) {
+            val candidate = snapshot.flightResults.firstOrNull { it.id == id } ?: continue
+            val previewState = snapshot.copy(
+                selectedJourneyId = candidate.id,
+                selectedOutboundJourneyId = candidate.id,
+                quote = null,
+                packageError = null,
+            )
+            runCatching { packageEngine.packageQuote(previewState).pricePerPerson }
+                .getOrNull()?.let { result[id] = it }
+        }
+        return result
     }
 
     fun selectJourney(id: String) {
