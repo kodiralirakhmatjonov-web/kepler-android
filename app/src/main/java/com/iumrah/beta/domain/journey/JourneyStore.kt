@@ -1,15 +1,19 @@
 package com.iumrah.beta.domain.journey
 
+import com.iumrah.beta.data.flight.CuratedFlightRecommendationService
 import com.iumrah.beta.data.flight.IgnavFlightInventoryProvider
+import com.iumrah.beta.data.hotel.RemotePackageEngineClient
 import com.iumrah.beta.domain.pricing.PackageQuote
 import com.iumrah.beta.domain.trip.HaramainFareClass
 import com.iumrah.beta.domain.trip.JourneyScope
+import com.iumrah.beta.domain.trip.PackageFlightPath
 import com.iumrah.beta.domain.trip.PackageMealSelection
 import com.iumrah.beta.domain.trip.PackageTier
 import com.iumrah.beta.domain.trip.TransferVehicleKind
 import com.iumrah.beta.domain.trip.TripDraft
 import com.iumrah.beta.models.flight.FlightJourneyDatePair
 import com.iumrah.beta.models.flight.FlightJourneySearchRequest
+import com.iumrah.beta.models.flight.CuratedPublishedFlightSelection
 import com.iumrah.beta.models.flight.LiveFlightJourneyCandidate
 import com.iumrah.beta.models.hotel.HotelRoom
 import com.iumrah.beta.models.hotel.HotelSummary
@@ -30,6 +34,10 @@ data class JourneyState(
     val flightResults: List<LiveFlightJourneyCandidate> = emptyList(),
     val selectedJourneyId: String? = null,
     val selectedOutboundJourneyId: String? = null,
+    val packageFlightPath: PackageFlightPath = PackageFlightPath.PUBLISHED_DIRECT,
+    val selectedPublishedCompleteID: String? = null,
+    val selectedPublishedOutboundID: String? = null,
+    val selectedPublishedReturnID: String? = null,
     val selectedTransferVehicle: TransferVehicleKind? = null,
     val haramainTrainSelected: Boolean = false,
     val haramainFareClass: HaramainFareClass = HaramainFareClass.ECONOMY,
@@ -51,6 +59,9 @@ data class JourneyState(
         makkahHotel != null && hasMakkahRoomSelection &&
             (trip.scope != JourneyScope.MAKKAH_AND_MADINAH || (madinahHotel != null && hasMadinahRoomSelection))
     val readyForPackage: Boolean get() = hasRequiredHotels && selectedJourney != null
+    val hasCompletePublishedFlightSelection: Boolean get() =
+        !selectedPublishedCompleteID.isNullOrBlank() ||
+            (!selectedPublishedOutboundID.isNullOrBlank() && !selectedPublishedReturnID.isNullOrBlank())
     val hasSelectableHotelMeals: Boolean get() = trip.packageTier == PackageTier.COMFORT || trip.packageTier == PackageTier.LUXURY
     val hasFinalGeneratorQuote: Boolean get() =
         quote?.quoteId?.startsWith("server-") == true &&
@@ -65,7 +76,121 @@ class JourneyStore {
 
     fun updateTrip(value: TripDraft) {
         _state.update { current ->
-            if (current.trip == value) current else JourneyState(trip = value)
+            if (current.trip == value) current else JourneyState(
+                trip = value,
+                packageFlightPath = if (value.isWeekendUmrah) PackageFlightPath.WEEKEND else PackageFlightPath.PUBLISHED_DIRECT,
+            )
+        }
+    }
+
+    /** Commits the first configurator step while preserving the iOS published-flight path/selection. */
+    fun commitTripBuilder(
+        value: TripDraft,
+        path: PackageFlightPath,
+        completeID: String? = null,
+        outboundID: String? = null,
+        returnID: String? = null,
+    ) {
+        _state.update { current ->
+            val routeChanged = current.trip.originCode != value.originCode ||
+                current.trip.outboundDestinationCode != value.outboundDestinationCode ||
+                current.trip.returnOriginCode != value.returnOriginCode ||
+                current.trip.scope != value.scope
+            val keepPublished = !routeChanged && current.packageFlightPath == path
+            current.copy(
+                trip = value,
+                packageFlightPath = path,
+                selectedPublishedCompleteID = completeID ?: if (keepPublished) current.selectedPublishedCompleteID else null,
+                selectedPublishedOutboundID = outboundID ?: if (keepPublished) current.selectedPublishedOutboundID else null,
+                selectedPublishedReturnID = returnID ?: if (keepPublished) current.selectedPublishedReturnID else null,
+                flightResults = emptyList(),
+                selectedJourneyId = null,
+                selectedOutboundJourneyId = null,
+                quote = null,
+                packageError = null,
+                transferSelectionConfirmed = false,
+            )
+        }
+    }
+
+    fun setPackageFlightPath(path: PackageFlightPath) {
+        _state.update { current ->
+            if (current.packageFlightPath == path) current else current.copy(
+                packageFlightPath = path,
+                selectedPublishedCompleteID = null,
+                selectedPublishedOutboundID = null,
+                selectedPublishedReturnID = null,
+                flightResults = emptyList(),
+                selectedJourneyId = null,
+                selectedOutboundJourneyId = null,
+                quote = null,
+                packageError = null,
+                transferSelectionConfirmed = false,
+            )
+        }
+    }
+
+    fun setPublishedSelection(completeID: String? = null, outboundID: String? = null, returnID: String? = null) {
+        _state.update { current -> current.copy(
+            selectedPublishedCompleteID = completeID,
+            selectedPublishedOutboundID = outboundID,
+            selectedPublishedReturnID = returnID,
+            flightResults = emptyList(),
+            selectedJourneyId = null,
+            selectedOutboundJourneyId = null,
+            quote = null,
+            packageError = null,
+            transferSelectionConfirmed = false,
+        ) }
+    }
+
+    fun clearPublishedFlightSelection() {
+        _state.update { current -> current.copy(
+            selectedPublishedCompleteID = null,
+            selectedPublishedOutboundID = null,
+            selectedPublishedReturnID = null,
+            quote = null,
+            packageError = null,
+        ) }
+    }
+
+    suspend fun preparePublishedDirectPackage(
+        curated: CuratedFlightRecommendationService,
+        packageEngine: RemotePackageEngineClient,
+    ): Result<PackageQuote> {
+        val snapshot = _state.value
+        if (snapshot.packageFlightPath != PackageFlightPath.PUBLISHED_DIRECT || !snapshot.hasCompletePublishedFlightSelection) {
+            val error = IllegalStateException("Select published outbound and return flights first.")
+            _state.update { it.copy(packageError = error.message) }
+            return Result.failure(error)
+        }
+        return runCatching {
+            val resolved = curated.resolvePublishedSelection(
+                snapshot.trip,
+                CuratedPublishedFlightSelection(
+                    completeID = snapshot.selectedPublishedCompleteID,
+                    outboundID = snapshot.selectedPublishedOutboundID,
+                    returnID = snapshot.selectedPublishedReturnID,
+                ),
+            )
+            val arrivalSegment = resolved.outbound.segments?.lastOrNull()
+            val zone = arrivalSegment?.destination?.timeZoneIdentifier
+                ?.let { runCatching { ZoneId.of(it) }.getOrNull() } ?: ZoneId.of("Asia/Riyadh")
+            val arrivalDate = resolved.outbound.arrivalAt.atZone(zone).toLocalDate()
+            val resolvedState = _state.value.copy(
+                trip = _state.value.trip.copy(saudiArrivalDate = arrivalDate),
+                flightResults = listOf(resolved),
+                selectedJourneyId = resolved.id,
+                selectedOutboundJourneyId = resolved.id,
+                packageError = null,
+                quote = null,
+            )
+            _state.value = resolvedState
+            val quote = packageEngine.packageQuote(resolvedState)
+            _state.update { it.copy(quote = quote, packageError = null) }
+            quote
+        }.onFailure { error ->
+            _state.update { it.copy(packageError = error.message ?: "PACKAGE_QUOTE_FAILED", quote = null) }
         }
     }
 
@@ -78,7 +203,11 @@ class JourneyStore {
 
     fun selectHotel(hotel: HotelSummary) {
         _state.update { current ->
-            val isMadinah = hotel.city.equals("Madinah", true) || hotel.city.equals("Medina", true) || hotel.city.equals("Al Madinah", true)
+            val normalizedCity = hotel.city.trim().lowercase()
+            val isMadinah = normalizedCity in setOf(
+                "madinah", "medina", "madina", "medinah",
+                "al madinah", "al medina", "madinah al munawwarah", "al madinah al munawwarah",
+            ) || normalizedCity.contains("madinah") || normalizedCity.contains("medina")
             if (isMadinah) {
                 if (current.madinahHotel?.id == hotel.id) current
                 else current.copy(

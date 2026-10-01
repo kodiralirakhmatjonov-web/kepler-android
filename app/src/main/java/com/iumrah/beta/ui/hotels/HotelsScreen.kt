@@ -91,13 +91,14 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
-private enum class HotelsBoard { HOTELS, FLIGHTS, SUNDAY }
+enum class HotelsBoard { HOTELS, FLIGHTS, SUNDAY }
 
 private data class HotelPreview(
     val images: List<String> = emptyList(),
@@ -111,13 +112,14 @@ fun HotelsScreen(
     journey: JourneyStore,
     airports: AirportSearchService,
     chrome: AppChromeStore,
+    initialBoard: HotelsBoard = HotelsBoard.HOTELS,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val journeyState by journey.state.collectAsState()
     val origin = journeyState.trip.originCode.ifBlank { "TAS" }.uppercase()
 
-    var board by rememberSaveable { mutableStateOf(HotelsBoard.HOTELS) }
+    var board by rememberSaveable { mutableStateOf(initialBoard) }
     var makkah by remember { mutableStateOf<List<HotelSummary>>(emptyList()) }
     var madinah by remember { mutableStateOf<List<HotelSummary>>(emptyList()) }
     var flights by remember { mutableStateOf<List<StorefrontFlightOption>>(emptyList()) }
@@ -158,21 +160,51 @@ fun HotelsScreen(
     suspend fun load(originCode: String) {
         loading = true
         error = null
-        val makkahResult = runCatching { service.listHotels("Makkah") }
-        val madinahResult = runCatching { service.listHotels("Madinah") }
-        val flightResult = runCatching { service.storefrontFlightBoard(originCode).options }
-        val hotelPackageResult = runCatching { service.storefrontPackages("hotel-first", originCode, 300).items }
-        val flightPackageResult = runCatching { service.storefrontPackages("flight-first", originCode, 500).items }
+        val normalizedOrigin = originCode.trim().uppercase()
+        val makkahResult = runCatching { service.listHotels(listOf("Makkah", "Mecca", "Makka")) }
+        val madinahResult = runCatching {
+            service.listHotels(listOf(
+                "Madinah", "Medina", "Madina", "Medinah",
+                "Al Madinah", "Al Medina", "Madinah Al Munawwarah", "Al Madinah Al Munawwarah",
+            ))
+        }
+        val flightResult = runCatching { service.storefrontFlightBoard(normalizedOrigin).options }
+        val hotelPageResult = runCatching { service.storefrontPackages("hotel-first", normalizedOrigin, 300) }
+        val flightPackageResult = runCatching { service.storefrontPackages("flight-first", normalizedOrigin, 500).items }
 
-        makkah = makkahResult.getOrDefault(emptyList())
-        madinah = madinahResult.getOrDefault(emptyList())
-        flights = flightResult.getOrDefault(emptyList())
-        hotelPackages = hotelPackageResult.getOrDefault(emptyList())
-        flightPackages = flightPackageResult.getOrDefault(emptyList())
+        makkahResult.getOrNull()?.let { makkah = it }
+        madinahResult.getOrNull()?.let { madinah = it }
+        flightResult.getOrNull()?.let { flights = it }
+        val initialHotelPage = hotelPageResult.getOrNull()
+        initialHotelPage?.let { hotelPackages = it.items }
+        flightPackageResult.getOrNull()?.let { flightPackages = it }
         if (makkahResult.isFailure && madinahResult.isFailure) {
             error = hotelText(language, "load_error")
         }
         loading = false
+
+        // iOS parity: Hotel First is a server-owned D1 cache. A GET can legally
+        // return an incomplete page and ask the client to advance the bounded server
+        // build. Never replace already-ready snapshots with an empty local fallback.
+        var page = initialHotelPage
+        if (page != null && page.complete != true && (page.refreshRecommended == true || page.complete == false)) {
+            var cursor = maxOf(0, page.nextRefreshCursor ?: 0)
+            var maxPasses = 24
+            page.expectedItemCount?.takeIf { it > 0 }?.let { expected ->
+                val expectedHotels = kotlin.math.ceil(expected / 3.0).toInt()
+                maxPasses = minOf(24, maxOf(2, kotlin.math.ceil(expectedHotels / 3.0).toInt() * 2))
+            }
+            repeat(maxPasses) {
+                if (journey.state.value.trip.originCode.uppercase() != normalizedOrigin) return
+                val refresh = runCatching { service.refreshStorefrontPackages("hotel-first", normalizedOrigin, cursor) }.getOrNull() ?: return
+                val refreshedPage = runCatching { service.storefrontPackages("hotel-first", normalizedOrigin, 300) }.getOrNull() ?: return
+                page = refreshedPage
+                if (refreshedPage.items.isNotEmpty()) hotelPackages = refreshedPage.items
+                if (refreshedPage.complete == true || refresh.complete == true) return
+                cursor = maxOf(0, refresh.nextRefreshCursor ?: refreshedPage.nextRefreshCursor ?: cursor)
+                delay(150)
+            }
+        }
     }
 
     LaunchedEffect(origin) { load(origin) }
@@ -912,18 +944,38 @@ private fun CareContactRow(icon: CupertinoSymbol, title: String, value: String, 
     }
 }
 
+private fun isPublicPackageId(value: String): Boolean = value.length == 10 && value.all(Char::isDigit)
+
+/** Exact HotelStorefrontStore admission rule from iOS. The server registry is the
+ * source of truth: only immutable ready snapshots with a public 10-digit Package ID
+ * and positive package prices are allowed onto a hotel card. The first variant is
+ * selected by the same variant-index/day/id ordering used on iOS (not by cheapest
+ * price, which previously made Android show a different package). */
 private fun bestHotelPackage(hotel: HotelSummary, packages: List<StorefrontPackageSnapshot>): StorefrontPackageSnapshot? =
     packages.asSequence()
-        .filter { p -> p.status.equals("ready", true) || p.pricePerPerson != null }
-        .filter { p -> p.hotelFirstAnchorHotelId == hotel.id || p.makkahHotelId == hotel.id || p.madinahHotelId == hotel.id }
-        .filter { it.pricePerPerson != null }
-        .minByOrNull { it.pricePerPerson ?: Double.MAX_VALUE }
+        .filter { it.entryMode.equals("hotel-first", true) && it.status.equals("ready", true) }
+        .filter { isPublicPackageId(it.id) }
+        .filter { p ->
+            val anchor = p.hotelFirstAnchorHotelId ?: p.makkahHotelId ?: p.madinahHotelId
+            anchor == hotel.id
+        }
+        .filter { (it.pricePerPerson ?: 0.0) > 0.0 && (it.totalPackagePrice ?: 0.0) > 0.0 }
+        .sortedWith(
+            compareBy<StorefrontPackageSnapshot> { it.hotelFirstVariantIndex ?: 99 }
+                .thenBy { it.totalDays ?: Int.MAX_VALUE }
+                .thenBy { it.id },
+        )
+        .firstOrNull()
 
+/** Flight First uses the same server-owned snapshot list as iOS. Preserve server
+ * order and never synthesize a client-side price. */
 private fun bestFlightPackage(option: StorefrontFlightOption, packages: List<StorefrontPackageSnapshot>): StorefrontPackageSnapshot? =
-    packages.asSequence()
-        .filter { it.outboundOfferId == option.id || it.inboundOfferId == option.id }
-        .filter { it.pricePerPerson != null }
-        .minByOrNull { it.pricePerPerson ?: Double.MAX_VALUE }
+    packages.firstOrNull { item ->
+        item.status.equals("ready", true) &&
+            (item.outboundOfferId == option.id || item.inboundOfferId == option.id) &&
+            (item.pricePerPerson ?: 0.0) > 0.0 &&
+            (item.totalPackagePrice ?: 0.0) > 0.0
+    }
 
 private fun routeTitle(option: StorefrontFlightOption): String = option.inbound?.let { "${option.outbound.origin} → ${option.outbound.destination} · ${it.origin} → ${it.destination}" }
     ?: "${option.outbound.origin} → ${option.outbound.destination}"

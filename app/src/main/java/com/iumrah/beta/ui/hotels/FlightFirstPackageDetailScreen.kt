@@ -849,9 +849,17 @@ private fun buildTrip(
         children = children,
         infants = infants,
         rooms = rooms,
-        hotelStars = snapshot.hotelStars ?: when (tier) { PackageTier.ECONOMY -> 3; PackageTier.STANDARD -> 4; PackageTier.COMFORT, PackageTier.LUXURY -> 5 },
+        hotelStars = when (tier) { PackageTier.ECONOMY -> 2; PackageTier.STANDARD -> 3; PackageTier.COMFORT -> 4; PackageTier.LUXURY -> 5 },
         packageTier = tier,
+        mealSelection = snapshot.configuration?.let { config ->
+            com.iumrah.beta.domain.trip.PackageMealSelection(
+                makkahLunch = config.makkahLunch,
+                makkahDinner = config.makkahDinner,
+                madinahDinner = config.madinahDinner,
+            )
+        },
         scope = if (includeMadinah) JourneyScope.MAKKAH_AND_MADINAH else JourneyScope.MAKKAH_ONLY,
+        hotelFirstStayPolicy = if (snapshot.entryMode.equals("hotel-first", true)) true else null,
         flightTripType = FlightTripType.ROUND_TRIP,
     )
 }

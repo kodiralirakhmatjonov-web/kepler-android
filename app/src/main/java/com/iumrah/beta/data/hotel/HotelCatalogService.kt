@@ -1,6 +1,7 @@
 package com.iumrah.beta.data.hotel
 
 import com.iumrah.beta.core.network.APIClient
+import com.iumrah.beta.core.network.APIException
 import com.iumrah.beta.domain.pricing.PackageQuote
 import com.iumrah.beta.models.hotel.HotelDetail
 import com.iumrah.beta.models.hotel.HotelDetailResponse
@@ -9,6 +10,7 @@ import com.iumrah.beta.models.hotel.HotelsResponse
 import com.iumrah.beta.models.hotel.StorefrontFlightBoardResponse
 import com.iumrah.beta.models.hotel.StorefrontPackageEnvelope
 import com.iumrah.beta.models.hotel.StorefrontPackageSnapshot
+import com.iumrah.beta.models.hotel.StorefrontPackageRefreshEnvelope
 import com.iumrah.beta.models.hotel.StorefrontPackagesEnvelope
 import com.iumrah.beta.models.hotel.StorefrontFlightLeg
 import kotlinx.serialization.Serializable
@@ -16,6 +18,23 @@ import kotlinx.serialization.Serializable
 class HotelCatalogService(private val api: APIClient) {
     suspend fun listHotels(city: String): List<HotelSummary> =
         api.get<HotelsResponse>("/api/catalog/hotels", query = mapOf("city" to city)).hotels
+
+    /** iOS parity: the Business catalogue has historically used several English
+     * spellings for Makkah/Madinah. The iOS storefront queries all aliases and
+     * deduplicates by hotel id so a backend spelling never makes Android look empty. */
+    suspend fun listHotels(cities: List<String>): List<HotelSummary> {
+        val merged = linkedMapOf<String, HotelSummary>()
+        var lastError: Throwable? = null
+        for (city in cities) {
+            runCatching { listHotels(city) }
+                .onSuccess { values -> values.forEach { merged[it.id] = it } }
+                .onFailure { lastError = it }
+        }
+        if (merged.isEmpty() && lastError != null) throw lastError as Throwable
+        return merged.values.sortedWith(
+            compareByDescending<HotelSummary> { it.stars ?: 0 }.thenBy { it.name.lowercase() },
+        )
+    }
 
     suspend fun hotelDetail(id: String): HotelDetail =
         api.get<HotelDetailResponse>("/api/catalog/hotels/$id").hotel
@@ -27,8 +46,8 @@ class HotelCatalogService(private val api: APIClient) {
             timeoutSeconds = 10,
         )
 
-    suspend fun storefrontPackages(mode: String, origin: String, limit: Int): StorefrontPackagesEnvelope =
-        api.get(
+    suspend fun storefrontPackages(mode: String, origin: String, limit: Int): StorefrontPackagesEnvelope {
+        val response: StorefrontPackagesEnvelope = api.get(
             "/api/storefront/packages",
             query = mapOf(
                 "mode" to mode,
@@ -37,6 +56,23 @@ class HotelCatalogService(private val api: APIClient) {
             ),
             timeoutSeconds = 25,
         )
+        if (!response.ok) throw APIException.InvalidResponse
+        return response
+    }
+
+    suspend fun refreshStorefrontPackages(mode: String, origin: String, cursor: Int): StorefrontPackageRefreshEnvelope {
+        val response: StorefrontPackageRefreshEnvelope = api.post(
+            "/api/storefront/packages",
+            StorefrontPackageRefreshRequest(
+                mode = mode,
+                origin = origin.trim().uppercase(),
+                cursor = maxOf(0, cursor),
+            ),
+            timeoutSeconds = 45,
+        )
+        if (!response.ok) throw APIException.InvalidResponse
+        return response
+    }
 
     suspend fun storefrontPackage(id: String): StorefrontPackageSnapshot =
         api.get<StorefrontPackageEnvelope>(
@@ -131,3 +167,10 @@ private data class StorefrontQuoteRequest(
     @Serializable data class Hotel(val hotelId: String, val roomId: String?, val nights: Int)
     @Serializable data class Hotels(val makkah: Hotel, val madinah: Hotel?)
 }
+
+@Serializable
+private data class StorefrontPackageRefreshRequest(
+    val mode: String,
+    val origin: String,
+    val cursor: Int,
+)

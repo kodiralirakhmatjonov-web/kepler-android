@@ -132,11 +132,39 @@ fun HotelDetailScreen(
             .getOrDefault(emptyList())
         categoryLoading = false
 
-        packages = runCatching { catalog.storefrontPackages("hotel-first", origin, 300).items }
-            .getOrDefault(emptyList())
-            .filter { snapshotMatchesHotel(it, hotelId) }
-            .sortedWith(compareBy<StorefrontPackageSnapshot> { variantOrder(it.hotelFirstVariant) }.thenBy { it.totalDays ?: Int.MAX_VALUE })
-        selectedPackage = selectedPackage.coerceIn(0, (packages.size - 1).coerceAtLeast(0))
+        // Same server-owned Hotel First registry as iOS. A first GET may be
+        // incomplete; ask the server to advance its bounded D1 build and re-read
+        // snapshots instead of treating an incomplete page as "no packages".
+        var packagePage = runCatching { catalog.storefrontPackages("hotel-first", origin, 300) }.getOrNull()
+        fun applyPackagePage() {
+            packages = packagePage?.items.orEmpty()
+                .filter { usableHotelFirstSnapshot(it, hotelId) }
+                .distinctBy { it.hotelFirstVariantIndex?.let { index -> "index-$index" } ?: it.hotelFirstVariant?.takeIf(String::isNotBlank)?.let { variant -> "variant-$variant" } ?: "package-${it.id}" }
+                .sortedWith(
+                    compareBy<StorefrontPackageSnapshot> { it.hotelFirstVariantIndex ?: 99 }
+                        .thenBy { it.totalDays ?: Int.MAX_VALUE }
+                        .thenBy { it.id },
+                )
+            selectedPackage = selectedPackage.coerceIn(0, (packages.size - 1).coerceAtLeast(0))
+        }
+        applyPackagePage()
+
+        if (packagePage != null && packagePage?.complete != true && (packagePage?.refreshRecommended == true || packagePage?.complete == false)) {
+            var cursor = maxOf(0, packagePage?.nextRefreshCursor ?: 0)
+            var passes = 24
+            packagePage?.expectedItemCount?.takeIf { it > 0 }?.let { expected ->
+                val expectedHotels = kotlin.math.ceil(expected / 3.0).toInt()
+                passes = minOf(24, maxOf(2, kotlin.math.ceil(expectedHotels / 3.0).toInt() * 2))
+            }
+            for (pass in 0 until passes) {
+                val refresh = runCatching { catalog.refreshStorefrontPackages("hotel-first", origin, cursor) }.getOrNull() ?: break
+                packagePage = runCatching { catalog.storefrontPackages("hotel-first", origin, 300) }.getOrNull() ?: break
+                applyPackagePage()
+                if (packagePage?.complete == true || refresh.complete == true) break
+                cursor = maxOf(0, refresh.nextRefreshCursor ?: packagePage?.nextRefreshCursor ?: cursor)
+                delay(150)
+            }
+        }
     }
 
     LaunchedEffect(hotelId, origin) { loadAll() }
@@ -885,8 +913,20 @@ private fun roomImages(room: HotelRoom, images: List<HotelImage>): List<HotelIma
     return matched.sortedWith(compareByDescending<HotelImage> { it.isCover }.thenBy { it.position }).take(8)
 }
 
-private fun snapshotMatchesHotel(item: StorefrontPackageSnapshot, hotelId: String): Boolean =
-    item.hotelFirstAnchorHotelId.equals(hotelId, true) || item.makkahHotelId.equals(hotelId, true) || item.madinahHotelId.equals(hotelId, true)
+private fun isPublicPackageIdDetail(value: String): Boolean = value.length == 10 && value.all(Char::isDigit)
+
+private fun snapshotMatchesHotel(item: StorefrontPackageSnapshot, hotelId: String): Boolean {
+    val anchor = item.hotelFirstAnchorHotelId ?: item.makkahHotelId ?: item.madinahHotelId
+    return anchor.equals(hotelId, true)
+}
+
+private fun usableHotelFirstSnapshot(item: StorefrontPackageSnapshot, hotelId: String): Boolean =
+    item.entryMode.equals("hotel-first", true) &&
+        item.status.equals("ready", true) &&
+        isPublicPackageIdDetail(item.id) &&
+        snapshotMatchesHotel(item, hotelId) &&
+        (item.pricePerPerson ?: 0.0) > 0.0 &&
+        (item.totalPackagePrice ?: 0.0) > 0.0
 
 private fun variantOrder(value: String?): Int = when (value?.lowercase(Locale.US)) { "short" -> 0; "balanced" -> 1; else -> 2 }
 

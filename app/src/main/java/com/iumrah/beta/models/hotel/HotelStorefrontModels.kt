@@ -133,3 +133,13 @@ data class StorefrontPackagesEnvelope(
     val nextRefreshCursor: Int? = null,
     val items: List<StorefrontPackageSnapshot> = emptyList(),
 )
+
+@Serializable
+data class StorefrontPackageRefreshEnvelope(
+    val ok: Boolean,
+    val itemCount: Int? = null,
+    val expectedItemCount: Int? = null,
+    val complete: Boolean? = null,
+    val failedHotelCount: Int? = null,
+    val nextRefreshCursor: Int? = null,
+)

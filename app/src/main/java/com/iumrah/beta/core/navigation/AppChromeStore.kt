@@ -13,6 +13,7 @@ sealed interface AppRoute {
     data class HotelDetail(val hotelId: String) : AppRoute
     data class FlightPackageDetail(val packageId: String) : AppRoute
     data object Flights : AppRoute
+    data object StorefrontFlights : AppRoute
     data object ReturnFlights : AppRoute
     data class FlightDetails(val journeyId: String, val direction: String) : AppRoute
     data object TransferSelection : AppRoute
@@ -53,6 +54,7 @@ class AppChromeStore {
     fun openHotel(id: String) = push(AppRoute.HotelDetail(id), tab = AppTab.HOTELS)
     fun openFlightPackage(id: String) = push(AppRoute.FlightPackageDetail(id), tab = AppTab.HOTELS)
     fun openFlights() = push(AppRoute.Flights, tab = AppTab.BOOKING)
+    fun openStorefrontFlights() = push(AppRoute.StorefrontFlights, tab = AppTab.HOTELS)
     fun openReturnFlights() = push(AppRoute.ReturnFlights, tab = AppTab.BOOKING)
     fun openFlightDetails(id: String, direction: String) = push(AppRoute.FlightDetails(id, direction), tab = AppTab.BOOKING)
     fun openTransferSelection() = push(AppRoute.TransferSelection, tab = AppTab.BOOKING)

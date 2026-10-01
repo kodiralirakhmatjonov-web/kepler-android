@@ -6,6 +6,12 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import kotlinx.serialization.Serializable
 
+enum class PackageFlightPath(val wireValue: String) {
+    PUBLISHED_DIRECT("publishedDirect"),
+    FLEXIBLE_DATES("flexibleDates"),
+    WEEKEND("weekend"),
+}
+
 enum class PackageTier(val wireValue: String) { ECONOMY("economy"), STANDARD("standard"), COMFORT("comfort"), LUXURY("luxury") }
 
 enum class DateFlexibility(val wireValue: String) {
@@ -48,6 +54,9 @@ data class TripDraft(
     val packageTier: PackageTier = PackageTier.STANDARD,
     val mealSelection: PackageMealSelection? = null,
     val scope: JourneyScope = JourneyScope.MAKKAH_AND_MADINAH,
+    /** Hotel First alone uses the fixed storefront stay policy. Nullable keeps
+     * parity with old iOS/Android drafts where the field did not exist. */
+    val hotelFirstStayPolicy: Boolean? = null,
     val flightFilters: FlightSearchFilters? = null,
     val flightTripType: FlightTripType? = null,
 ) {

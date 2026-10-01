@@ -33,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,10 +48,12 @@ import coil3.compose.AsyncImage
 import com.iumrah.beta.core.config.AppConfig
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.settings.AppLanguage
+import com.iumrah.beta.data.flight.CuratedFlightRecommendationService
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.data.hotel.RemotePackageEngineClient
 import com.iumrah.beta.domain.journey.JourneyStore
 import com.iumrah.beta.domain.trip.JourneyScope
+import com.iumrah.beta.domain.trip.PackageFlightPath
 import com.iumrah.beta.domain.trip.PackageMealSelection
 import com.iumrah.beta.domain.trip.PackageTier
 import com.iumrah.beta.models.hotel.HotelSummary
@@ -65,6 +68,7 @@ import com.iumrah.beta.ui.generator.GeneratorPrimaryButton
 import com.iumrah.beta.ui.generator.GeneratorStage
 import com.iumrah.beta.ui.generator.generatorPageColor
 import com.iumrah.beta.ui.generator.generatorRaisedColor
+import kotlinx.coroutines.launch
 
 /** iOS PrimaryHotelView parity layer for Android. */
 @Composable
@@ -73,6 +77,7 @@ fun HotelSelectionScreen(
     journey: JourneyStore,
     catalog: HotelCatalogService,
     packageEngine: RemotePackageEngineClient,
+    curatedFlights: CuratedFlightRecommendationService,
     chrome: AppChromeStore,
 ) {
     val state by journey.state.collectAsState()
@@ -85,12 +90,15 @@ fun HotelSelectionScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var showMakkahAlternatives by remember { mutableStateOf(false) }
     var showMadinahAlternatives by remember { mutableStateOf(false) }
+    var preparingDirectQuote by remember { mutableStateOf(false) }
+    var directQuoteError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(state.trip.packageTier, state.trip.hotelStars, state.trip.scope) {
         loading = true
         error = null
         runCatching {
-            val makkahList = catalog.listHotels("Makkah")
+            val makkahList = catalog.listHotels(listOf("Makkah", "Mecca", "Makka"))
             makkahHotels = makkahList
             if (state.makkahHotel == null) {
                 val primary = packageEngine.primaryHotel(state.trip.packageTier, state.trip.hotelStars, "Makkah")
@@ -104,7 +112,10 @@ fun HotelSelectionScreen(
                 }
             }
             if (requiresMadinah) {
-                val madinahList = catalog.listHotels("Madinah")
+                val madinahList = catalog.listHotels(listOf(
+                    "Madinah", "Medina", "Madina", "Medinah",
+                    "Al Madinah", "Al Medina", "Madinah Al Munawwarah", "Al Madinah Al Munawwarah",
+                ))
                 madinahHotels = madinahList
                 if (state.madinahHotel == null) {
                     val primary = packageEngine.primaryHotel(state.trip.packageTier, state.trip.hotelStars, "Madinah")
@@ -194,11 +205,30 @@ fun HotelSelectionScreen(
             }
         }
         error?.let { item { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp) } }
+        directQuoteError?.let { message ->
+            item { Text(message, color = MaterialTheme.colorScheme.error, fontSize = 13.sp) }
+        }
         item {
+            val isPublishedDirect = state.packageFlightPath == PackageFlightPath.PUBLISHED_DIRECT
             GeneratorPrimaryButton(
-                title = hotelTr(language, "Продолжить к перелёту", "Continue to flights", "Parvozga davom etish", "Парвозга давом этиш"),
-                enabled = canContinue && !loading,
-                onClick = chrome::openFlights,
+                title = if (isPublishedDirect)
+                    hotelTr(language, "Продолжить к трансферу", "Continue to transfer", "Transferga davom etish", "Трансферга давом этиш")
+                else hotelTr(language, "Продолжить к перелёту", "Continue to flights", "Parvozga davom etish", "Парвозга давом этиш"),
+                enabled = canContinue && !loading && !preparingDirectQuote && (!isPublishedDirect || state.hasCompletePublishedFlightSelection),
+                onClick = {
+                    if (!isPublishedDirect) {
+                        chrome.openFlights()
+                    } else {
+                        scope.launch {
+                            preparingDirectQuote = true
+                            directQuoteError = null
+                            journey.preparePublishedDirectPackage(curatedFlights, packageEngine)
+                                .onSuccess { chrome.openTransferSelection() }
+                                .onFailure { directQuoteError = it.message ?: hotelTr(language, "Не удалось подготовить пакет.", "Could not prepare the package.", "Paketni tayyorlab bo‘lmadi.", "Пакетни тайёрлаб бўлмади.") }
+                            preparingDirectQuote = false
+                        }
+                    }
+                },
             )
         }
         item { Spacer(Modifier.height(34.dp)) }

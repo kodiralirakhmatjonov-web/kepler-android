@@ -36,7 +36,7 @@ enum class CupertinoSymbol {
     CalendarClock, Hourglass, Close, Copy, Eye, EyeSlash, Sparkles,
     Route, Car, Refresh, PlusPerson, Lightbulb, Checkmark, SignalWave,
     Star, Sliders, Speaker, SpeakerSlash, ChevronDown, Plus, Minus,
-    ArrowUpRight, ArrowDown, Paperclip, Bed, Play, ForkKnife, Share,
+    ArrowUpRight, ArrowDown, Paperclip, Bed, Play, ForkKnife, Share, LeafFill, Checklist, CrownFill, Grid,
 }
 
 @Composable
@@ -205,5 +205,20 @@ private fun DrawScope.drawCupertinoSymbol(symbol: CupertinoSymbol, color: Color)
         CupertinoSymbol.ForkKnife -> { line(Offset(ox+s*.3f,oy+s*.18f),Offset(ox+s*.3f,oy+s*.82f)); line(Offset(ox+s*.2f,oy+s*.18f),Offset(ox+s*.2f,oy+s*.39f)); line(Offset(ox+s*.4f,oy+s*.18f),Offset(ox+s*.4f,oy+s*.39f)); arc(Rect(ox+s*.2f,oy+s*.29f,ox+s*.4f,oy+s*.48f),0f,180f); val p=Path().apply{moveTo(ox+s*.67f,oy+s*.18f); quadraticBezierTo(ox+s*.82f,oy+s*.34f,ox+s*.68f,oy+s*.5f); lineTo(ox+s*.68f,oy+s*.82f)}; drawPath(p,color,style=stroke) }
         CupertinoSymbol.Share -> { rr(ox+s*.2f,oy+s*.35f,s*.6f,s*.48f,s*.07f); line(Offset(c.x,oy+s*.58f),Offset(c.x,oy+s*.13f)); line(Offset(ox+s*.36f,oy+s*.27f),Offset(c.x,oy+s*.13f)); line(Offset(c.x,oy+s*.13f),Offset(ox+s*.64f,oy+s*.27f)) }
         CupertinoSymbol.SignalWave -> { circle(Offset(ox+s*.27f,c.y),s*.035f,true); arc(Rect(ox+s*.28f,oy+s*.34f,ox+s*.58f,oy+s*.66f),-58f,116f); arc(Rect(ox+s*.27f,oy+s*.22f,ox+s*.76f,oy+s*.78f),-58f,116f); arc(Rect(ox+s*.26f,oy+s*.1f,ox+s*.94f,oy+s*.9f),-58f,116f) }
+        CupertinoSymbol.LeafFill -> {
+            val p=Path().apply { moveTo(ox+s*.78f,oy+s*.18f); cubicTo(ox+s*.38f,oy+s*.18f,ox+s*.17f,oy+s*.42f,ox+s*.27f,oy+s*.72f); cubicTo(ox+s*.37f,oy+s*.89f,ox+s*.67f,oy+s*.73f,ox+s*.78f,oy+s*.18f); close() }; drawPath(p,color); line(Offset(ox+s*.31f,oy+s*.7f),Offset(ox+s*.67f,oy+s*.34f),sw*.75f)
+        }
+        CupertinoSymbol.Checklist -> {
+            for (y in listOf(.30f,.50f,.70f)) { circle(Offset(ox+s*.24f,oy+s*y),s*.045f); line(Offset(ox+s*.38f,oy+s*y),Offset(ox+s*.80f,oy+s*y)) }
+        }
+        CupertinoSymbol.Grid -> {
+            rr(ox+s*.16f,oy+s*.16f,s*.27f,s*.27f,s*.045f)
+            rr(ox+s*.57f,oy+s*.16f,s*.27f,s*.27f,s*.045f)
+            rr(ox+s*.16f,oy+s*.57f,s*.27f,s*.27f,s*.045f)
+            rr(ox+s*.57f,oy+s*.57f,s*.27f,s*.27f,s*.045f)
+        }
+        CupertinoSymbol.CrownFill -> {
+            val p=Path().apply { moveTo(ox+s*.17f,oy+s*.34f); lineTo(ox+s*.35f,oy+s*.51f); lineTo(c.x,oy+s*.23f); lineTo(ox+s*.65f,oy+s*.51f); lineTo(ox+s*.83f,oy+s*.34f); lineTo(ox+s*.74f,oy+s*.73f); lineTo(ox+s*.26f,oy+s*.73f); close() }; drawPath(p,color); rr(ox+s*.26f,oy+s*.76f,s*.48f,s*.08f,s*.03f,true)
+        }
     }
 }

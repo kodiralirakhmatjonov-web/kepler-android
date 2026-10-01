@@ -50,8 +50,26 @@ class RemotePackageEngineClient(private val api: APIClient) {
             state.madinahHotel ?: throw IllegalStateException("Select a Madinah hotel first.")
         } else null
 
-        val providerItineraryId = journey.providerItineraryID.trim().takeIf { it.isNotEmpty() }
-            ?: throw IllegalStateException("Verified flight itinerary ID is missing.")
+        // Exact iOS server identity contract. Published Business/storefront rows
+        // are not priced from a client fare: PackageEngine re-resolves the selected
+        // immutable row ids through the curated identity. Sending the raw Android
+        // provider id here made a valid published selection look disconnected from
+        // D1/PackageEngine.
+        val rawProviderItineraryId = journey.providerItineraryID.trim().takeIf { it.isNotEmpty() }
+        val providerItineraryId = when {
+            rawProviderItineraryId?.startsWith("curated:") == true -> rawProviderItineraryId
+            journey.sourceName == "iumrah Flights Scanner" -> {
+                val outboundId = journey.outbound.id.trim()
+                val inboundId = journey.inbound?.id?.trim().orEmpty()
+                if (outboundId.isBlank() || (trip.isRoundTripFlight && inboundId.isBlank())) {
+                    throw IllegalStateException("Published flight identity is missing.")
+                }
+                if (!trip.isRoundTripFlight || outboundId == inboundId) "curated:$outboundId"
+                else "curated:$outboundId+$inboundId"
+            }
+            !rawProviderItineraryId.isNullOrBlank() -> rawProviderItineraryId
+            else -> throw IllegalStateException("Verified flight itinerary ID is missing.")
+        }
         val filters = trip.effectiveFlightFilters
         val infantsOnLap = if (filters.infantSeating == FlightInfantSeating.LAP) minOf(trip.infants, trip.adults) else 0
         val infantsInSeat = if (filters.infantSeating == FlightInfantSeating.LAP) maxOf(0, trip.infants - trip.adults) else trip.infants

@@ -62,6 +62,7 @@ import com.iumrah.beta.data.booking.BookingStore
 import com.iumrah.beta.data.chat.ChatService
 import com.iumrah.beta.data.notification.ClientNotificationStore
 import com.iumrah.beta.data.flight.AirportSearchService
+import com.iumrah.beta.data.flight.CuratedFlightRecommendationService
 import com.iumrah.beta.data.flight.IgnavFlightInventoryProvider
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.data.hotel.RemotePackageEngineClient
@@ -95,6 +96,7 @@ import com.iumrah.beta.ui.home.HomeScreen
 import com.iumrah.beta.ui.hotels.FlightFirstPackageDetailScreen
 import com.iumrah.beta.ui.hotels.HotelDetailScreen
 import com.iumrah.beta.ui.hotels.HotelsScreen
+import com.iumrah.beta.ui.hotels.HotelsBoard
 import com.iumrah.beta.ui.trip.HotelSelectionScreen
 import com.iumrah.beta.ui.trip.TripBuilderScreen
 
@@ -109,6 +111,7 @@ fun AppShell(
     journey: JourneyStore,
     airports: AirportSearchService,
     flightInventory: IgnavFlightInventoryProvider,
+    curatedFlights: CuratedFlightRecommendationService,
     packageGenerator: PackageGenerator,
     bookingStore: BookingStore,
     accountService: IumrahAccountService,
@@ -131,7 +134,7 @@ fun AppShell(
         ) { (route, tab) ->
             when (route) {
                 AppRoute.Root -> when (tab) {
-                    AppTab.HOME -> HomeScreen(language, chrome)
+                    AppTab.HOME -> HomeScreen(language, chrome, hotelCatalog, journey)
                     AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, journey, airports, chrome)
                     AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, accountService, notifications, chrome)
                     AppTab.CARE -> CareHomeScreen(language, bookingStore, chatService, chrome)
@@ -142,6 +145,7 @@ fun AppShell(
                     language = language,
                     journey = journey,
                     airports = airports,
+                    curatedFlights = curatedFlights,
                     chrome = chrome,
                 )
 
@@ -150,6 +154,7 @@ fun AppShell(
                     journey = journey,
                     catalog = hotelCatalog,
                     packageEngine = packageEngine,
+                    curatedFlights = curatedFlights,
                     chrome = chrome,
                 )
 
@@ -169,6 +174,15 @@ fun AppShell(
                     service = hotelCatalog,
                     journey = journey,
                     chrome = chrome,
+                )
+
+                AppRoute.StorefrontFlights -> HotelsScreen(
+                    language = language,
+                    service = hotelCatalog,
+                    journey = journey,
+                    airports = airports,
+                    chrome = chrome,
+                    initialBoard = HotelsBoard.FLIGHTS,
                 )
 
                 AppRoute.Flights -> FlightSearchScreen(

@@ -74,6 +74,7 @@ fun IumrahApp() {
                     journey = container.journeyStore,
                     airports = container.airportSearchService,
                     flightInventory = container.flightInventoryProvider,
+                    curatedFlights = container.curatedFlightRecommendationService,
                     packageGenerator = container.packageGenerator,
                     bookingStore = container.bookingStore,
                     accountService = container.accountService,

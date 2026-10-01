@@ -4,12 +4,18 @@ bash scripts/verify-stage9.sh
 required=(
   app/src/main/java/com/iumrah/beta/ui/generator/GeneratorChrome.kt
   app/src/main/java/com/iumrah/beta/ui/trip/TripBuilderScreen.kt
+  app/src/main/java/com/iumrah/beta/ui/trip/FlightDateCalendarDialog.kt
+  app/src/main/java/com/iumrah/beta/ui/trip/ConfiguratorAirportSelector.kt
   app/src/main/java/com/iumrah/beta/ui/trip/HotelSelectionScreen.kt
   app/src/main/java/com/iumrah/beta/ui/flights/FlightSearchScreen.kt
   app/src/main/java/com/iumrah/beta/ui/packageflow/TransferSelectionScreen.kt
   app/src/main/java/com/iumrah/beta/ui/packageflow/FinalPackageScreen.kt
   app/src/main/java/com/iumrah/beta/ui/booking/BookingCheckoutScreen.kt
   app/src/main/java/com/iumrah/beta/domain/trip/TransferModels.kt
+  app/src/main/java/com/iumrah/beta/data/flight/CuratedFlightRecommendationService.kt
+  app/src/main/java/com/iumrah/beta/models/flight/CuratedFlightRecommendationModels.kt
+  app/src/main/res/drawable/centrum_air_logo.png
+  app/src/main/res/drawable/iumrah_flights_calendar_logo.png
   app/src/main/res/drawable-nodpi/transfer_malibu.png
   app/src/main/res/drawable-nodpi/transfer_carnival.png
   app/src/main/res/drawable-nodpi/transfer_yukon.png
@@ -33,9 +39,18 @@ grep -q 'Random.nextInt(20, 41)' app/src/main/java/com/iumrah/beta/ui/packageflo
 grep -q 'quoteProof' app/src/main/java/com/iumrah/beta/ui/packageflow/TransferSelectionScreen.kt
 grep -q 'hasFinalGeneratorQuote' app/src/main/java/com/iumrah/beta/domain/journey/JourneyStore.kt
 grep -q 'packageMarkupRate: BigDecimal = BigDecimal("0.50")' app/src/main/java/com/iumrah/beta/domain/pricing/LocalPackagePricingEngine.kt
-if grep -q 'PUBLISHED_DIRECT' app/src/main/java/com/iumrah/beta/ui/trip/TripBuilderScreen.kt; then
-  echo 'STOP: manual configurator must not expose the unrelated curated storefront lane'; exit 1
+grep -q 'PUBLISHED_DIRECT' app/src/main/java/com/iumrah/beta/ui/trip/TripBuilderScreen.kt || { echo 'STOP: iOS configurator requires Published Direct as a first-class path'; exit 1; }
+grep -q 'FlightDateCalendarDialog' app/src/main/java/com/iumrah/beta/ui/trip/TripBuilderScreen.kt || { echo 'STOP: Flexible Dates must use the iOS-style published-flight calendar'; exit 1; }
+grep -q 'ConfiguratorAirportSelector' app/src/main/java/com/iumrah/beta/ui/trip/TripBuilderScreen.kt || { echo 'STOP: TripBuilder must use the iOS-style airport selector + picker'; exit 1; }
+if grep -q 'DatePickerDialog' app/src/main/java/com/iumrah/beta/ui/trip/TripBuilderScreen.kt; then
+  echo 'STOP: Android platform DatePicker is not iOS Configurator parity'; exit 1
 fi
+grep -q 'CuratedPublishedFlightSelection' app/src/main/java/com/iumrah/beta/ui/trip/FlightDateCalendarDialog.kt || { echo 'STOP: calendar must return published D1 flight IDs'; exit 1; }
+grep -q 'API_BASE_URL = "https://iumrah.app"' app/src/main/java/com/iumrah/beta/core/config/AppConfig.kt || { echo 'STOP: Android must use the same iumrah.app backend'; exit 1; }
+grep -q '/api/package/flights/recommendations' app/src/main/java/com/iumrah/beta/data/flight/CuratedFlightRecommendationService.kt || { echo 'STOP: Published Direct must read the Business/D1 recommendations projection'; exit 1; }
+grep -q '/api/package/flights/recommendations/resolve' app/src/main/java/com/iumrah/beta/data/flight/CuratedFlightRecommendationService.kt || { echo 'STOP: Published Direct selection must resolve through the D1 resolver'; exit 1; }
+grep -q 'refreshStorefrontPackages' app/src/main/java/com/iumrah/beta/data/hotel/HotelCatalogService.kt || { echo 'STOP: Hotel First storefront must support the server-owned refresh continuation'; exit 1; }
+grep -q 'refreshStorefrontPackages' app/src/main/java/com/iumrah/beta/ui/hotels/HotelsScreen.kt || { echo 'STOP: Hotel First UI must continue incomplete server cache builds like iOS'; exit 1; }
 if grep -qE 'HaramainFareClass\.BUSINESS|Business ·' app/src/main/java/com/iumrah/beta/ui/packageflow/TransferSelectionScreen.kt; then
   echo 'STOP: current iOS Transfer flow exposes Standard Haramain only'; exit 1
 fi
@@ -57,4 +72,14 @@ if grep -R -nE 'material\.icons|Icons\.' \
   app/src/main/java/com/iumrah/beta/ui/booking/BookingCheckoutScreen.kt; then
   echo 'STOP: Configurator flow must use Cupertino renderer, not Material icons'; exit 1
 fi
+
+# Home/storefront parity: the iOS dashboard renders real server-owned ready packages
+# and the all-packages CTA opens the Hotels/Flights storefront, never the manual search.
+grep -q 'storefrontFlightBoard(origin)' app/src/main/java/com/iumrah/beta/ui/home/HomeScreen.kt || { echo 'STOP: Home ready packages must read the storefront flight board'; exit 1; }
+grep -q 'storefrontPackages("flight-first", origin, 500)' app/src/main/java/com/iumrah/beta/ui/home/HomeScreen.kt || { echo 'STOP: Home ready packages must read server-owned flight-first snapshots'; exit 1; }
+grep -q 'openStorefrontFlights' app/src/main/java/com/iumrah/beta/ui/home/HomeScreen.kt || { echo 'STOP: Ready packages CTA must open the Hotels/Flights storefront'; exit 1; }
+grep -q 'data object StorefrontFlights' app/src/main/java/com/iumrah/beta/core/navigation/AppChromeStore.kt || { echo 'STOP: storefront flights route missing'; exit 1; }
+grep -q 'HotelsBoard.FLIGHTS' app/src/main/java/com/iumrah/beta/ui/shell/AppShell.kt || { echo 'STOP: storefront flights route must render the Flights board'; exit 1; }
+grep -q 'listOf("Makkah", "Mecca", "Makka")' app/src/main/java/com/iumrah/beta/ui/hotels/HotelsScreen.kt || { echo 'STOP: Makkah alias catalogue parity missing'; exit 1; }
+
 echo 'Stage 010 iOS Configurator parity checks passed.'

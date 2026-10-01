@@ -30,6 +30,7 @@ class IumrahAppContainer(context: Context) {
     val packageEngine = RemotePackageEngineClient(apiClient)
     val airportSearchService = AirportSearchService(apiClient)
     val flightFareCalendarService = FlightFareCalendarService(apiClient)
+    val curatedFlightRecommendationService = CuratedFlightRecommendationService(apiClient)
     val flightInventoryProvider = IgnavFlightInventoryProvider(apiClient)
     val journeyStore = JourneyStore()
     val packageGenerator = PackageGenerator(packageEngine)

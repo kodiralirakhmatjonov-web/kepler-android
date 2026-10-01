@@ -40,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,16 +67,28 @@ import com.iumrah.beta.core.localization.L10n
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppLanguage
+import com.iumrah.beta.data.hotel.HotelCatalogService
+import com.iumrah.beta.domain.journey.JourneyStore
+import com.iumrah.beta.models.hotel.StorefrontFlightOption
+import com.iumrah.beta.models.hotel.StorefrontPackageSnapshot
 import com.iumrah.beta.ui.components.IumrahPill
 import com.iumrah.beta.ui.components.IumrahPressable
 import com.iumrah.beta.ui.components.IumrahRootPageHeader
 import com.iumrah.beta.ui.media.LoopingRawVideo
+import coil3.compose.AsyncImage
 import kotlin.math.absoluteValue
 import kotlinx.coroutines.delay
 
 @Composable
-fun HomeScreen(language: AppLanguage, chrome: AppChromeStore) {
+fun HomeScreen(
+    language: AppLanguage,
+    chrome: AppChromeStore,
+    hotelCatalog: HotelCatalogService,
+    journey: JourneyStore,
+) {
     var showStory by remember { mutableStateOf(false) }
+    val journeyState by journey.state.collectAsState()
+    val storefrontOrigin = journeyState.trip.originCode.ifBlank { "TAS" }.uppercase()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
@@ -93,7 +106,7 @@ fun HomeScreen(language: AppLanguage, chrome: AppChromeStore) {
         item { HomeVideoCarousel() }
         item { AudienceSection(language) }
         item { ServicesSection(language, chrome) }
-        item { ReadyPackagesSection(language, chrome) }
+        item { ReadyPackagesSection(language, chrome, hotelCatalog, storefrontOrigin) }
         item { BuildMyUmrahSection(language, chrome) }
         item { ProductsSection(language, chrome) }
         item { ConfidenceStrip(language) }
@@ -320,7 +333,43 @@ private fun ServiceCard(item: ServiceItem) {
 }
 
 @Composable
-private fun ReadyPackagesSection(language: AppLanguage, chrome: AppChromeStore) {
+private fun ReadyPackagesSection(
+    language: AppLanguage,
+    chrome: AppChromeStore,
+    service: HotelCatalogService,
+    origin: String,
+) {
+    var options by remember(origin) { mutableStateOf<List<StorefrontFlightOption>>(emptyList()) }
+    var packages by remember(origin) { mutableStateOf<List<StorefrontPackageSnapshot>>(emptyList()) }
+    var loading by remember(origin) { mutableStateOf(true) }
+    var failed by remember(origin) { mutableStateOf(false) }
+
+    LaunchedEffect(origin) {
+        loading = true
+        failed = false
+        val board = runCatching { service.storefrontFlightBoard(origin) }
+        val packagePage = runCatching { service.storefrontPackages("flight-first", origin, 500) }
+        options = board.getOrNull()?.options.orEmpty()
+        packages = packagePage.getOrNull()?.items.orEmpty()
+        failed = board.isFailure && packagePage.isFailure
+        loading = false
+    }
+
+    val packagesByOffer = remember(packages) {
+        val map = linkedMapOf<String, StorefrontPackageSnapshot>()
+        packages.asSequence()
+            .filter { it.entryMode == "flight-first" && it.status.equals("ready", true) }
+            .filter { (it.pricePerPerson ?: 0.0) > 0.0 && (it.totalPackagePrice ?: 0.0) > 0.0 }
+            .forEach { snapshot ->
+                snapshot.outboundOfferId?.takeIf { it.isNotBlank() }?.let { if (map[it] == null) map[it] = snapshot }
+                snapshot.inboundOfferId?.takeIf { it.isNotBlank() }?.let { if (map[it] == null) map[it] = snapshot }
+            }
+        map
+    }
+    val readyEntries = remember(options, packagesByOffer) {
+        options.mapNotNull { option -> packagesByOffer[option.id]?.let { option to it } }.take(8)
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(15.dp)) {
         SectionHeader(
             title = tr(language, "Готовые пакеты", "Ready-made packages", "Tayyor paketlar", "Тайёр пакетлар"),
@@ -330,7 +379,38 @@ private fun ReadyPackagesSection(language: AppLanguage, chrome: AppChromeStore) 
                 "Amaldagi parvoz variantlari mehmonxona va servislar bilan bitta paket narxiga yig‘ilgan.",
                 "Амалдаги парвоз вариантлари меҳмонхона ва сервислар билан битта пакет нархига йиғилган.")
         )
-        IumrahPressable(onClick = chrome::openFlights, modifier = Modifier.fillMaxWidth(), cornerRadius = 28.dp, shadowElevation = 6.dp) {
+
+        when {
+            readyEntries.isNotEmpty() -> {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
+                    items(readyEntries, key = { it.second.id }) { (option, snapshot) ->
+                        ReadyPackageCard(language, option, snapshot) { chrome.openFlightPackage(snapshot.id) }
+                    }
+                }
+            }
+            loading -> {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surface).padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(tr(language, "Подбираем актуальные пакеты", "Loading current packages", "Amaldagi paketlar yuklanmoqda", "Амалдаги пакетлар юкланмоқда"), fontWeight = FontWeight.Bold)
+                        Text(tr(language, "Цены и рейсы обновляются из витрины Iumrah.", "Prices and flights are refreshing from the Iumrah storefront.", "Narxlar va reyslar Iumrah vitrinasidan yangilanmoqda.", "Нархлар ва рейслар Iumrah витринасидан янгиланмоқда."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f))
+                    }
+                }
+            }
+            failed -> {
+                Text(
+                    tr(language, "Не удалось обновить витрину пакетов. Откройте полный список и повторите.", "Could not refresh package storefront. Open the full list and retry.", "Paketlar vitrinasini yangilab bo‘lmadi. To‘liq ro‘yxatni ochib qayta urinib ko‘ring.", "Пакетлар витринасини янгилаб бўлмади. Тўлиқ рўйхатни очиб қайта уриниб кўринг."),
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f),
+                )
+            }
+        }
+
+        IumrahPressable(onClick = chrome::openStorefrontFlights, modifier = Modifier.fillMaxWidth(), cornerRadius = 28.dp, shadowElevation = 6.dp) {
             Column(Modifier.fillMaxWidth().background(Color.White)) {
                 Image(painterResource(R.drawable.iumrah_flights_showcase), contentDescription = null, modifier = Modifier.fillMaxWidth().height(118.dp), contentScale = ContentScale.Crop)
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
@@ -339,8 +419,79 @@ private fun ReadyPackagesSection(language: AppLanguage, chrome: AppChromeStore) 
                         Text("Iumrah Flights", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black.copy(alpha = .52f))
                     }
                     Text(tr(language, "Все готовые варианты", "All ready packages", "Barcha tayyor paketlar", "Барча тайёр пакетлар"), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                    Text(tr(language, "Откройте опубликованные перелёты и собранные варианты поездки.", "Open published flights and assembled journey options.", "E’lon qilingan reyslar va tayyor safar variantlarini oching.", "Эълон қилинган рейслар ва тайёр сафар вариантларини очинг."), style = MaterialTheme.typography.bodyMedium, color = Color.Black.copy(alpha = .58f))
-                    DarkCTA(tr(language, "Смотреть пакеты", "View packages", "Paketlarni ko‘rish", "Пакетларни кўриш"))
+                    Text(tr(language, "Откройте полную витрину авиабилетов и готовых пакетов Iumrah.", "Open the complete Iumrah flights and ready-package storefront.", "Iumrah reyslari va tayyor paketlarining to‘liq vitrinasini oching.", "Iumrah парвозлари ва тайёр пакетларининг тўлиқ витринасини очинг."), style = MaterialTheme.typography.bodyMedium, color = Color.Black.copy(alpha = .58f))
+                    DarkCTA(tr(language, "Посмотреть все пакеты", "View all packages", "Barcha paketlarni ko‘rish", "Барча пакетларни кўриш"))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadyPackageCard(
+    language: AppLanguage,
+    option: StorefrontFlightOption,
+    snapshot: StorefrontPackageSnapshot,
+    onOpen: () -> Unit,
+) {
+    val image = snapshot.imageUrl ?: snapshot.hotelImages.firstOrNull()
+    val route = option.inbound?.let { "${option.outbound.origin} → ${option.outbound.destination} · ${it.origin} → ${it.destination}" }
+        ?: "${option.outbound.origin} → ${option.outbound.destination}"
+    val airline = buildList {
+        add("${option.outbound.airline} ${option.outbound.flightNumber}")
+        option.inbound?.let { add("${it.airline} ${it.flightNumber}") }
+    }.joinToString(" · ")
+    val price = snapshot.pricePerPerson?.let { "$" + it.toInt().toString() } ?: "—"
+    val routeSummary = snapshot.routeSummary ?: buildString {
+        append(snapshot.totalDays?.let { "$it " + tr(language, "дн.", "days", "kun", "кун") } ?: "")
+        snapshot.tier?.takeIf { it.isNotBlank() }?.let { if (isNotEmpty()) append(" · "); append(it.replaceFirstChar(Char::uppercase)) }
+    }
+
+    IumrahPressable(onClick = onOpen, modifier = Modifier.width(310.dp), cornerRadius = 28.dp, shadowElevation = 4.dp) {
+        Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+            Box(Modifier.fillMaxWidth().height(118.dp)) {
+                if (!image.isNullOrBlank()) {
+                    AsyncImage(model = image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                } else {
+                    Image(painterResource(R.drawable.iumrah_flights_showcase), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                }
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .58f)))))
+                snapshot.tier?.takeIf { it.isNotBlank() }?.let { tier ->
+                    Text(
+                        tier.replaceFirstChar(Char::uppercase),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(13.dp).clip(CircleShape).background(Color.Black.copy(alpha = .36f)).padding(horizontal = 10.dp, vertical = 7.dp),
+                    )
+                }
+            }
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(route, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold)
+                        Text(airline, fontSize = 11.sp, lineHeight = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f), maxLines = 2)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(price, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text(tr(language, "пакет · 1 человек", "package · 1 person", "paket · 1 kishi", "пакет · 1 киши"), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .50f))
+                    }
+                }
+                if (routeSummary.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(CupertinoSymbol.SuitcaseFill, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .50f))
+                        Text(routeSummary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f), maxLines = 2)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IumrahPill(
+                        tr(language, "Сгенерировано Iumrah Configurator", "Generated by Iumrah Configurator", "Iumrah Configurator yaratdi", "Iumrah Configurator яратди"),
+                        background = MaterialTheme.colorScheme.surfaceVariant,
+                        foreground = MaterialTheme.colorScheme.onSurface.copy(alpha = .62f),
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Icon(CupertinoSymbol.ChevronRight, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .35f))
                 }
             }
         }
