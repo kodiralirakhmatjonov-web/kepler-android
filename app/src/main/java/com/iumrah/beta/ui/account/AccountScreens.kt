@@ -56,7 +56,7 @@ private val Signal = Color(0xFF1677FF)
 private val Danger = Color(0xFFFF3B30)
 private val Success = Color(0xFF34C759)
 private val IosGray = Color(0xFF8E8E93)
-private val CardRadius = 26.dp
+private val CardRadius = 28.dp
 private val PagePad = 18.dp
 
 private fun tr(l: AppLanguage, en: String, ru: String, uz: String, cy: String) = when (l) {
@@ -89,12 +89,12 @@ fun AccountRootScreen(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = PagePad, end = PagePad, top = 12.dp, bottom = 130.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         item { AccountHeader(language, profile != null, signalState.unreadCount, chrome) }
         if (profile != null) {
             item { IumrahIdentityHeroAndroid(profile, language) }
-            bookings.sessions.firstOrNull()?.let { active ->
+            bookings.sessions.firstOrNull { !it.isPastAccountTrip() }?.let { active ->
                 item { IumrahTripWalletEntryAndroid(active, profile, language) }
             }
             item { WalletSection(profile, language) }
@@ -102,6 +102,7 @@ fun AccountRootScreen(
                 item { ActiveTripCard(active, language) { chrome.openBookingDetail(active.id) } }
             }
             item { TripsSection(bookings.sessions, language, chrome) }
+            item { TelegramIntegrationCard(language) { chrome.navigate(AppTab.BOOKING) } }
             item { TravelCompanionsParityCard(language) { chrome.openAccountTravelers() } }
             item { PaymentSecuritySection(language, bookings.sessions.firstOrNull(), true, chrome) }
             item { ProfileSection(profile, language) { chrome.openAccountProfileEditor() } }
@@ -119,6 +120,7 @@ fun AccountRootScreen(
         } else {
             item { IumrahLockedIdentityCardAndroid(language) }
             item { GuestLoginCard(language, accountStore, bookingStore) }
+            item { TelegramIntegrationCard(language) { chrome.navigate(AppTab.BOOKING) } }
             item { PaymentSecuritySection(language, bookings.sessions.firstOrNull(), false, chrome) }
             item { SettingsSection(language, settings.appearance, signalState.unreadCount, chrome, context) }
         }
@@ -178,10 +180,14 @@ private fun WalletSection(profile: IumrahAccountProfile, language: AppLanguage) 
                 Text(tr(language, "Keep your digital pilgrim ID and QR code available from Wallet.", "Храните цифровую ID-карту паломника и QR-код прямо в Wallet.", "Raqamli ziyoratchi ID va QR-kodni Wallet’da saqlang.", "Рақамли зиёратчи ID ва QR-кодни Wallet’да сақланг."), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             }
         }
-        HorizontalDivider(Modifier.padding(vertical = 13.dp))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { Text("UMR ID", fontSize = 10.sp, color = IosGray, fontWeight = FontWeight.Bold); Text(normalizedID(profile.iumrahID), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold) }
-            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha=.06f)) { Text(tr(language, "Wallet unavailable", "Wallet недоступен", "Wallet mavjud emas", "Wallet мавжуд эмас"), Modifier.padding(horizontal=12.dp, vertical=10.dp), fontSize=11.sp, color=IosGray, fontWeight=FontWeight.SemiBold) }
+        Row(
+            Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            CupertinoIcon(CupertinoSymbol.Apple, null, Modifier.size(18.dp), IosGray)
+            Spacer(Modifier.width(9.dp))
+            Text(tr(language, "Wallet unavailable", "Wallet недоступен", "Wallet mavjud emas", "Wallet мавжуд эмас"), fontSize = 18.sp, color = IosGray, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -267,6 +273,30 @@ private fun TripsSection(sessions: List<StoredBookingSession>, language: AppLang
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TelegramIntegrationCard(language: AppLanguage, onOpen: () -> Unit) {
+    val shape = RoundedCornerShape(28.dp)
+    Surface(
+        onClick = onOpen,
+        shape = shape,
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 3.dp,
+        border = androidx.compose.foundation.BorderStroke(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .075f)),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+            Box(Modifier.size(50.dp).clip(RoundedCornerShape(17.dp)).background(Color(0xFF229ED9).copy(alpha = .12f)), contentAlignment = Alignment.Center) {
+                CupertinoIcon(CupertinoSymbol.Send, null, Modifier.size(21.dp), Color(0xFF229ED9))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Telegram", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF229ED9))
+                Text(tr(language, "Booking status in Telegram", "Статус бронирования в Telegram", "Bron holati Telegram’da", "Брон ҳолати Telegram’да"), fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold)
+                Text(tr(language, "Status, payment, confirmation and document updates in Telegram.", "Статус, оплата, подтверждение и документы — прямо в Telegram.", "Status, to‘lov, tasdiq va hujjatlar — Telegram’da.", "Статус, тўлов, тасдиқ ва ҳужжатлар — Telegram’да."), fontSize = 12.sp, lineHeight = 16.sp, color = IosGray, maxLines = 2)
+            }
+            CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(14.dp), IosGray.copy(alpha = .7f))
         }
     }
 }

@@ -53,7 +53,9 @@ import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.booking.BookingStore
 import com.iumrah.beta.data.chat.ChatService
+import com.iumrah.beta.data.notification.ClientNotificationStore
 import com.iumrah.beta.models.booking.StoredBookingSession
+import com.iumrah.beta.ui.components.IumrahRootPageHeader
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
@@ -68,9 +70,11 @@ fun CareHomeScreen(
     language: AppLanguage,
     bookingStore: BookingStore,
     chatService: ChatService,
+    notifications: ClientNotificationStore,
     chrome: AppChromeStore,
 ) {
     val state by bookingStore.state.collectAsState()
+    val notificationState by notifications.state.collectAsState()
     val context = LocalContext.current
     val palette = carePalette()
     var telegram by remember { mutableStateOf("@saudiclub966") }
@@ -99,10 +103,10 @@ fun CareHomeScreen(
             .padding(horizontal = 18.dp)
             .padding(top = 10.dp, bottom = 112.dp),
     ) {
-        CareRootHeader(
+        IumrahRootPageHeader(
             title = "iumrah Care",
-            onMenu = chrome::openSidebar,
-            palette = palette,
+            chrome = chrome,
+            unreadCount = notificationState.unreadCount,
         )
 
         Spacer(Modifier.height(14.dp))

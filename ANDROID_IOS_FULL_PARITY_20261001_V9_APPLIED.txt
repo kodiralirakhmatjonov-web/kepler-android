@@ -1,0 +1,29 @@
+ANDROID iOS CURRENT-SOURCE PARITY UPDATE — 2026-10-01 — V9
+
+iOS source of truth: kepler-ios-main(10).zip
+source sha256: f6022357ff26e015ec431247ab1828b01b466c6e1b285aa360b1d058fb49a76e
+Android baseline: kepler-android-main(4).zip
+baseline sha256: 2f2b310ae82b5b6f7828849ac8172b43145633ae4b125064adfac4462a45d447
+
+This update intentionally changes Android only.
+
+Current-source parity changes included:
+- iOS design tokens restored as Android source of truth: page 18, card 28, hero 34, compact 19, control 56, glass icon 46.
+- iOS system background/surface colors and semantic system colors aligned.
+- Common root page header aligned to current iOS hierarchy, brand sizing, notifications/menu controls and connectivity status.
+- Home dashboard order and current cards aligned: Ready packages, Build your Umrah, Hotel First, Integrations, Products, confidence/philosophy/trip/FAQ/about.
+- Current iOS Home card dimensions/spacing aligned (318, 340x204, 366, 472, 540 families) and carousel dots restored.
+- Sunday Umrah Club product restored and routed to the Sunday hotel board.
+- Current iOS source assets used for newly restored Home surfaces.
+- Account card radius aligned to 28 and current Wallet fallback presentation aligned.
+- iumrah ID backside aligned to current iOS: public web QR replaces phone/email contact fields.
+- Hotels/Care common header uses the same notification/menu chrome as iOS.
+- Existing booking/configurator/hotel parity patches were preserved.
+
+Verification run locally:
+- resource basename collision check: PASS
+- scripts/verify-stage10.sh: PASS (Stages 2-10)
+- scripts/verify-build-env.sh: PASS (compileSdk 36 / targetSdk 36 / versionCode 10)
+- Kotlin parser-level check: no parser errors detected before Android-symbol resolution.
+
+Note: this repository does not include a Gradle wrapper or local Android SDK in the supplied ZIP, so the final Android compile/render check remains the repository CI/emulator step.

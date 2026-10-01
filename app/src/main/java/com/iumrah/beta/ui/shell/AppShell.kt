@@ -121,6 +121,7 @@ fun AppShell(
     settingsStore: AppSettingsStore,
 ) {
     val hapticView = LocalView.current
+    val shellNotificationState by notifications.state.collectAsState()
     BackHandler(enabled = chromeState.isSidebarOpen || chromeState.route != AppRoute.Root) {
         if (chromeState.isSidebarOpen) chrome.closeSidebar() else chrome.back()
     }
@@ -135,10 +136,10 @@ fun AppShell(
         ) { (route, tab) ->
             when (route) {
                 AppRoute.Root -> when (tab) {
-                    AppTab.HOME -> HomeScreen(language, chrome, hotelCatalog, journey)
-                    AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, journey, airports, chrome)
+                    AppTab.HOME -> HomeScreen(language, chrome, hotelCatalog, journey, notifications)
+                    AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, journey, airports, chrome, unreadCount = shellNotificationState.unreadCount)
                     AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, accountService, notifications, chrome)
-                    AppTab.CARE -> CareHomeScreen(language, bookingStore, chatService, chrome)
+                    AppTab.CARE -> CareHomeScreen(language, bookingStore, chatService, notifications, chrome)
                     AppTab.ACCOUNT -> AccountRootScreen(language, accountStore, bookingStore, settingsStore, notifications, chrome)
                 }
 
@@ -204,6 +205,17 @@ fun AppShell(
                     airports = airports,
                     chrome = chrome,
                     initialBoard = HotelsBoard.FLIGHTS,
+                    unreadCount = shellNotificationState.unreadCount,
+                )
+
+                AppRoute.StorefrontSunday -> HotelsScreen(
+                    language = language,
+                    service = hotelCatalog,
+                    journey = journey,
+                    airports = airports,
+                    chrome = chrome,
+                    initialBoard = HotelsBoard.SUNDAY,
+                    unreadCount = shellNotificationState.unreadCount,
                 )
 
                 AppRoute.Flights -> FlightSearchScreen(

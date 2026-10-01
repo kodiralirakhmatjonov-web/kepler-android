@@ -1,0 +1,17 @@
+{
+  "schema": "iumrah.android.ios-current-source-parity.v1",
+  "date": "2026-10-01",
+  "revision": "v9",
+  "ios_source_zip": "kepler-ios-main(10).zip",
+  "ios_source_sha256": "f6022357ff26e015ec431247ab1828b01b466c6e1b285aa360b1d058fb49a76e",
+  "android_baseline_zip": "kepler-android-main(4).zip",
+  "android_baseline_sha256": "2f2b310ae82b5b6f7828849ac8172b43145633ae4b125064adfac4462a45d447",
+  "source_of_truth": "ios",
+  "android_only_update": true,
+  "verification": {
+    "resource_basename_collisions": "pass",
+    "stage10_structural": "pass",
+    "build_env": "pass",
+    "full_gradle_compile": "ci_required"
+  }
+}

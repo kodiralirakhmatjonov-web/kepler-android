@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -40,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,9 +71,11 @@ import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.hotel.HotelCatalogService
+import com.iumrah.beta.data.notification.ClientNotificationStore
 import com.iumrah.beta.domain.journey.JourneyStore
 import com.iumrah.beta.models.hotel.StorefrontFlightOption
 import com.iumrah.beta.models.hotel.StorefrontPackageSnapshot
+import com.iumrah.beta.models.notification.ClientSystemNotification
 import com.iumrah.beta.ui.components.IumrahPill
 import com.iumrah.beta.ui.components.IumrahPressable
 import com.iumrah.beta.ui.components.IumrahRootPageHeader
@@ -85,22 +90,30 @@ fun HomeScreen(
     chrome: AppChromeStore,
     hotelCatalog: HotelCatalogService,
     journey: JourneyStore,
+    notifications: ClientNotificationStore,
 ) {
     var showStory by remember { mutableStateOf(false) }
     val journeyState by journey.state.collectAsState()
+    val notificationState by notifications.state.collectAsState()
     val storefrontOrigin = journeyState.trip.originCode.ifBlank { "TAS" }.uppercase()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 118.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 118.dp),
+        verticalArrangement = Arrangement.spacedBy(30.dp),
     ) {
         item {
             IumrahRootPageHeader(
                 title = L10n.text("tab_home", language),
                 chrome = chrome,
                 usesBrandLogo = true,
+                brandScale = 1.25f,
+                showsConnectivityStatus = true,
+                unreadCount = notificationState.unreadCount,
             )
+        }
+        if (notificationState.home.isNotEmpty()) {
+            item { HomeNotificationCarousel(language, notificationState.home, chrome, notifications) }
         }
         item { EmotionalPrompt(language = language, onOpen = { showStory = true }) }
         item { HomeVideoCarousel() }
@@ -108,6 +121,8 @@ fun HomeScreen(
         item { ServicesSection(language, chrome) }
         item { ReadyPackagesSection(language, chrome, hotelCatalog, storefrontOrigin) }
         item { BuildMyUmrahSection(language, chrome) }
+        item { HotelFirstPackagesSection(language, chrome, hotelCatalog, storefrontOrigin) }
+        item { HomeIntegrationsSection(language, chrome) }
         item { ProductsSection(language, chrome) }
         item { ConfidenceStrip(language) }
         item { PhilosophyCard(language) }
@@ -136,6 +151,55 @@ private fun SectionHeader(title: String, subtitle: String? = null) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = .56f),
             )
+        }
+    }
+}
+
+@Composable
+private fun HomeNotificationCarousel(
+    language: AppLanguage,
+    notifications: List<ClientSystemNotification>,
+    chrome: AppChromeStore,
+    store: ClientNotificationStore,
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
+        items(notifications.take(8), key = { it.id }) { item ->
+            val accent = if (item.isRead) MaterialTheme.colorScheme.onSurface.copy(alpha = .08f) else Color(0xFF34C759).copy(alpha = .13f)
+            IumrahPressable(
+                onClick = chrome::openNotifications,
+                modifier = Modifier.width(318.dp),
+                cornerRadius = 24.dp,
+                background = MaterialTheme.colorScheme.surface,
+                shadowElevation = 2.dp,
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().background(accent).padding(16.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        Modifier.size(38.dp).clip(CircleShape).background(if (item.isRead) MaterialTheme.colorScheme.surfaceVariant else Color(0xFF34C759).copy(alpha = .16f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(CupertinoSymbol.BellSignal, null, tint = if (item.isRead) MaterialTheme.colorScheme.onSurface.copy(alpha = .56f) else Color(0xFF248A3D), modifier = Modifier.size(17.dp))
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(item.title, fontSize = 15.sp, lineHeight = 19.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                        Text(item.body, fontSize = 13.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f), maxLines = 3)
+                    }
+                    IumrahPressable(
+                        onClick = { store.dismissFromHome(item.id) },
+                        modifier = Modifier.size(30.dp),
+                        cornerRadius = 99.dp,
+                        background = MaterialTheme.colorScheme.onSurface.copy(alpha = .06f),
+                        shadowElevation = 0.dp,
+                    ) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(CupertinoSymbol.Close, tr(language, "Закрыть", "Close", "Yopish", "Ёпиш"), modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f))
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -382,11 +446,15 @@ private fun ReadyPackagesSection(
 
         when {
             readyEntries.isNotEmpty() -> {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
+                val rowState = rememberLazyListState()
+                val selected by remember { derivedStateOf { rowState.firstVisibleItemIndex.coerceIn(0, readyEntries.size) } }
+                LazyRow(state = rowState, horizontalArrangement = Arrangement.spacedBy(13.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
                     items(readyEntries, key = { it.second.id }) { (option, snapshot) ->
                         ReadyPackageCard(language, option, snapshot) { chrome.openFlightPackage(snapshot.id) }
                     }
+                    item { AllFlightPackagesCard(language, chrome) }
                 }
+                HomeCarouselDots(readyEntries.size + 1, selected)
             }
             loading -> {
                 Row(
@@ -410,17 +478,26 @@ private fun ReadyPackagesSection(
             }
         }
 
-        IumrahPressable(onClick = chrome::openStorefrontFlights, modifier = Modifier.fillMaxWidth(), cornerRadius = 28.dp, shadowElevation = 6.dp) {
-            Column(Modifier.fillMaxWidth().background(Color.White)) {
-                Image(painterResource(R.drawable.iumrah_flights_showcase), contentDescription = null, modifier = Modifier.fillMaxWidth().height(118.dp), contentScale = ContentScale.Crop)
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(CupertinoSymbol.Airplane, null, tint = Color.Black.copy(alpha = .52f), modifier = Modifier.size(17.dp)); Spacer(Modifier.width(7.dp))
-                        Text("Iumrah Flights", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black.copy(alpha = .52f))
-                    }
-                    Text(tr(language, "Все готовые варианты", "All ready packages", "Barcha tayyor paketlar", "Барча тайёр пакетлар"), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                    Text(tr(language, "Откройте полную витрину авиабилетов и готовых пакетов Iumrah.", "Open the complete Iumrah flights and ready-package storefront.", "Iumrah reyslari va tayyor paketlarining to‘liq vitrinasini oching.", "Iumrah парвозлари ва тайёр пакетларининг тўлиқ витринасини очинг."), style = MaterialTheme.typography.bodyMedium, color = Color.Black.copy(alpha = .58f))
-                    DarkCTA(tr(language, "Посмотреть все пакеты", "View all packages", "Barcha paketlarni ko‘rish", "Барча пакетларни кўриш"))
+    }
+}
+
+@Composable
+private fun AllFlightPackagesCard(language: AppLanguage, chrome: AppChromeStore) {
+    IumrahPressable(onClick = chrome::openStorefrontFlights, modifier = Modifier.width(318.dp), cornerRadius = 28.dp, background = Color.White, shadowElevation = 3.dp) {
+        Column(Modifier.fillMaxWidth().background(Color.White)) {
+            Image(painterResource(R.drawable.iumrah_flights_showcase), contentDescription = null, modifier = Modifier.fillMaxWidth().height(118.dp), contentScale = ContentScale.Crop)
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(CupertinoSymbol.Airplane, null, tint = Color.Black.copy(alpha = .52f), modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text("Iumrah Flights", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black.copy(alpha = .52f))
+                }
+                Text(tr(language, "Больше вариантов поездки", "More journey options", "Ko‘proq safar variantlari", "Кўпроқ сафар вариантлари"), fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text(tr(language, "Откройте полную витрину авиабилетов и готовых пакетов Iumrah.", "Open the complete Iumrah flights and ready-package storefront.", "Iumrah parvozlari va tayyor paketlarining to‘liq vitrinasini oching.", "Iumrah парвозлари ва тайёр пакетларининг тўлиқ витринасини очинг."), fontSize = 14.sp, lineHeight = 19.sp, color = Color.Black.copy(alpha = .58f))
+                Row(Modifier.fillMaxWidth().height(45.dp).clip(RoundedCornerShape(15.dp)).background(Color.Black).padding(horizontal = 15.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr(language, "Посмотреть все пакеты", "View all packages", "Barcha paketlarni ko‘rish", "Барча пакетларни кўриш"), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.weight(1f))
+                    Icon(CupertinoSymbol.ArrowRight, null, tint = Color.White, modifier = Modifier.size(17.dp))
                 }
             }
         }
@@ -447,7 +524,7 @@ private fun ReadyPackageCard(
         snapshot.tier?.takeIf { it.isNotBlank() }?.let { if (isNotEmpty()) append(" · "); append(it.replaceFirstChar(Char::uppercase)) }
     }
 
-    IumrahPressable(onClick = onOpen, modifier = Modifier.width(310.dp), cornerRadius = 28.dp, shadowElevation = 4.dp) {
+    IumrahPressable(onClick = onOpen, modifier = Modifier.width(318.dp), cornerRadius = 28.dp, shadowElevation = 4.dp) {
         Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
             Box(Modifier.fillMaxWidth().height(118.dp)) {
                 if (!image.isNullOrBlank()) {
@@ -499,24 +576,154 @@ private fun ReadyPackageCard(
 }
 
 @Composable
-private fun BuildMyUmrahSection(language: AppLanguage, chrome: AppChromeStore) {
+private fun HotelFirstPackagesSection(
+    language: AppLanguage,
+    chrome: AppChromeStore,
+    service: HotelCatalogService,
+    origin: String,
+) {
+    var packages by remember(origin) { mutableStateOf<List<StorefrontPackageSnapshot>>(emptyList()) }
+    var loading by remember(origin) { mutableStateOf(true) }
+    LaunchedEffect(origin) {
+        loading = true
+        packages = runCatching { service.storefrontPackages("hotel-first", origin, 500).items }
+            .getOrDefault(emptyList())
+            .filter { it.entryMode == "hotel-first" && it.status.equals("ready", true) }
+            .distinctBy { it.hotelFirstAnchorHotelId ?: it.hotelName ?: it.id }
+            .take(12)
+        loading = false
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(15.dp)) {
         SectionHeader(
-            tr(language, "Соберите свою Умру", "Build your Umrah", "Umrangizni tuzing", "Умрангизни тузинг"),
-            tr(language, "Соберите пакет сами или передайте подбор команде Iumrah Care.", "Build the package yourself or let Iumrah Care help arrange it.", "Paketni o‘zingiz tuzing yoki Iumrah Care jamoasiga topshiring.", "Пакетни ўзингиз тузинг ёки Iumrah Care жамоасига топширинг.")
+            tr(language, "Пакеты с выбранным отелем", "Packages by hotel", "Mehmonxona bo‘yicha paketlar", "Меҳмонхона бўйича пакетлар"),
+            tr(language, "Выберите отель — даты, перелёт и услуги уже собраны в готовый пакет.", "Choose the hotel — dates, flights and services are already assembled into a ready package.", "Mehmonxonani tanlang — sanalar, parvoz va xizmatlar tayyor paketga yig‘ilgan.", "Меҳмонхонани танланг — саналар, парвоз ва хизматлар тайёр пакетга йиғилган."),
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
-            item { ConfiguratorCard(language, chrome) }
-            item { CareBuilderCard(language) { chrome.navigate(AppTab.CARE) } }
+        if (packages.isEmpty() && loading) {
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(MaterialTheme.colorScheme.surface).padding(18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(11.dp),
+            ) {
+                androidx.compose.material3.CircularProgressIndicator(Modifier.size(21.dp), strokeWidth = 2.dp)
+                Text(tr(language, "Готовим пакеты по отелям…", "Preparing hotel packages…", "Mehmonxona paketlari tayyorlanmoqda…", "Меҳмонхона пакетлари тайёрланмоқда…"), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f))
+            }
+        } else {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(13.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
+                items(packages, key = { it.id }) { snapshot ->
+                    HomeHotelFirstCard(language, snapshot) {
+                        val id = snapshot.hotelFirstAnchorHotelId ?: snapshot.makkahHotelId ?: snapshot.madinahHotelId
+                        if (!id.isNullOrBlank()) chrome.openHotel(id) else chrome.navigate(AppTab.HOTELS)
+                    }
+                }
+                item { AllHotelPackagesCard(language) { chrome.navigate(AppTab.HOTELS) } }
+            }
         }
     }
 }
 
 @Composable
-private fun ConfiguratorCard(language: AppLanguage, chrome: AppChromeStore) {
-    IumrahPressable(onClick = chrome::startNewTrip, modifier = Modifier.width(336.dp).height(540.dp), cornerRadius = 34.dp, background = Color.Black, shadowElevation = 12.dp) {
+private fun HomeHotelFirstCard(language: AppLanguage, snapshot: StorefrontPackageSnapshot, onOpen: () -> Unit) {
+    val image = snapshot.imageUrl ?: snapshot.hotelImages.firstOrNull()
+    val price = snapshot.pricePerPerson?.let { "$${it.toInt()}" } ?: "—"
+    IumrahPressable(onClick = onOpen, modifier = Modifier.width(340.dp).height(204.dp), cornerRadius = 28.dp, background = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+        Row(Modifier.fillMaxSize()) {
+            if (!image.isNullOrBlank()) AsyncImage(model = image, contentDescription = null, modifier = Modifier.width(116.dp).fillMaxHeight(), contentScale = ContentScale.Crop)
+            else Image(painterResource(R.drawable.iumrah_hotels_showcase), null, Modifier.width(116.dp).fillMaxHeight(), contentScale = ContentScale.Crop)
+            Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text(snapshot.hotelCity ?: "Iumrah Hotels", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = .35.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .48f))
+                Text(snapshot.hotelName ?: tr(language, "Отель", "Hotel", "Mehmonxona", "Меҳмонхона"), fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                snapshot.routeSummary?.takeIf { it.isNotBlank() }?.let { Text(it, fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f), maxLines = 2) }
+                Spacer(Modifier.weight(1f))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr(language, "от", "from", "dan", "дан"), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .44f))
+                        Text(price, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Icon(CupertinoSymbol.ArrowRight, null, modifier = Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .72f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AllHotelPackagesCard(language: AppLanguage, onOpen: () -> Unit) {
+    IumrahPressable(onClick = onOpen, modifier = Modifier.width(340.dp).height(204.dp), cornerRadius = 28.dp, background = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+        Column(Modifier.fillMaxSize()) {
+            Image(painterResource(R.drawable.iumrah_hotels_showcase), null, Modifier.fillMaxWidth().height(102.dp), contentScale = ContentScale.Crop)
+            Column(Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(tr(language, "Посмотреть все пакеты по отелям", "See all hotel packages", "Barcha mehmonxona paketlarini ko‘rish", "Барча меҳмонхона пакетларини кўриш"), fontSize = 20.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr(language, "Все пакеты", "All packages", "Barcha paketlar", "Барча пакетлар"), fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Icon(CupertinoSymbol.ArrowRight, null, Modifier.size(15.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeIntegrationsSection(language: AppLanguage, chrome: AppChromeStore) {
+    val available = LocalConfiguration.current.screenWidthDp.dp - 36.dp
+    val cardWidth = (available * .88f).coerceAtLeast(286.dp).coerceAtMost(available)
+    val rowState = rememberLazyListState()
+    val selected by remember { derivedStateOf { rowState.firstVisibleItemIndex.coerceIn(0, 2) } }
+    Column(verticalArrangement = Arrangement.spacedBy(15.dp)) {
+        SectionHeader(
+            tr(language, "Интеграции", "Integrations", "Integratsiyalar", "Интеграциялар"),
+            tr(language, "Планируйте следующую Umrah, подключайте Telegram и используйте новые возможности iumrah в одном месте.", "Plan your next Umrah, connect Telegram and access new iumrah integrations in one place.", "Keyingi Umrani rejalashtiring, Telegram’ni ulang va yangi iumrah integratsiyalaridan bir joyda foydalaning.", "Кейинги Умрани режалаштиринг, Telegram’ни уланг ва янги iumrah интеграцияларидан бир жойда фойдаланинг."),
+        )
+        LazyRow(state = rowState, horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
+            item { IntegrationCard(language, cardWidth, R.drawable.home_integration_calendar, tr(language, "ПЛАНИРОВАНИЕ", "PLANNING", "REJALASHTIRISH", "РЕЖАЛАШТИРИШ"), tr(language, "Запланировать Umrah", "Plan your Umrah", "Umrani rejalashtirish", "Умрани режалаштириш"), tr(language, "Выберите будущие даты и настройте напоминания за 2 месяца, месяц и последние дни перед поездкой.", "Choose future dates and set reminders for two months, one month and the final days before departure.", "Kelajakdagi sanalarni tanlang va safargacha 2 oy, 1 oy hamda so‘nggi kunlar uchun eslatmalarni sozlang.", "Келажакдаги саналарни танланг ва сафаргача 2 ой, 1 ой ҳамда сўнгги кунлар учун эслатмаларни созланг."), tr(language, "Запланировать", "Plan trip", "Rejalashtirish", "Режалаштириш")) { chrome.startNewTrip() } }
+            item { IntegrationCard(language, cardWidth, R.drawable.telegram_integration_hero, "Telegram", tr(language, "Статус бронирования в Telegram", "Booking status in Telegram", "Bron holati Telegram’da", "Брон ҳолати Telegram’да"), tr(language, "Получайте изменения статуса, оплаты, подтверждения и документов прямо в Telegram.", "Receive status, payment, confirmation and document updates directly in Telegram.", "Status, to‘lov, tasdiq va hujjat yangilanishlarini to‘g‘ridan-to‘g‘ri Telegram’da oling.", "Статус, тўлов, тасдиқ ва ҳужжат янгиланишларини тўғридан-тўғри Telegram’да олинг."), tr(language, "Открыть Telegram", "Open Telegram", "Telegram’ni ochish", "Telegram’ни очиш")) { chrome.navigate(AppTab.ACCOUNT) } }
+            item { IntegrationCard(language, cardWidth, R.drawable.home_integration_soon, tr(language, "СКОРО", "COMING SOON", "TEZ ORADA", "ТЕЗ ОРАДА"), tr(language, "Следующая интеграция", "Next integration", "Keyingi integratsiya", "Кейинги интеграция"), tr(language, "Мы готовим ещё один способ связать iumrah с сервисами, которыми Вы пользуетесь каждый день.", "We are preparing another way to connect iumrah with the services you use every day.", "iumrah’ni har kuni foydalanadigan servislaringiz bilan bog‘lashning yana bir usulini tayyorlayapmiz.", "iumrah’ни ҳар куни фойдаланадиган сервисларингиз билан боғлашнинг яна бир усулини тайёрлаяпмиз."), null, null) }
+        }
+        HomeCarouselDots(3, selected)
+    }
+}
+
+@Composable
+private fun IntegrationCard(language: AppLanguage, width: androidx.compose.ui.unit.Dp, imageRes: Int, badge: String, title: String, body: String, cta: String?, onOpen: (() -> Unit)?) {
+    val content: @Composable () -> Unit = {
+        Column(Modifier.width(width).height(366.dp).clip(RoundedCornerShape(28.dp)).background(MaterialTheme.colorScheme.surface)) {
+            Image(painterResource(imageRes), null, Modifier.fillMaxWidth().height(176.dp), contentScale = ContentScale.Crop)
+            Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(badge, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = .5.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f))
+                Text(title, fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.45).sp, maxLines = 2)
+                Text(body, fontSize = 14.sp, lineHeight = 19.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f), maxLines = 3)
+                Spacer(Modifier.weight(1f))
+                if (cta != null) DarkCTA(cta)
+            }
+        }
+    }
+    if (onOpen != null) IumrahPressable(onClick = onOpen, modifier = Modifier.width(width).height(366.dp), cornerRadius = 28.dp, shadowElevation = 2.dp) { content() } else content()
+}
+
+@Composable
+private fun BuildMyUmrahSection(language: AppLanguage, chrome: AppChromeStore) {
+    val available = LocalConfiguration.current.screenWidthDp.dp - 36.dp
+    val cardWidth = (available * .94f).coerceIn(298.dp, 352.dp)
+    val rowState = rememberLazyListState()
+    val selected by remember { derivedStateOf { rowState.firstVisibleItemIndex.coerceIn(0, 1) } }
+    Column(verticalArrangement = Arrangement.spacedBy(15.dp)) {
+        SectionHeader(
+            tr(language, "Собрать свою Умру", "Build your Umrah", "Umrangizni tuzing", "Умрангизни тузинг"),
+            tr(language, "Соберите пакет сами за несколько минут или передайте подбор Iumrah Care.", "Build the package yourself in minutes or let Iumrah Care prepare it for you.", "Paketni bir necha daqiqada o‘zingiz tuzing yoki tanlovni Iumrah Care’ga topshiring.", "Пакетни бир неча дақиқада ўзингиз тузинг ёки танловни Iumrah Care’га топширинг.")
+        )
+        LazyRow(state = rowState, horizontalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
+            item { ConfiguratorCard(language, chrome, cardWidth) }
+            item { CareBuilderCard(language, cardWidth) { chrome.navigate(AppTab.CARE) } }
+        }
+        HomeCarouselDots(2, selected)
+    }
+}
+
+@Composable
+private fun ConfiguratorCard(language: AppLanguage, chrome: AppChromeStore, cardWidth: androidx.compose.ui.unit.Dp) {
+    IumrahPressable(onClick = chrome::startNewTrip, modifier = Modifier.width(cardWidth).height(540.dp), cornerRadius = 34.dp, background = Color.Black, shadowElevation = 12.dp) {
         Column(Modifier.fillMaxSize().background(Color.Black)) {
-            Image(painterResource(R.drawable.iumrah_configurator_hero), null, Modifier.fillMaxWidth().height(220.dp), contentScale = ContentScale.Crop)
+            Image(painterResource(R.drawable.store_configurator_phones), null, Modifier.fillMaxWidth().height(220.dp), contentScale = ContentScale.Crop)
             Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(CupertinoSymbol.Sliders, null, tint = Color.White.copy(alpha = .78f), modifier = Modifier.size(17.dp)); Spacer(Modifier.width(7.dp))
@@ -539,8 +746,8 @@ private fun ConfiguratorCard(language: AppLanguage, chrome: AppChromeStore) {
 }
 
 @Composable
-private fun CareBuilderCard(language: AppLanguage, onClick: () -> Unit) {
-    IumrahPressable(onClick = onClick, modifier = Modifier.width(336.dp).height(540.dp), cornerRadius = 34.dp, shadowElevation = 10.dp) {
+private fun CareBuilderCard(language: AppLanguage, cardWidth: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
+    IumrahPressable(onClick = onClick, modifier = Modifier.width(cardWidth).height(540.dp), cornerRadius = 34.dp, shadowElevation = 10.dp) {
         Column(Modifier.fillMaxSize().background(Color.White)) {
             Image(painterResource(R.drawable.iumrah_care_showcase), null, Modifier.fillMaxWidth().height(220.dp), contentScale = ContentScale.Crop)
             Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
@@ -548,7 +755,7 @@ private fun CareBuilderCard(language: AppLanguage, onClick: () -> Unit) {
                     Icon(CupertinoSymbol.Heart, null, tint = Color.Black.copy(alpha = .58f), modifier = Modifier.size(17.dp)); Spacer(Modifier.width(7.dp))
                     Text("Iumrah Care", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = .45.sp, color = Color.Black.copy(alpha = .58f))
                     Spacer(Modifier.weight(1f))
-                    IumrahPill(tr(language, "≈ 10 минут", "≈ 10 min", "≈ 10 daqiqa", "≈ 10 дақиқа"), background = Color.Black.copy(alpha = .055f), foreground = Color.Black.copy(alpha = .62f))
+                    IumrahPill(tr(language, "ответ ≤ 2 ч", "reply ≤ 2h", "javob ≤ 2 soat", "жавоб ≤ 2 соат"), background = Color.Black.copy(alpha = .055f), foreground = Color.Black.copy(alpha = .62f))
                 }
                 Text(tr(language, "Передайте подбор Iumrah Care", "Let Iumrah Care arrange it", "Tanlovni Iumrah Care’ga topshiring", "Танловни Iumrah Care’га топширинг"), fontSize = 31.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.75).sp, color = Color.Black)
                 Text(tr(language, "Расскажите о датах, составе поездки и предпочтениях — Care поможет собрать персональный вариант без большой обязательной группы.", "Share your dates, travelers and preferences — Care will help assemble a personal option without a required large group.", "Sana, sayohatchilar va istaklaringizni ayting — Care katta majburiy guruhsiz shaxsiy variant tuzishga yordam beradi.", "Сана, саёҳатчилар ва истакларингизни айтинг — Care катта мажбурий гуруҳсиз шахсий вариант тузишга ёрдам беради."), fontSize = 15.sp, lineHeight = 20.sp, color = Color.Black.copy(alpha = .62f), maxLines = 4)
@@ -561,20 +768,43 @@ private fun CareBuilderCard(language: AppLanguage, onClick: () -> Unit) {
 
 @Composable
 private fun ProductsSection(language: AppLanguage, chrome: AppChromeStore) {
+    val available = LocalConfiguration.current.screenWidthDp.dp - 36.dp
+    val cardWidth = (available * .88f).coerceAtLeast(286.dp).coerceAtMost(available)
+    val rowState = rememberLazyListState()
+    val selected by remember { derivedStateOf { rowState.firstVisibleItemIndex.coerceIn(0, 2) } }
     Column(verticalArrangement = Arrangement.spacedBy(15.dp)) {
-        SectionHeader(tr(language, "Продукты Iumrah", "Iumrah products", "Iumrah mahsulotlari", "Iumrah маҳсулотлари"))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
-            item { BackendSystemCard(language) }
-            item { AdvisorCard(language, chrome) }
+        SectionHeader(tr(language, "Наши продукты", "Our products", "Mahsulotlarimiz", "Маҳсулотларимиз"))
+        LazyRow(state = rowState, horizontalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
+            item { BackendSystemCard(language, cardWidth) }
+            item { AdvisorCard(language, chrome, cardWidth) }
+            item { SundayUmrahClubCard(language, chrome, cardWidth) }
+        }
+        HomeCarouselDots(3, selected)
+    }
+}
+
+@Composable
+private fun SundayUmrahClubCard(language: AppLanguage, chrome: AppChromeStore, cardWidth: androidx.compose.ui.unit.Dp) {
+    IumrahPressable(onClick = chrome::openSundayClub, modifier = Modifier.width(cardWidth).height(472.dp), cornerRadius = 34.dp, background = Color.White, shadowElevation = 4.dp) {
+        Column(Modifier.fillMaxSize().background(Color.White)) {
+            Box(Modifier.fillMaxWidth().height(236.dp).background(Color.White), contentAlignment = Alignment.Center) {
+                Image(painterResource(R.drawable.sunday_umrah_club_home), null, Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp), contentScale = ContentScale.Fit)
+            }
+            Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Sunday Umrah Club", fontSize = 29.sp, lineHeight = 33.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.6).sp, color = Color.Black)
+                Text(tr(language, "Короткая Умра на выходные: готовые даты, удобный маршрут и минимум времени вне работы.", "A weekend-sized Umrah with ready dates, a compact route and less time away from work.", "Dam olish kunlariga mos qisqa Umra: tayyor sanalar, qulay yo‘nalish va ishdan kamroq uzilish.", "Дам олиш кунларига мос қисқа Умра: тайёр саналар, қулай йўналиш ва ишдан камроқ узилиш."), fontSize = 15.sp, lineHeight = 20.sp, color = Color.Black.copy(alpha = .60f), maxLines = 4)
+                Spacer(Modifier.weight(1f))
+                DarkCTA(tr(language, "Открыть Sunday Club", "Open Sunday Club", "Sunday Club’ni ochish", "Sunday Club’ни очиш"))
+            }
         }
     }
 }
 
 @Composable
-private fun BackendSystemCard(language: AppLanguage) {
+private fun BackendSystemCard(language: AppLanguage, cardWidth: androidx.compose.ui.unit.Dp) {
     val purple = Color(0xFF5C38E0)
     Column(
-        Modifier.width(336.dp).height(472.dp).clip(RoundedCornerShape(34.dp)).background(
+        Modifier.width(cardWidth).height(472.dp).clip(RoundedCornerShape(34.dp)).background(
             Brush.verticalGradient(listOf(Color(0xFF07070A), Color(0xFF0C0A13), Color(0xFF18102A)))
         ).padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
@@ -596,9 +826,9 @@ private fun BackendSystemCard(language: AppLanguage) {
 }
 
 @Composable
-private fun AdvisorCard(language: AppLanguage, chrome: AppChromeStore) {
+private fun AdvisorCard(language: AppLanguage, chrome: AppChromeStore, cardWidth: androidx.compose.ui.unit.Dp) {
     val aura = Brush.linearGradient(listOf(Color(0xFF102B27), Color(0xFF1A4B42), Color(0xFF13232D), Color.Black))
-    IumrahPressable(onClick = { chrome.navigate(AppTab.CARE) }, modifier = Modifier.width(336.dp).height(472.dp), cornerRadius = 34.dp, background = Color.Black) {
+    IumrahPressable(onClick = { chrome.navigate(AppTab.CARE) }, modifier = Modifier.width(cardWidth).height(472.dp), cornerRadius = 34.dp, background = Color.Black) {
         Box(Modifier.fillMaxSize().background(aura).padding(20.dp)) {
             Column(Modifier.fillMaxSize()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -732,12 +962,33 @@ private fun PersonalUmrahFAQ(language: AppLanguage) {
 @Composable
 private fun AboutFooter(language: AppLanguage) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).background(MaterialTheme.colorScheme.surface).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(11.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).background(MaterialTheme.colorScheme.surface),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        Text("Since 2026", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = .8.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f))
-        Text("iumrah", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Text(tr(language, "iumrah — проект персональной и независимой Умры: собрать маршрут, отель, трансфер и сопровождение в одном спокойном приложении.", "iumrah is a personal independent Umrah project: build your route, hotel, transfer and care in one calm application.", "iumrah — shaxsiy va mustaqil Umra loyihasi: yo‘nalish, mehmonxona, transfer va yordamni bitta sokin ilovada jamlash uchun yaratilgan.", "iumrah — шахсий ва мустақил Умра лойиҳаси: йўналиш, меҳмонхона, трансфер ва ёрдамни битта сокин иловада жамлаш учун яратилган."), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f))
+        Image(painterResource(R.drawable.about_iumrah_kaaba_corner), null, Modifier.fillMaxWidth().height(184.dp), contentScale = ContentScale.Crop)
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+            Text("Since 2026", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = .8.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f))
+            Text(tr(language, "О проекте iumrah", "About iumrah", "iumrah haqida", "iumrah ҳақида"), fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(tr(language, "iumrah — проект персональной и независимой Умры: собрать маршрут, отель, трансфер и сопровождение в одном спокойном приложении.", "iumrah is a personal independent Umrah project: build your route, hotel, transfer and care in one calm application.", "iumrah — shaxsiy va mustaqil Umra loyihasi: yo‘nalish, mehmonxona, transfer va yordamni bitta sokin ilovada jamlash uchun yaratilgan.", "iumrah — шахсий ва мустақил Умра лойиҳаси: йўналиш, меҳмонхона, трансфер ва ёрдамни битта сокин иловада жамлаш учун яратилган."), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f))
+        }
+    }
+}
+
+@Composable
+private fun HomeCarouselDots(count: Int, selectedIndex: Int) {
+    if (count <= 1) return
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        repeat(count) { index ->
+            val selected = index == selectedIndex.coerceIn(0, count - 1)
+            Box(
+                Modifier
+                    .padding(horizontal = 3.dp)
+                    .width(if (selected) 18.dp else 6.dp)
+                    .height(6.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = if (selected) .34f else .12f))
+            )
+        }
     }
 }
 

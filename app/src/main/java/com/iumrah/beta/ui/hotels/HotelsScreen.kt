@@ -113,6 +113,7 @@ fun HotelsScreen(
     airports: AirportSearchService,
     chrome: AppChromeStore,
     initialBoard: HotelsBoard = HotelsBoard.HOTELS,
+    unreadCount: Int = 0,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -220,7 +221,7 @@ fun HotelsScreen(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 118.dp),
         verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
-        item { IumrahRootPageHeader(pageTitle, chrome) }
+        item { IumrahRootPageHeader(pageTitle, chrome, unreadCount = unreadCount) }
         item {
             AirportSelector(
                 language = language,

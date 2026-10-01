@@ -3,6 +3,7 @@ package com.iumrah.beta.ui.account
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -49,6 +50,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -68,6 +70,8 @@ import com.iumrah.beta.models.booking.BookingHotelSelectionSnapshot
 import com.iumrah.beta.models.booking.StoredBookingSession
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -309,11 +313,20 @@ private fun IdentityBack(
             Spacer(Modifier.weight(1f))
             Text(displayName, color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-.5).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(10.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (profile.phone.isNotBlank()) IdentityContact(CupertinoSymbol.Phone, profile.phone)
-                if (profile.email.isNotBlank()) IdentityContact(CupertinoSymbol.Mail, profile.email)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(
+                        awTr(language, "Scan to open your iumrah ID on the web", "QR-код открывает Вашу iumrah ID на сайте", "QR-kod iumrah ID’ingizni saytda ochadi", "QR-код iumrah ID’ингизни сайтда очади"),
+                        color = Color.White.copy(alpha = .58f),
+                        fontSize = 11.5.sp,
+                        lineHeight = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text("iumrah.app", color = Color.White.copy(alpha = .38f), fontSize = 10.5.sp, fontWeight = FontWeight.Medium, fontFamily = FontFamily.Monospace)
+                }
+                PublicIdentityQr(normalizedIdentity(profile.iumrahID))
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
             Box(Modifier.fillMaxWidth().height(.7.dp).background(Color.White.copy(alpha = .13f)))
             Row(Modifier.padding(top = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -331,12 +344,35 @@ private fun IdentityBack(
 }
 
 @Composable
-private fun IdentityContact(icon: CupertinoSymbol, value: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        CupertinoIcon(icon, null, Modifier.size(11.dp), Color.White.copy(alpha = .58f))
-        Text(value, color = Color.White.copy(alpha = .58f), fontSize = 11.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun PublicIdentityQr(identity: String) {
+    val value = "https://iumrah.app/id/$identity"
+    val bitmap = remember(value) { makeQrBitmap(value) }
+    if (bitmap != null) {
+        Box(
+            Modifier.size(84.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(6.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(bitmap = bitmap.asImageBitmap(), contentDescription = "iumrah ID QR", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+        }
+    } else {
+        Box(Modifier.size(84.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .10f)), contentAlignment = Alignment.Center) {
+            CupertinoIcon(CupertinoSymbol.Grid, null, Modifier.size(29.dp), Color.White.copy(alpha = .76f))
+        }
     }
 }
+
+private fun makeQrBitmap(value: String): Bitmap? = runCatching {
+    val matrix = QRCodeWriter().encode(value, BarcodeFormat.QR_CODE, 432, 432)
+    val pixels = IntArray(matrix.width * matrix.height)
+    for (y in 0 until matrix.height) {
+        for (x in 0 until matrix.width) {
+            pixels[y * matrix.width + x] = if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+        }
+    }
+    Bitmap.createBitmap(matrix.width, matrix.height, Bitmap.Config.ARGB_8888).apply {
+        setPixels(pixels, 0, matrix.width, 0, 0, matrix.width, matrix.height)
+    }
+}.getOrNull()
 
 @Composable
 fun IumrahLockedIdentityCardAndroid(language: AppLanguage) {
