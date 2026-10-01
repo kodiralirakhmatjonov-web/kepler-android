@@ -1,0 +1,5 @@
+Iumrah Android Configurator build fix v6
+Date: 2026-10-01
+Fix: BookingCheckoutScreen explicitly opts in to ExperimentalMaterial3Api required by ModalBottomSheet / rememberModalBottomSheetState.
+Source build log: logs_99794050931.zip, :app:compileDebugKotlin lines 97-100.
+Regression guard: verify-stage10 now rejects ModalBottomSheet files without ExperimentalMaterial3Api opt-in.

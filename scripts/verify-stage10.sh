@@ -42,6 +42,12 @@ fi
 if grep -R -n '^import androidx.compose.foundation.layout.weight$' app/src/main/java/com/iumrah/beta; then
   echo 'STOP: explicit Compose weight import is incompatible with this project version'; exit 1
 fi
+# Material3 ModalBottomSheet is experimental in the Compose version used by this project.
+while IFS= read -r f; do
+  if ! grep -q 'ExperimentalMaterial3Api' "$f"; then
+    echo "STOP: ModalBottomSheet requires ExperimentalMaterial3Api opt-in: $f"; exit 1
+  fi
+done < <(grep -R -lE 'ModalBottomSheet|rememberModalBottomSheetState' app/src/main/java/com/iumrah/beta --include='*.kt' || true)
 if grep -R -nE 'material\.icons|Icons\.' \
   app/src/main/java/com/iumrah/beta/ui/generator \
   app/src/main/java/com/iumrah/beta/ui/trip/TripBuilderScreen.kt \
