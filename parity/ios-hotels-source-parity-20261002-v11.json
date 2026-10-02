@@ -1,0 +1,24 @@
+{
+  "patch": "ios-hotels-strict-parity-20261002-v11",
+  "ios_source": "kepler-ios-main(10).zip",
+  "ios_sha256": "f6022357ff26e015ec431247ab1828b01b466c6e1b285aa360b1d058fb49a76e",
+  "android_base": "kepler-android-main(4).zip",
+  "android_base_sha256": "2f2b310ae82b5b6f7828849ac8172b43145633ae4b125064adfac4462a45d447",
+  "cumulative_from": "iumrah-android-update-home-account-ios-parity-20261001-v10.zip",
+  "scope": [
+    "Hotels root tab",
+    "Hotel storefront cards",
+    "Flights board in Hotels",
+    "Sunday Umrah Club board",
+    "Hotel Detail",
+    "Room cards / room selection visuals",
+    "Hotel-First package option carousel",
+    "Package detail reachable from Hotels",
+    "Hotels navigation wiring"
+  ],
+  "qa": [
+    "verify-stage1..10",
+    "verify-build-env",
+    "delimiter balance"
+  ]
+}

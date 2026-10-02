@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -29,6 +30,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -432,34 +434,70 @@ private fun PackageSection(
             return@Column
         }
 
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            Column(Modifier.weight(1f)) {
-                Text(detailText(language, "trip_options"), fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                Text(detailText(language, "ready_packages", packages.size), fontSize = 12.sp, color = secondaryText())
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(detailText(language, "trip_options"), fontSize = 19.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.2).sp)
+                Text(detailText(language, "ready_packages", packages.size), fontSize = 12.sp, lineHeight = 15.sp, color = secondaryText())
             }
-            if (packages.size > 1) Text(detailText(language, "counter", selected + 1, packages.size), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = secondaryText())
+            if (packages.size > 1) {
+                Text(
+                    detailText(language, "counter", selected + 1, packages.size),
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = secondaryText(),
+                )
+            }
         }
 
         val pager = rememberPagerState(initialPage = selected.coerceIn(0, packages.lastIndex), pageCount = { packages.size })
         LaunchedEffect(selected) { if (pager.currentPage != selected) pager.animateScrollToPage(selected) }
-        LaunchedEffect(pager.currentPage, pager.isScrollInProgress) { if (!pager.isScrollInProgress && pager.currentPage != selected) onSelected(pager.currentPage) }
-        HorizontalPager(pager, Modifier.fillMaxWidth().height(520.dp), pageSpacing = 8.dp) { index ->
-            PackageVariantCard(packages[index], index, language, onOpenConfigurator)
+        LaunchedEffect(pager.currentPage, pager.isScrollInProgress) {
+            if (!pager.isScrollInProgress && pager.currentPage != selected) onSelected(pager.currentPage)
         }
+
+        BoxWithConstraints(Modifier.fillMaxWidth().height(332.dp)) {
+            val pageWidth = (maxWidth * .82f).coerceAtLeast(280.dp).coerceAtMost(maxWidth)
+            HorizontalPager(
+                state = pager,
+                modifier = Modifier.fillMaxSize(),
+                pageSize = PageSize.Fixed(pageWidth),
+                pageSpacing = 14.dp,
+                beyondViewportPageCount = 1,
+            ) { index ->
+                PackageVariantCard(packages[index], index, language, onOpenConfigurator)
+            }
+        }
+
         if (packages.size > 1) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 packages.indices.forEach { index ->
                     Box(
                         Modifier
-                            .padding(horizontal = 3.dp)
+                            .padding(horizontal = 3.5.dp)
                             .height(7.dp)
                             .width(if (index == selected) 22.dp else 7.dp)
                             .clip(RoundedCornerShape(99.dp))
-                            .background(if (index == selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = .22f)),
+                            .background(if (index == selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = .25f)),
                     )
                 }
             }
         }
+    }
+}
+
+private data class HotelPackageAccent(val fill: Color, val text: Color)
+
+private fun hotelPackageAccent(item: StorefrontPackageSnapshot, index: Int): HotelPackageAccent {
+    val key = item.hotelFirstVariant ?: if (index == 0) "short" else if (index == 1) "balanced" else "extended"
+    return when (key.lowercase(Locale.US)) {
+        "short" -> HotelPackageAccent(Color(0xFF29B3FF), Color(0xFF004D9E))
+        "balanced" -> HotelPackageAccent(Color(0xFFFF991A), Color(0xFF803800))
+        else -> HotelPackageAccent(Color(0xFF9C5CFF), Color(0xFF471999))
     }
 }
 
@@ -470,59 +508,121 @@ private fun PackageVariantCard(
     language: AppLanguage,
     onOpenConfigurator: (String) -> Unit,
 ) {
-    val totalDays = item.totalDays ?: 0
+    val accent = hotelPackageAccent(item, index)
+    val totalDays = (item.totalDays ?: 0).coerceAtLeast(1)
+    val travelers = item.configuration?.let { (it.adults + it.children + it.infants).coerceAtLeast(1) } ?: 2
+    val shape = RoundedCornerShape(27.dp)
+
     Column(
         Modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(28.dp))
-            .background(cardColor())
-            .border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), RoundedCornerShape(28.dp))
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(15.dp),
+            .clip(shape)
+            .background(accent.fill.copy(alpha = .22f))
+            .border(.9.dp, accent.fill.copy(alpha = .42f), shape)
+            .padding(17.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(variantTitle(item.hotelFirstVariant, index, language).uppercase(language.locale), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = secondaryText())
-                Text(detailText(language, "your_umrah"), fontSize = 24.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold)
-            }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "${totalDays.coerceAtLeast(1)} ${detailText(language, "days_short")}",
-                modifier = Modifier.clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.onBackground.copy(alpha = .06f)).padding(horizontal = 10.dp, vertical = 7.dp),
+                variantTitle(item.hotelFirstVariant, index, language).uppercase(language.locale),
+                modifier = Modifier.weight(1f),
                 fontSize = 12.sp,
+                lineHeight = 14.sp,
                 fontWeight = FontWeight.Bold,
+                letterSpacing = .45.sp,
+                color = accent.text.copy(alpha = .86f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-        }
-        Text(detailText(language, "ready_variant", totalDays), fontSize = 14.sp, lineHeight = 19.sp, color = secondaryText())
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CupertinoIcon(CupertinoSymbol.Sliders, null, Modifier.size(15.dp), secondaryText())
-            Text("iumrah Configurator · ${localizedTier(item.tier, language)}", Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = secondaryText(), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("Package ID · ${item.id}", fontSize = 10.sp, color = secondaryText(), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            Column(Modifier.weight(1f)) {
-                Text(money(item.pricePerPerson), fontSize = 38.sp, lineHeight = 42.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
-                Text(detailText(language, "per_pilgrim"), fontSize = 12.sp, color = secondaryText())
+            Row(
+                Modifier.height(30.dp).clip(RoundedCornerShape(99.dp)).background(Color.White.copy(alpha = .60f)).padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                CupertinoIcon(CupertinoSymbol.CalendarClock, null, Modifier.size(11.dp), accent.text)
+                Text("$totalDays ${detailText(language, "days_short")}", fontSize = 12.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold, color = accent.text)
             }
-            Text(money(item.totalPackagePrice), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = secondaryText(), textAlign = TextAlign.End)
         }
-        Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = .08f))
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            PackageFact(CupertinoSymbol.Airplane, item.routeSummary ?: "${item.originCode} → ${item.destinationCode.orEmpty()}")
-            PackageFact(CupertinoSymbol.CalendarClock, packageDates(item, language))
-            PackageFact(CupertinoSymbol.Moon, packageStay(item, language))
-            PackageFact(CupertinoSymbol.Hotel, listOfNotNull(item.hotelName, item.hotelSecondaryName).joinToString(" + ").ifBlank { "iumrah Hotels" })
-            PackageFact(CupertinoSymbol.ForkKnife, detailText(language, "services"))
+
+        Text(
+            packageDateRange(item, language),
+            fontSize = 22.sp,
+            lineHeight = 26.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-.45).sp,
+            color = accent.text,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    money(item.pricePerPerson),
+                    fontSize = 32.sp,
+                    lineHeight = 35.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-.9).sp,
+                    color = Color.Black,
+                    maxLines = 1,
+                )
+                Text(detailText(language, "per_pilgrim"), fontSize = 12.sp, lineHeight = 15.sp, color = Color.Black.copy(alpha = .55f))
+            }
+            Spacer(Modifier.weight(1f))
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("$travelers", fontSize = 23.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text(packageTravelersLabel(language), fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.Black.copy(alpha = .55f))
+            }
         }
+
+        Text(
+            packageTotalForText(item.totalPackagePrice, travelers, language),
+            fontSize = 12.sp,
+            lineHeight = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black.copy(alpha = .58f),
+            maxLines = 2,
+        )
+
         Spacer(Modifier.weight(1f))
-        PrimaryDetailButton(detailText(language, "open_configurator"), CupertinoSymbol.Sliders) { onOpenConfigurator(item.id) }
+
+        Row(
+            Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(15.dp)).background(Color.Black).clickable { onOpenConfigurator(item.id) }.padding(horizontal = 15.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            CupertinoIcon(CupertinoSymbol.Sliders, null, Modifier.size(17.dp), Color.White)
+            Text(detailText(language, "open_configurator"), Modifier.weight(1f), fontSize = 14.sp, lineHeight = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(12.dp), Color.White)
+        }
     }
 }
 
-@Composable
-private fun PackageFact(icon: CupertinoSymbol, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-        CupertinoIcon(icon, null, Modifier.size(15.dp), secondaryText())
-        Text(text, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, color = secondaryText(), maxLines = 2, overflow = TextOverflow.Ellipsis)
+private fun packageDateRange(item: StorefrontPackageSnapshot, language: AppLanguage): String {
+    fun render(raw: String?): String {
+        if (raw.isNullOrBlank()) return "—"
+        return runCatching {
+            val date = java.time.LocalDate.parse(raw.take(10))
+            date.format(DateTimeFormatter.ofPattern("d MMM", language.locale))
+        }.getOrElse { raw.take(10) }
+    }
+    return "${render(item.startDate ?: item.outbound?.departureAt)} — ${render(item.endDate ?: item.inbound?.departureAt)}"
+}
+
+private fun packageTravelersLabel(language: AppLanguage) = when (language) {
+    AppLanguage.RUSSIAN -> "паломников"
+    AppLanguage.ENGLISH -> "travelers"
+    AppLanguage.UZBEK -> "ziyoratchi"
+    AppLanguage.UZBEK_CYRILLIC -> "зиёратчи"
+}
+
+private fun packageTotalForText(total: Double?, travelers: Int, language: AppLanguage): String {
+    val amount = money(total)
+    return when (language) {
+        AppLanguage.RUSSIAN -> "$amount за пакет на $travelers паломников"
+        AppLanguage.ENGLISH -> "$amount total for $travelers pilgrims"
+        AppLanguage.UZBEK -> "$amount · $travelers kishi uchun jami"
+        AppLanguage.UZBEK_CYRILLIC -> "$amount · $travelers киши учун жами"
     }
 }
 
@@ -702,7 +802,7 @@ private fun RoomCategoryCard(
 ) {
     val shape = RoundedCornerShape(28.dp)
     Column(
-        Modifier.fillMaxWidth().clip(shape).background(cardColor()).border(if (selected) 1.2.dp else .6.dp, if (selected) Color(0xFF74A187).copy(alpha = .62f) else MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), shape).padding(18.dp),
+        Modifier.fillMaxWidth().heightIn(min = if (selectionMode) 214.dp else 168.dp).clip(shape).background(cardColor()).border(if (selected) 1.2.dp else .6.dp, if (selected) Color(0xFF74A187).copy(alpha = .62f) else MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), shape).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -742,33 +842,72 @@ private fun ActualRoomsSection(hotel: HotelDetail, language: AppLanguage, select
 private fun ActualRoomCard(room: HotelRoom, hotel: HotelDetail, language: AppLanguage, selectionMode: Boolean, selected: Boolean, onSelect: (HotelRoom) -> Unit) {
     val images = remember(room.id, hotel.images) { roomImages(room, hotel.images) }
     val pager = rememberPagerState(pageCount = { maxOf(1, images.size) })
-    Row(
-        Modifier.fillMaxWidth().height(196.dp).shadow(5.dp, RoundedCornerShape(26.dp)).clip(RoundedCornerShape(26.dp)).background(cardColor()).border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), RoundedCornerShape(26.dp)),
-    ) {
-        Box(Modifier.width(136.dp).fillMaxHeight().background(raisedColor())) {
-            if (images.isNotEmpty()) {
-                HorizontalPager(pager, Modifier.fillMaxSize()) { index -> AsyncImage(AppConfig.absoluteUrl(images[index].url), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-                if (images.size > 1) {
-                    Text("${images.size}", Modifier.align(Alignment.TopEnd).padding(10.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = .42f)).padding(horizontal = 9.dp, vertical = 6.dp), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    val cardHeight = if (selectionMode) 236.dp else 196.dp
+    val shape = RoundedCornerShape(26.dp)
+
+    BoxWithConstraints(Modifier.fillMaxWidth().height(cardHeight)) {
+        val mediaWidth = (maxWidth * .36f).coerceIn(116.dp, 142.dp)
+        Row(
+            Modifier.fillMaxSize().shadow(5.dp, shape).clip(shape).background(cardColor())
+                .border(if (selected) 1.2.dp else .6.dp, if (selected) Color(0xFF74A187).copy(alpha = .62f) else MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), shape),
+        ) {
+            Box(Modifier.width(mediaWidth).fillMaxHeight().background(raisedColor())) {
+                if (images.isNotEmpty()) {
+                    HorizontalPager(pager, Modifier.fillMaxSize()) { index ->
+                        AsyncImage(AppConfig.absoluteUrl(images[index].url), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    }
+                    if (images.size > 1) {
+                        Column(
+                            Modifier.fillMaxSize().padding(10.dp),
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Row(
+                                Modifier.height(28.dp).clip(RoundedCornerShape(99.dp)).background(Color.Black.copy(alpha = .42f)).padding(horizontal = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            ) {
+                                CupertinoIcon(CupertinoSymbol.Copy, null, Modifier.size(11.dp), Color.White)
+                                Text("${images.size}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Row(
+                                Modifier.height(23.dp).clip(RoundedCornerShape(99.dp)).background(Color.Black.copy(alpha = .28f)).padding(horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                images.indices.forEach { index ->
+                                    Box(
+                                        Modifier.width(if (index == pager.currentPage) 12.dp else 5.dp).height(5.dp).clip(RoundedCornerShape(99.dp))
+                                            .background(Color.White.copy(alpha = if (index == pager.currentPage) 1f else .42f)),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                        CupertinoIcon(CupertinoSymbol.Bed, null, Modifier.size(28.dp), secondaryText())
+                        Spacer(Modifier.height(9.dp))
+                        Text(detailText(language, "hotel_rooms"), fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = secondaryText(), textAlign = TextAlign.Center)
+                    }
                 }
-            } else {
-                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                    CupertinoIcon(CupertinoSymbol.Bed, null, Modifier.size(30.dp), secondaryText())
-                    Text(detailText(language, "hotel_rooms"), fontSize = 10.sp, color = secondaryText())
+            }
+            Column(Modifier.weight(1f).fillMaxHeight().padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(localizeRoomName(room.name, language), Modifier.weight(1f), fontSize = 18.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.2).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (selected) CupertinoIcon(CupertinoSymbol.CheckCircleFill, null, Modifier.size(19.dp), Color(0xFF74A187))
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    room.maxGuests?.let { CompactFact(CupertinoSymbol.Persons, it.toString()) }
+                    room.beds?.takeIf { it.isNotBlank() }?.let { CompactFact(CupertinoSymbol.Bed, localizeBedText(it, language)) }
+                }
+                room.sizeM2?.let { CompactFact(CupertinoSymbol.NumberSquare, String.format(Locale.US, "%.0f m²", it)) }
+                room.description?.let { cleanRoomDescription(it) }?.takeIf { it.isNotBlank() }?.let {
+                    Text(it, fontSize = 12.sp, lineHeight = 15.sp, color = secondaryText(), maxLines = if (selectionMode) 2 else 3, overflow = TextOverflow.Ellipsis)
+                }
+                Spacer(Modifier.weight(1f))
+                if (selectionMode) RoomSelectionButton(if (selected) selectionText(language, "room_chosen") else selectionText(language, "choose_room"), selected) { onSelect(room) }
             }
-        }
-        Column(Modifier.weight(1f).fillMaxHeight().padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            Text(localizeRoomName(room.name, language), fontSize = 18.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                room.maxGuests?.let { CompactFact(CupertinoSymbol.Persons, it.toString()) }
-                room.beds?.takeIf { it.isNotBlank() }?.let { CompactFact(CupertinoSymbol.Bed, localizeBedText(it, language)) }
-            }
-            room.sizeM2?.let { CompactFact(CupertinoSymbol.NumberSquare, String.format(Locale.US, "%.0f m²", it)) }
-            room.description?.let { cleanRoomDescription(it) }?.takeIf { it.isNotBlank() }?.let {
-                Text(it, fontSize = 11.sp, lineHeight = 14.sp, color = secondaryText(), maxLines = if (selectionMode) 1 else 3, overflow = TextOverflow.Ellipsis)
-            }
-            if (selectionMode) RoomSelectionButton(if (selected) selectionText(language, "room_chosen") else selectionText(language, "choose_room"), selected) { onSelect(room) }
         }
     }
 }
@@ -1124,7 +1263,7 @@ private fun detailText(language: AppLanguage, key: String, vararg args: Any): St
             "load_error" to "Не удалось загрузить данные отеля.", "room_error" to "Не удалось загрузить категории номеров.",
             "preparing_price" to "Готовим актуальную цену пакета…", "trip_options" to "Варианты поездки", "ready_packages" to "Готовых пакетов с этим отелем: %d", "counter" to "%d из %d",
             "your_umrah" to "Ваша Умра с этим отелем", "days_short" to "дн.", "nights_short" to "ноч.", "ready_variant" to "Готовый пакет на %d дн. · его состав и цена закреплены за этим Package ID.",
-            "per_pilgrim" to "за паломника", "services" to "Перелёт + отели + сервисы", "open_configurator" to "Открыть конфигуратор", "variant_short" to "Короткая поездка", "variant_balanced" to "Оптимальная поездка", "variant_extended" to "Больше дней в Умре",
+            "per_pilgrim" to "на паломника", "services" to "Перелёт + отели + сервисы", "open_configurator" to "Открыть конфигуратор", "variant_short" to "Короткая поездка", "variant_balanced" to "Оптимальная поездка", "variant_extended" to "Больше дней в Умре",
             "selected_quality" to "Отобран iumrah", "reviews" to "%d отзывов", "quality_note" to "iumrah отбирает и мониторит отели, подходящие нашим паломникам.", "rating_exceptional" to "Превосходно", "rating_very_good" to "Очень хорошо", "rating_good" to "Хорошо",
             "time_title" to "Время на ресепшене", "time_body" to "Сверяйте местное время перед звонком в отель или Care.", "tashkent" to "Ташкент", "makkah" to "Мекка", "madinah" to "Медина", "moscow" to "Москва",
             "photos" to "Фотографии", "view_all_photos" to "Все фото · %d", "amenities" to "Что есть в отеле", "prepared_rooms" to "Номера iumrah", "prepared_rooms_body" to "Подготовленные категории размещения для паломников iumrah.", "rooms_loading" to "Загружаем номера…", "retry" to "Повторить",
@@ -1135,7 +1274,7 @@ private fun detailText(language: AppLanguage, key: String, vararg args: Any): St
             "load_error" to "Could not load hotel details.", "room_error" to "Could not load room categories.",
             "preparing_price" to "Preparing the current package price…", "trip_options" to "Trip options", "ready_packages" to "%d ready packages with this hotel", "counter" to "%d of %d",
             "your_umrah" to "Your Umrah with this hotel", "days_short" to "days", "nights_short" to "nights", "ready_variant" to "Ready %d-day package · its composition and price are fixed to this Package ID.",
-            "per_pilgrim" to "per pilgrim", "services" to "Flight + hotels + services", "open_configurator" to "Open configurator", "variant_short" to "Short trip", "variant_balanced" to "Balanced trip", "variant_extended" to "Longer Umrah",
+            "per_pilgrim" to "per pilgrim", "services" to "Flight + hotels + services", "open_configurator" to "Open Configurator", "variant_short" to "Short trip", "variant_balanced" to "Balanced trip", "variant_extended" to "Longer Umrah",
             "selected_quality" to "Selected by iumrah", "reviews" to "%d reviews", "quality_note" to "iumrah selects and monitors hotels that suit our pilgrims.", "rating_exceptional" to "Exceptional", "rating_very_good" to "Very good", "rating_good" to "Good",
             "time_title" to "Reception time", "time_body" to "Check local time before calling the hotel or Care.", "tashkent" to "Tashkent", "makkah" to "Makkah", "madinah" to "Madinah", "moscow" to "Moscow",
             "photos" to "Photos", "view_all_photos" to "View all · %d", "amenities" to "What this hotel offers", "prepared_rooms" to "iumrah rooms", "prepared_rooms_body" to "Room categories prepared for iumrah pilgrims.", "rooms_loading" to "Loading rooms…", "retry" to "Retry",
@@ -1146,7 +1285,7 @@ private fun detailText(language: AppLanguage, key: String, vararg args: Any): St
             "load_error" to "Mehmonxona ma’lumotlarini yuklab bo‘lmadi.", "room_error" to "Xona toifalarini yuklab bo‘lmadi.",
             "preparing_price" to "Joriy paket narxi tayyorlanmoqda…", "trip_options" to "Safar variantlari", "ready_packages" to "Shu mehmonxona bilan tayyor paketlar: %d", "counter" to "%d / %d",
             "your_umrah" to "Umrangiz — shu mehmonxona bilan", "days_short" to "kun", "nights_short" to "tun", "ready_variant" to "%d kunlik tayyor paket · tarkibi va narxi shu Package ID uchun saqlangan.",
-            "per_pilgrim" to "har bir ziyoratchi uchun", "services" to "Parvoz + mehmonxonalar + xizmatlar", "open_configurator" to "Konfiguratorni ochish", "variant_short" to "Qisqa safar", "variant_balanced" to "Optimal safar", "variant_extended" to "Umrada ko‘proq kun",
+            "per_pilgrim" to "bir ziyoratchiga", "services" to "Parvoz + mehmonxonalar + xizmatlar", "open_configurator" to "Configuratorni ochish", "variant_short" to "Qisqa safar", "variant_balanced" to "Optimal safar", "variant_extended" to "Umrada ko‘proq kun",
             "selected_quality" to "iumrah tanlovi", "reviews" to "%d ta sharh", "quality_note" to "iumrah ziyoratchilarimizga mos mehmonxonalarni tanlaydi va kuzatadi.", "rating_exceptional" to "Ajoyib", "rating_very_good" to "Juda yaxshi", "rating_good" to "Yaxshi",
             "time_title" to "Resepsion vaqti", "time_body" to "Mehmonxona yoki Care’ga qo‘ng‘iroqdan oldin mahalliy vaqtni tekshiring.", "tashkent" to "Toshkent", "makkah" to "Makka", "madinah" to "Madina", "moscow" to "Moskva",
             "photos" to "Rasmlar", "view_all_photos" to "Barchasi · %d", "amenities" to "Mehmonxona imkoniyatlari", "prepared_rooms" to "iumrah xonalari", "prepared_rooms_body" to "iumrah ziyoratchilari uchun tayyorlangan joylashuv toifalari.", "rooms_loading" to "Xonalar yuklanmoqda…", "retry" to "Qayta urinish",
@@ -1157,7 +1296,7 @@ private fun detailText(language: AppLanguage, key: String, vararg args: Any): St
             "load_error" to "Меҳмонхона маълумотларини юклаб бўлмади.", "room_error" to "Хона тоифаларини юклаб бўлмади.",
             "preparing_price" to "Жорий пакет нархи тайёрланмоқда…", "trip_options" to "Сафар вариантлари", "ready_packages" to "Шу меҳмонхона билан тайёр пакетлар: %d", "counter" to "%d / %d",
             "your_umrah" to "Умрангиз — шу меҳмонхона билан", "days_short" to "кун", "nights_short" to "тун", "ready_variant" to "%d кунлик тайёр пакет · таркиби ва нархи шу Package ID учун сақланган.",
-            "per_pilgrim" to "ҳар бир зиёратчи учун", "services" to "Парвоз + меҳмонхоналар + хизматлар", "open_configurator" to "Конфигураторни очиш", "variant_short" to "Қисқа сафар", "variant_balanced" to "Оптимал сафар", "variant_extended" to "Умрада кўпроқ кун",
+            "per_pilgrim" to "бир зиёратчига", "services" to "Парвоз + меҳмонхоналар + хизматлар", "open_configurator" to "Configuratorни очиш", "variant_short" to "Қисқа сафар", "variant_balanced" to "Оптимал сафар", "variant_extended" to "Умрада кўпроқ кун",
             "selected_quality" to "iumrah танлови", "reviews" to "%d та шарҳ", "quality_note" to "iumrah зиёратчиларимизга мос меҳмонхоналарни танлайди ва кузатади.", "rating_exceptional" to "Ажойиб", "rating_very_good" to "Жуда яхши", "rating_good" to "Яхши",
             "time_title" to "Ресепсион вақти", "time_body" to "Меҳмонхона ёки Care’га қўнғироқдан олдин маҳаллий вақтни текширинг.", "tashkent" to "Тошкент", "makkah" to "Макка", "madinah" to "Мадина", "moscow" to "Москва",
             "photos" to "Расмлар", "view_all_photos" to "Барчаси · %d", "amenities" to "Меҳмонхона имкониятлари", "prepared_rooms" to "iumrah хоналари", "prepared_rooms_body" to "iumrah зиёратчилари учун тайёрланган жойлашув тоифалари.", "rooms_loading" to "Хоналар юкланмоқда…", "retry" to "Қайта уриниш",

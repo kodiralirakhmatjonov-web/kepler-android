@@ -221,18 +221,17 @@ fun FlightFirstPackageDetailScreen(
     val currentQuote = quote ?: loaded.packageQuoteFallback()
     val canBook = quote != null && currentOutbound != null && currentInbound != null && makkahHotel != null && ((loaded.madinahNights ?: 0) <= 0 || madinahHotel != null)
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp, end = 18.dp, bottom = 38.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp),
-    ) {
-        item {
-            PackageTopBar(
-                language = language,
-                onBack = chrome::back,
-                onShare = { sharePackage(context, loaded, currentQuote) },
-            )
-        }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        PackageTopBar(
+            language = language,
+            onBack = chrome::back,
+            onShare = { sharePackage(context, loaded, currentQuote) },
+        )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 34.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp),
+        ) {
         item { PackageHero(loaded, currentOutbound, currentInbound, currentQuote, images, language) }
         item { PackageOverviewCard(loaded, currentOutbound, currentInbound, language) }
 
@@ -342,6 +341,7 @@ fun FlightFirstPackageDetailScreen(
             }
         }
     }
+    }
 
     picker?.let { kind ->
         FlightPickerSheet(
@@ -365,14 +365,14 @@ fun FlightFirstPackageDetailScreen(
 @Composable
 private fun PackageTopBar(language: AppLanguage, onBack: () -> Unit, onShare: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp),
+        Modifier.fillMaxWidth().statusBarsPadding().height(44.dp).padding(horizontal = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IumrahPressable(onClick = onBack, modifier = Modifier.size(44.dp), cornerRadius = 22.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
+        IumrahPressable(onClick = onBack, modifier = Modifier.size(40.dp), cornerRadius = 20.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CupertinoIcon(CupertinoSymbol.ChevronLeft, detailText(language, "back"), Modifier.size(18.dp)) }
         }
         Text(detailText(language, "title"), Modifier.weight(1f), textAlign = TextAlign.Center, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-        IumrahPressable(onClick = onShare, modifier = Modifier.size(44.dp), cornerRadius = 22.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
+        IumrahPressable(onClick = onShare, modifier = Modifier.size(40.dp), cornerRadius = 20.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CupertinoIcon(CupertinoSymbol.Share, detailText(language, "share"), Modifier.size(18.dp)) }
         }
     }
@@ -461,9 +461,9 @@ private fun PackageOverviewCard(snapshot: StorefrontPackageSnapshot, outbound: S
 
 @Composable
 private fun DetailSectionHeader(title: String, eyebrow: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(eyebrow.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .46f))
-        Text(title, fontSize = 24.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold)
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Text(eyebrow.uppercase(), fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .7.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f))
+        Text(title, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.7).sp)
     }
 }
 
@@ -477,9 +477,7 @@ private fun PackageFlightLegCard(leg: StorefrontFlightLeg, direction: String, la
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Box(Modifier.size(50.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                    Text(leg.airlineCode.take(2).uppercase(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
+                PackageAirlineLogo(leg.airlineCode, 50)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(direction.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .48f))
                     Text("${leg.origin} → ${leg.destination}", fontSize = 17.sp, fontWeight = FontWeight.Bold)
@@ -507,6 +505,23 @@ private fun PackageFlightLegCard(leg: StorefrontFlightLeg, direction: String, la
                 FlightFact(detailText(language, "cabin"), leg.cabinClass.ifBlank { "—" }.replaceFirstChar { it.uppercase() })
                 FlightFact(detailText(language, "flight_number"), leg.flightNumber)
             }
+        }
+    }
+}
+
+@Composable
+private fun PackageAirlineLogo(codeRaw: String?, size: Int) {
+    val code = codeRaw?.uppercase(Locale.US)?.takeIf { it.length == 2 }
+    Box(Modifier.size(size.dp).clip(RoundedCornerShape(14.dp)).background(Color.White), contentAlignment = Alignment.Center) {
+        if (code != null) {
+            AsyncImage(
+                model = "https://www.gstatic.com/flights/airline_logos/70px/$code.png",
+                contentDescription = code,
+                modifier = Modifier.size((size - 8).dp),
+                contentScale = ContentScale.Fit,
+            )
+        } else {
+            CupertinoIcon(CupertinoSymbol.Airplane, null, Modifier.size((size * .42f).dp), Color(0xFF2679FF))
         }
     }
 }

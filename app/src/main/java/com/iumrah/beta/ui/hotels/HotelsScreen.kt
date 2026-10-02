@@ -310,7 +310,7 @@ fun HotelsScreen(
             HotelsBoard.FLIGHTS -> {
                 item {
                     ShowcaseHero(
-                        image = R.drawable.iumrah_flights_showcase_v2,
+                        image = R.drawable.iumrah_flights_showcase,
                         title = "iumrah Flights",
                         description = hotelText(language, "flights_body"),
                         note = hotelText(language, "flights_note"),
@@ -367,6 +367,7 @@ fun HotelsScreen(
                         imageBackground = Color.White,
                     )
                 }
+                item { SundayClubComingSoonCard(language) }
             }
         }
     }
@@ -400,21 +401,21 @@ private fun AirportSelector(
 ) {
     IumrahPressable(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(66.dp),
-        cornerRadius = 19.dp,
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 17.dp,
         background = MaterialTheme.colorScheme.surfaceVariant,
         shadowElevation = 0.dp,
     ) {
         Row(
-            Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(11.dp),
+            horizontalArrangement = Arrangement.spacedBy(13.dp),
         ) {
             Box(
-                Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.background),
+                Modifier.size(38.dp).clip(CircleShape).background(Color(0xFF007AFF).copy(alpha = .12f)),
                 contentAlignment = Alignment.Center,
             ) {
-                CupertinoIcon(CupertinoSymbol.Airplane, null, Modifier.size(20.dp), MaterialTheme.colorScheme.onSurface)
+                CupertinoIcon(CupertinoSymbol.Airplane, null, Modifier.size(17.dp), Color(0xFF007AFF))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
@@ -580,9 +581,9 @@ private fun ShowcaseHero(image: Int, title: String, description: String, note: S
 
 @Composable
 private fun StorefrontSectionHeader(title: String, eyebrow: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(eyebrow.uppercase(), fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF30B0C7), letterSpacing = 0.6.sp)
-        Text(title, fontSize = 25.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp)
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Text(eyebrow.uppercase(), fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f), letterSpacing = .7.sp)
+        Text(title, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.7).sp)
     }
 }
 
@@ -598,52 +599,57 @@ private fun HotelStorefrontCard(
     onOpen: () -> Unit,
 ) {
     val shape = RoundedCornerShape(28.dp)
-    Row(
-        Modifier.fillMaxWidth().height(204.dp).clip(shape).background(MaterialTheme.colorScheme.surface).border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), shape).clickable { onOpen() },
-    ) {
-        Box(Modifier.width(116.dp).fillMaxSize()) {
-            HotelCollage(preview?.images.orEmpty(), hotel.coverImageURL)
-            Row(Modifier.padding(9.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                MediaCircle(onFavorite) {
-                    CupertinoIcon(if (favorite) CupertinoSymbol.HeartFill else CupertinoSymbol.Heart, null, Modifier.size(15.dp), if (favorite) Color(0xFFFF5C77) else Color.White)
-                }
-                MediaCircle(onShare) { CupertinoIcon(CupertinoSymbol.Share, null, Modifier.size(15.dp), Color.White) }
-            }
-        }
-        Column(
-            Modifier.weight(1f).fillMaxSize().padding(horizontal = 14.dp, vertical = 13.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp),
+    BoxWithConstraints(Modifier.fillMaxWidth().height(204.dp)) {
+        val mediaWidth = (maxWidth * .31f).coerceIn(108.dp, 122.dp)
+        Row(
+            Modifier.fillMaxSize().clip(shape).background(MaterialTheme.colorScheme.surface)
+                .border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), shape)
+                .clickable { onOpen() },
         ) {
-            Text(hotel.name, fontSize = 18.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                hotel.stars?.let { stars ->
-                    Text("★".repeat(stars.coerceIn(1, 5)), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFB000))
-                }
-                hotel.rating?.let { Text(String.format(Locale.US, "%.1f", it), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f)) }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                CupertinoIcon(CupertinoSymbol.Location, null, Modifier.size(13.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .5f))
-                Text(L10n.city(hotel.city, language), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), maxLines = 1)
-            }
-            Spacer(Modifier.weight(1f))
-            if (quote?.pricePerPerson != null) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(money(quote.pricePerPerson), fontSize = 25.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.55).sp, maxLines = 1)
-                    Spacer(Modifier.weight(1f))
-                    Text(hotelText(language, "per_pilgrim"), fontSize = 10.sp, lineHeight = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f), maxLines = 1)
-                }
-                quote.totalPackagePrice?.let {
-                    Text(hotelText(language, "package_total").replace("%@", money(it)), fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    CircularProgressIndicator(Modifier.size(15.dp), strokeWidth = 2.dp)
-                    Text(hotelText(language, "calculating"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), maxLines = 2)
+            Box(Modifier.width(mediaWidth).fillMaxHeight()) {
+                HotelCollage(preview?.images.orEmpty(), hotel.coverImageURL)
+                Row(Modifier.padding(9.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    MediaCircle(onFavorite) {
+                        CupertinoIcon(if (favorite) CupertinoSymbol.HeartFill else CupertinoSymbol.Heart, null, Modifier.size(14.dp), if (favorite) Color(0xFFFF5C77) else Color.White)
+                    }
+                    MediaCircle(onShare) { CupertinoIcon(CupertinoSymbol.Share, null, Modifier.size(14.dp), Color.White) }
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(hotelText(language, "includes"), Modifier.weight(1f), fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(12.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .28f))
+            Column(
+                Modifier.weight(1f).fillMaxHeight().padding(horizontal = 14.dp, vertical = 13.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Text(hotel.name, fontSize = 18.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    hotel.stars?.let { stars ->
+                        Text("★".repeat(stars.coerceIn(1, 5)), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFB000))
+                    }
+                    hotel.rating?.let { Text(String.format(Locale.US, "%.1f", it), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f)) }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    CupertinoIcon(CupertinoSymbol.Location, null, Modifier.size(13.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .5f))
+                    Text(L10n.city(hotel.city, language), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), maxLines = 1)
+                }
+                Spacer(Modifier.weight(1f))
+                if (quote?.pricePerPerson != null) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(money(quote.pricePerPerson), fontSize = 25.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.55).sp, maxLines = 1)
+                        Spacer(Modifier.weight(1f))
+                        Text(hotelText(language, "per_pilgrim"), fontSize = 10.sp, lineHeight = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f), maxLines = 1)
+                    }
+                    quote.totalPackagePrice?.let {
+                        Text(hotelText(language, "package_total").replace("%@", money(it)), fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.height(38.dp)) {
+                        CircularProgressIndicator(Modifier.size(15.dp), strokeWidth = 2.dp)
+                        Text(hotelText(language, "calculating"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), maxLines = 2)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(hotelText(language, "includes"), Modifier.weight(1f), fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(12.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .28f))
+                }
             }
         }
     }
@@ -755,7 +761,7 @@ private fun StorefrontFlightCard(
     Column(
         Modifier.fillMaxWidth().clip(shape).background(MaterialTheme.colorScheme.surface).border(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .06f), shape).clickable(enabled = packageSnapshot != null) { onClick() },
     ) {
-        Box(Modifier.fillMaxWidth().height(142.dp)) {
+        Box(Modifier.fillMaxWidth().height(118.dp)) {
             val media = packageSnapshot?.imageUrl?.takeIf { it.isNotBlank() }
                 ?: packageSnapshot?.hotelImages?.firstOrNull()
             if (media != null) {
@@ -770,19 +776,17 @@ private fun StorefrontFlightCard(
             }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .58f)))))
             Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.Bottom) {
-                Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                    CupertinoIcon(CupertinoSymbol.Airplane, null, Modifier.size(21.dp), Color.Black)
-                }
+                StorefrontAirlineLogo(option.outbound.airlineCode, 40)
                 Spacer(Modifier.weight(1f))
                 packageSnapshot?.let {
                     Text(packageTypeText(it, language), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(Color.Black.copy(alpha = .36f)).padding(horizontal = 10.dp, vertical = 7.dp))
                 }
             }
         }
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
             Row(verticalAlignment = Alignment.Top) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(routeTitle(option), fontSize = 18.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(routeTitle(option), fontSize = 17.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
                     Text(airlineTitle(option), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), maxLines = 2)
                 }
                 PackagePrice(packageSnapshot, loading, language)
@@ -814,7 +818,7 @@ private fun StorefrontFlightCard(
 
 @Composable
 private fun PackagePrice(snapshot: StorefrontPackageSnapshot?, loading: Boolean, language: AppLanguage) {
-    Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(122.dp)) {
+    Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(132.dp)) {
         when {
             snapshot?.pricePerPerson != null -> {
                 Text(money(snapshot.pricePerPerson), fontSize = 22.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
@@ -835,9 +839,76 @@ private fun PackagePrice(snapshot: StorefrontPackageSnapshot?, loading: Boolean,
 @Composable
 private fun FlightTime(leg: StorefrontFlightLeg, language: AppLanguage, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(dayText(leg.departureAt, language), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-        Text("${clockText(leg.departureAt)}  ${leg.origin} → ${leg.destination}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), maxLines = 1)
+        Text(dayText(leg.departureAt, language), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Text("${clockText(leg.departureAt)}  ${leg.origin} → ${leg.destination}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), maxLines = 1)
     }
+}
+
+@Composable
+private fun StorefrontAirlineLogo(codeRaw: String?, size: Int) {
+    val code = codeRaw?.uppercase(Locale.US)?.takeIf { it.length == 2 }
+    Box(
+        Modifier.size(size.dp).clip(RoundedCornerShape(10.dp)).background(Color.White),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (code != null) {
+            AsyncImage(
+                model = "https://www.gstatic.com/flights/airline_logos/70px/$code.png",
+                contentDescription = code,
+                modifier = Modifier.size((size - 6).dp),
+                contentScale = ContentScale.Fit,
+            )
+        } else {
+            CupertinoIcon(CupertinoSymbol.Airplane, null, Modifier.size((size / 2).dp), Color(0xFF007AFF))
+        }
+    }
+}
+
+@Composable
+private fun SundayClubComingSoonCard(language: AppLanguage) {
+    val orange = Color(0xFFFF9C2E)
+    val shape = RoundedCornerShape(30.dp)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .shadow(9.dp, shape, clip = false, ambientColor = orange.copy(alpha = .14f), spotColor = orange.copy(alpha = .14f))
+            .clip(shape)
+            .background(orange)
+            .border(.8.dp, Color.Black.copy(alpha = .06f), shape)
+            .padding(22.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = .92f)), contentAlignment = Alignment.Center) {
+                CupertinoIcon(CupertinoSymbol.CalendarClock, null, Modifier.size(20.dp), orange)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(sundaySoonBadge(language).uppercase(language.locale), fontSize = 12.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = .65.sp, color = Color.Black.copy(alpha = .58f))
+                Text("Sunday Umrah Club", fontSize = 23.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.3).sp, color = Color.Black)
+            }
+        }
+        Text(sundaySoonTitle(language), fontSize = 29.sp, lineHeight = 33.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.6).sp, color = Color.Black)
+        Text(sundaySoonBody(language), fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium, color = Color.Black.copy(alpha = .65f))
+    }
+}
+
+private fun sundaySoonBadge(language: AppLanguage) = when (language) {
+    AppLanguage.RUSSIAN -> "Скоро"
+    AppLanguage.ENGLISH -> "Coming soon"
+    AppLanguage.UZBEK -> "Tez orada"
+    AppLanguage.UZBEK_CYRILLIC -> "Тез орада"
+}
+private fun sundaySoonTitle(language: AppLanguage) = when (language) {
+    AppLanguage.RUSSIAN -> "Умра для выходных"
+    AppLanguage.ENGLISH -> "Umrah for the weekend"
+    AppLanguage.UZBEK -> "Dam olish kunlari uchun Umra"
+    AppLanguage.UZBEK_CYRILLIC -> "Дам олиш кунлари учун Умра"
+}
+private fun sundaySoonBody(language: AppLanguage) = when (language) {
+    AppLanguage.RUSSIAN -> "Скоро здесь появятся готовые пакеты Sunday Umrah Club — короткие поездки на выходные с уже собранными датами и маршрутом."
+    AppLanguage.ENGLISH -> "Ready Sunday Umrah Club packages are coming here soon — short weekend trips with dates and route already prepared."
+    AppLanguage.UZBEK -> "Tez orada bu yerda Sunday Umrah Club tayyor paketlari paydo bo‘ladi — dam olish kunlariga mos, sanalari va yo‘nalishi oldindan tuzilgan qisqa safarlar."
+    AppLanguage.UZBEK_CYRILLIC -> "Тез орада бу ерда Sunday Umrah Club тайёр пакетлари пайдо бўлади — дам олиш кунларига мос, саналари ва йўналиши олдиндан тузилган қисқа сафарлар."
 }
 
 @Composable

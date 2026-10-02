@@ -167,7 +167,7 @@ fun AppShell(
                     packageEngine = packageEngine,
                     journey = journey,
                     onBack = chrome::back,
-                    onOpenConfigurator = { chrome.openFinalPackage() },
+                    onOpenConfigurator = { packageId -> chrome.openFlightPackage(packageId) },
                 )
 
                 is AppRoute.ConfiguratorHotelSelection -> ConfiguratorHotelSelectionScreen(

@@ -1,0 +1,5 @@
+iumrah Android v11 — iOS Hotels strict parity pass
+Source of truth: kepler-ios-main(10).zip
+Scope: Hotels root tab, hotel storefront cards, Flights board reachable from Hotels, Sunday Umrah Club board, Hotel Detail, room cards, Hotel-First package option carousel, package detail reached from Hotels, Hotels navigation wiring.
+This patch is cumulative and includes prior v10 Home/Account parity payload.
+Date: 2026-10-02
