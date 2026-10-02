@@ -320,7 +320,6 @@ private fun ConfiguratorAirportGlobeDialog(
                         .weight(1f)
                         .pointerInput(Unit) {
                             detectDragGestures { change, dragAmount ->
-                                change.consume()
                                 rotation = (rotation + dragAmount.x * .32f) % 360f
                             }
                         },

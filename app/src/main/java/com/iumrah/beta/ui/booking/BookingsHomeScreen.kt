@@ -2061,16 +2061,16 @@ private fun DividerLine(start: androidx.compose.ui.unit.Dp) {
     )
 }
 
-private data class LifecyclePhase(val kind: LifecycleKind, val deadlineMs: Long, val symbol: CupertinoSymbol)
+private data class BookingHomeLifecyclePhase(val kind: LifecycleKind, val deadlineMs: Long, val symbol: CupertinoSymbol)
 private enum class LifecycleKind { AVAILABILITY, PRICE_LOCK, PAYMENT_CONFIRMATION, DOCUMENTS }
 
-private fun lifecyclePhase(session: StoredBookingSession): LifecyclePhase? {
+private fun lifecyclePhase(session: StoredBookingSession): BookingHomeLifecyclePhase? {
     return when (session.effectiveStatus.uppercase()) {
         "NEW", "AVAILABILITY_CHECK" -> lifecycleDeadline(
             explicit = session.availabilityDeadlineAt,
             start = session.availabilityStartedAt ?: session.booking.createdAt,
             durationMs = 6L * 60 * 60 * 1000,
-        )?.let { LifecyclePhase(LifecycleKind.AVAILABILITY, it, CupertinoSymbol.CalendarClock) }
+        )?.let { BookingHomeLifecyclePhase(LifecycleKind.AVAILABILITY, it, CupertinoSymbol.CalendarClock) }
 
         "PAYMENT_PENDING" -> {
             if (!session.paymentReceivedAt.isNullOrBlank()) {
@@ -2078,7 +2078,7 @@ private fun lifecyclePhase(session: StoredBookingSession): LifecyclePhase? {
                     explicit = session.paymentConfirmationDeadlineAt,
                     start = session.paymentReceivedAt,
                     durationMs = 10L * 60 * 1000,
-                )?.let { LifecyclePhase(LifecycleKind.PAYMENT_CONFIRMATION, it, CupertinoSymbol.CheckCircle) }
+                )?.let { BookingHomeLifecyclePhase(LifecycleKind.PAYMENT_CONFIRMATION, it, CupertinoSymbol.CheckCircle) }
             } else {
                 lifecycleDeadline(
                     explicit = session.priceLockExpiresAt,
@@ -2086,7 +2086,7 @@ private fun lifecyclePhase(session: StoredBookingSession): LifecyclePhase? {
                         ?: transitionDate("payment_pending", session)
                         ?: session.booking.updatedAt,
                     durationMs = 30L * 60 * 1000,
-                )?.let { LifecyclePhase(LifecycleKind.PRICE_LOCK, it, CupertinoSymbol.CreditCard) }
+                )?.let { BookingHomeLifecyclePhase(LifecycleKind.PRICE_LOCK, it, CupertinoSymbol.CreditCard) }
             }
         }
 
@@ -2097,7 +2097,7 @@ private fun lifecyclePhase(session: StoredBookingSession): LifecyclePhase? {
                 ?: transitionDate("paid", session)
                 ?: session.booking.updatedAt,
             durationMs = 24L * 60 * 60 * 1000,
-        )?.let { LifecyclePhase(LifecycleKind.DOCUMENTS, it, CupertinoSymbol.Document) }
+        )?.let { BookingHomeLifecyclePhase(LifecycleKind.DOCUMENTS, it, CupertinoSymbol.Document) }
 
         else -> null
     }

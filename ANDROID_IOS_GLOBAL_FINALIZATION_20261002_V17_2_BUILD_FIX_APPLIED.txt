@@ -1,0 +1,19 @@
+IUMRAH Android v17.2 cumulative build stabilization applied.
+
+Scope:
+- includes all cumulative iOS parity work through v17
+- includes v17.1 Kotlin compile fixes
+- isolates Booking home lifecycle model from Booking detail lifecycle model
+- removes explicit pointer consume call from Configurator airport globe drag handling for Compose API compatibility
+- Onboarding / Launch Experience intentionally unchanged
+- Umrah Advisor / Umrah Flow intentionally unchanged
+- Android Wallet remains Google Wallet — Coming Soon
+
+Validation available in this environment:
+- Stage 1–10 structural verification: PASS
+- API 36 build-environment verification: PASS
+- duplicate top-level Kotlin class scan: PASS
+- invalid directional Alignment alias scan: PASS
+- referenced Android resource scan: PASS
+
+A full Android Gradle compile cannot be executed in this container because the supplied repository has no Gradle wrapper or Android SDK.
