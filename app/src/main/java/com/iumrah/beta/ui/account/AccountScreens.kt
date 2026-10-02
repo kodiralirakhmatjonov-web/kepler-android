@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iumrah.beta.R
+import com.iumrah.beta.core.design.IumrahBookingStatusVisual
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppAppearance
@@ -178,19 +179,44 @@ private fun WalletSection(profile: IumrahAccountProfile, language: AppLanguage) 
                 CupertinoIcon(CupertinoSymbol.Wallet, null, Modifier.size(19.dp), Color.White)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(tr(language, "iumrah ID in Apple Wallet", "iumrah ID в Apple Wallet", "iumrah ID Apple Wallet’da", "iumrah ID Apple Wallet’да"), fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text(tr(language, "Keep your digital pilgrim ID and QR code available from Wallet.", "Храните цифровую ID-карту паломника и QR-код прямо в Wallet.", "Raqamli ziyoratchi ID va QR-kodni Wallet’da saqlang.", "Рақамли зиёратчи ID ва QR-кодни Wallet’да сақланг."), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, lineHeight = 18.sp)
+                Text(
+                    tr(language, "iumrah ID in Google Wallet", "iumrah ID в Google Wallet", "iumrah ID Google Wallet’da", "iumrah ID Google Wallet’да"),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                )
+                Text(
+                    tr(
+                        language,
+                        "Google Wallet support for your digital pilgrim ID and QR code is coming soon on Android.",
+                        "Поддержка цифровой карты паломника iumrah ID и QR-кода в Google Wallet скоро появится на Android.",
+                        "Raqamli ziyoratchi iumrah ID va QR-kodni Google Wallet’ga qo‘shish Android’da tez orada paydo bo‘ladi.",
+                        "Рақамли зиёратчи iumrah ID ва QR-кодни Google Wallet’га қўшиш Android’да тез орада пайдо бўлади.",
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                )
             }
         }
         Spacer(Modifier.height(16.dp))
         Row(
-            Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(15.dp)).background(Color.Black).padding(horizontal = 16.dp),
+            Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
-            CupertinoIcon(CupertinoSymbol.Apple, null, Modifier.size(19.dp), Color.White)
+            CupertinoIcon(CupertinoSymbol.Wallet, null, Modifier.size(19.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .58f))
             Spacer(Modifier.width(9.dp))
-            Text("Wallet", fontSize = 17.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
+            Text(
+                tr(language, "Google Wallet · Coming soon", "Google Wallet · Скоро", "Google Wallet · Tez orada", "Google Wallet · Тез орада"),
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f),
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }
@@ -198,7 +224,7 @@ private fun WalletSection(profile: IumrahAccountProfile, language: AppLanguage) 
 @Composable
 private fun ActiveTripCard(session: StoredBookingSession, language: AppLanguage, onOpen: () -> Unit) {
     val inTrip = session.effectiveStatus.uppercase() == "IN_TRIP"
-    val tint = if (inTrip) Color(0xFF34C759) else Color(0xFF1677FF)
+    val tint = IumrahBookingStatusVisual.color(session.effectiveStatus)
     val shape = RoundedCornerShape(CardRadius)
     Surface(
         onClick = onOpen,
@@ -355,14 +381,7 @@ private fun AccountDateChip(session:StoredBookingSession) {
 }
 
 private fun StoredBookingSession.isPastAccountTrip():Boolean = effectiveStatus.uppercase() in setOf("COMPLETED","CANCELLED")
-private fun statusTint(status:String):Color = when(status.uppercase()) {
-    "IN_TRIP" -> Color(0xFF34C759)
-    "READY_TO_TRAVEL", "BOOKING_CONFIRMED" -> Color(0xFF1677FF)
-    "PAYMENT_PENDING" -> Color(0xFFFF9500)
-    "COMPLETED" -> Color(0xFF8E8E93)
-    "CANCELLED" -> Color(0xFFFF3B30)
-    else -> Color(0xFF30B0C7)
-}
+private fun statusTint(status:String):Color = IumrahBookingStatusVisual.color(status)
 
 @Composable
 private fun ProfileSection(profile: IumrahAccountProfile, language: AppLanguage, onEdit: () -> Unit) {
@@ -835,3 +854,4 @@ private fun Segmented(labels: List<String>, selected: Int, onSelect: (Int) -> Un
 }
 private fun languageTitle(l:AppLanguage)=when(l){AppLanguage.ENGLISH->"English";AppLanguage.RUSSIAN->"Русский";AppLanguage.UZBEK->"O‘zbekcha";AppLanguage.UZBEK_CYRILLIC->"Ўзбекча"}
 private fun appearanceTitle(a:AppAppearance,l:AppLanguage)=when(a){AppAppearance.SYSTEM->tr(l,"System","Системная","Tizim","Тизим");AppAppearance.LIGHT->tr(l,"Light","Светлая","Yorug‘","Ёруғ");AppAppearance.DARK->tr(l,"Dark","Тёмная","Qorong‘i","Қоронғи")}
+

@@ -31,6 +31,19 @@ object IumrahDesign {
     val GlassIconSize = 46.dp
 }
 
+object IumrahBookingStatusVisual {
+    fun color(status: String): Color = when (status.uppercase()) {
+        "NEW", "AVAILABILITY_CHECK" -> IumrahColors.SystemYellow
+        "PAYMENT_PENDING", "AVAILABILITY_CONFIRMED" -> IumrahColors.SystemOrange
+        "PAID", "BOOKING_CONFIRMED" -> IumrahColors.SystemGreen
+        "DOCUMENTS_READY", "READY_TO_TRAVEL" -> IumrahColors.SystemTeal
+        "IN_TRIP" -> IumrahColors.SystemBlue
+        "COMPLETED" -> IumrahColors.SystemIndigo
+        "CANCELLED" -> IumrahColors.SystemRed
+        else -> IumrahColors.SystemOrange
+    }
+}
+
 object IumrahColors {
     // UIColor.systemBackground / grouped surfaces translated to deterministic ARGB.
     val LightPage = Color(0xFFFFFFFF)

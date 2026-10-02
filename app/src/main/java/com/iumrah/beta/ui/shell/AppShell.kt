@@ -74,6 +74,7 @@ import com.iumrah.beta.ui.flights.FlightDetailsScreen
 import com.iumrah.beta.ui.packageflow.TransferSelectionScreen
 import com.iumrah.beta.ui.packageflow.FinalPackageScreen
 import com.iumrah.beta.ui.booking.BookingCheckoutScreen
+import com.iumrah.beta.ui.booking.IumrahBookingCelebrationScreen
 import com.iumrah.beta.ui.booking.BookingDetailScreen
 import com.iumrah.beta.ui.booking.BookingHotelChangeScreen
 import com.iumrah.beta.ui.booking.BookingsHomeScreen
@@ -246,6 +247,7 @@ fun AppShell(
 
                 AppRoute.FinalPackage -> FinalPackageScreen(language, journey, hotelCatalog, packageEngine, chrome)
                 AppRoute.BookingCheckout -> BookingCheckoutScreen(language, journey, bookingStore, accountStore, chrome)
+                is AppRoute.BookingCelebration -> IumrahBookingCelebrationScreen(route.bookingID, language, bookingStore, chrome)
                 is AppRoute.BookingDetail -> BookingDetailScreen(
                     route.bookingID,
                     language,
@@ -266,7 +268,7 @@ fun AppShell(
                 AppRoute.TransferService -> IumrahTransferServiceScreen(language, chrome)
                 AppRoute.BackendSystem -> IumrahBackendSystemScreen(language, chrome)
                 AppRoute.IumrahStory -> IumrahStoryScreen(language, chrome)
-                AppRoute.Notifications -> NotificationsScreen(language, notifications, accountStore, bookingStore, chrome)
+                AppRoute.Notifications -> AccountSignalsParityScreen(language, notifications, accountStore, chrome)
                 AppRoute.AccountTravelers -> AccountTravelCompanionsParityScreen(language, accountStore, bookingStore, accountService, chrome)
                 is AppRoute.AccountTripsHistory -> AccountTripsHistoryScreen(language, bookingStore, chrome, route.initialPast)
                 AppRoute.AccountPasswordRecovery -> AccountPasswordRecoveryScreen(language, accountStore, chrome)

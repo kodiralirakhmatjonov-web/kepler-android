@@ -123,7 +123,7 @@ fun BookingCheckoutScreen(
                                     language=language,
                                     pilgrimProfile=BookingPilgrimProfile(firstName.trim(),lastName.trim(),telegram.trim(),whatsapp.trim()),
                                 )
-                            }.onSuccess { session -> busy=false;showProfile=false;chrome.openBookingDetail(session.id) }
+                            }.onSuccess { session -> busy=false;showProfile=false;chrome.openBookingCelebration(session.id) }
                                 .onFailure { cause -> busy=false;error=cause.message ?: checkoutTr(language,"Не удалось создать бронирование.","Booking could not be created.","Bron yaratilmadi.","Брон яратилмади.") }
                         }
                     }

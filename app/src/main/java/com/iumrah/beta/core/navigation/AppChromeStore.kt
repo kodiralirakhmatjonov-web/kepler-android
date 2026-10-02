@@ -23,6 +23,7 @@ sealed interface AppRoute {
     data object FinalPackage : AppRoute
     data object BookingCheckout : AppRoute
     data class BookingDetail(val bookingID: String) : AppRoute
+    data class BookingCelebration(val bookingID: String) : AppRoute
     data class BookingHotelChange(val bookingID: String, val role: String) : AppRoute
     data class PilgrimCheckout(val bookingID: String) : AppRoute
     data class BookingChat(val bookingID: String) : AppRoute
@@ -78,6 +79,7 @@ class AppChromeStore {
     fun openFinalPackage() = push(AppRoute.FinalPackage, tab = AppTab.BOOKING)
     fun openBookingCheckout() = push(AppRoute.BookingCheckout, tab = AppTab.BOOKING)
     fun openBookingDetail(id: String) = push(AppRoute.BookingDetail(id), tab = AppTab.BOOKING)
+    fun openBookingCelebration(id: String) = push(AppRoute.BookingCelebration(id), tab = AppTab.BOOKING)
     fun openBookingHotelChange(id: String, role: String) = push(AppRoute.BookingHotelChange(id, role), tab = AppTab.BOOKING)
     fun openPilgrimCheckout(id: String) = push(AppRoute.PilgrimCheckout(id), tab = AppTab.BOOKING)
     fun openBookingChat(id: String) = push(AppRoute.BookingChat(id), tab = AppTab.CARE)
@@ -87,6 +89,7 @@ class AppChromeStore {
     fun openUmrahPlan() = push(AppRoute.UmrahPlan, tab = AppTab.HOME)
     fun openTelegramIntegration() = push(AppRoute.TelegramIntegration, tab = AppTab.HOME)
     fun openAccountTelegramIntegration() = push(AppRoute.TelegramIntegration, tab = AppTab.ACCOUNT)
+    fun openBookingTelegramIntegration() = push(AppRoute.TelegramIntegration, tab = AppTab.BOOKING)
     fun openCareRequest() = push(AppRoute.CareRequest, tab = AppTab.HOME)
     fun openTransferService() = push(AppRoute.TransferService, tab = AppTab.HOME)
     fun openBackendSystem() = push(AppRoute.BackendSystem, tab = AppTab.HOME)

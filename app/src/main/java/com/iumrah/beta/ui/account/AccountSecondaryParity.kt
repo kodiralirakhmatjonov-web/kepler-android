@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iumrah.beta.R
+import com.iumrah.beta.core.design.IumrahBookingStatusVisual
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppLanguage
@@ -141,13 +142,7 @@ private fun ApSegmented(labels: List<String>, selected: Int, onSelect: (Int) -> 
 
 private fun isPastTrip(session: StoredBookingSession): Boolean = session.effectiveStatus.uppercase() in setOf("COMPLETED", "CANCELLED")
 
-private fun tripTint(status: String): Color = when (status.uppercase()) {
-    "COMPLETED", "BOOKING_CONFIRMED", "PAID" -> ApGreen
-    "CANCELLED" -> ApRed
-    "IN_TRIP" -> Color(0xFF007AFF)
-    "READY_TO_TRAVEL", "DOCUMENTS_READY" -> ApBlue
-    else -> ApOrange
-}
+private fun tripTint(status: String): Color = IumrahBookingStatusVisual.color(status)
 
 private fun tripIcon(status: String): CupertinoSymbol = when (status.uppercase()) {
     "COMPLETED" -> CupertinoSymbol.CheckCircleFill

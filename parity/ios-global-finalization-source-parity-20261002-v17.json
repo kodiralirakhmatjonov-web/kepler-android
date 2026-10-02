@@ -1,0 +1,29 @@
+{
+  "schema": "iumrah.android-ios-global-finalization.v17",
+  "generated_at": "2026-10-02",
+  "ios_source": {
+    "name": "kepler-ios-main(10).zip",
+    "sha256": "f6022357ff26e015ec431247ab1828b01b466c6e1b285aa360b1d058fb49a76e"
+  },
+  "android_base": {
+    "name": "kepler-android-main(4).zip",
+    "sha256": "2f2b310ae82b5b6f7828849ac8172b43145633ae4b125064adfac4462a45d447"
+  },
+  "excluded_by_user": [
+    "Onboarding / Launch Experience",
+    "Umrah Advisor / Umrah Flow"
+  ],
+  "platform_specific": {
+    "wallet": "Google Wallet · Coming Soon replaces Apple Wallet on Android",
+    "airport_globe": "Native Compose globe; no paid Maps SDK/API key"
+  },
+  "global_fixes": [
+    "semantic booking status colors",
+    "notification routing",
+    "booking Telegram routing",
+    "post-booking celebration",
+    "iumrah Care explanation sheet",
+    "airport globe picker",
+    "Google Wallet coming soon"
+  ]
+}

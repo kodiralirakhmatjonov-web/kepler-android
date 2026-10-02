@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.iumrah.beta.core.config.AppConfig
+import com.iumrah.beta.core.design.IumrahBookingStatusVisual
 import com.iumrah.beta.core.localization.L10n
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.settings.AppLanguage
@@ -36,6 +37,7 @@ import com.iumrah.beta.models.booking.StoredBookingSession
 import com.iumrah.beta.ui.components.IumrahPressable
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
+import com.iumrah.beta.ui.packageflow.UmrahCarePackageExplanationSheet
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -67,6 +69,7 @@ fun BookingDetailScreen(
     var whatsapp by remember(session?.whatsapp) { mutableStateOf(session?.whatsapp.orEmpty()) }
     var editContacts by remember { mutableStateOf(false) }
     var deletePrompt by remember { mutableStateOf(false) }
+    var showCareExplanation by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(bookingID) {
@@ -110,6 +113,10 @@ fun BookingDetailScreen(
         )
     }
 
+    if (showCareExplanation) {
+        UmrahCarePackageExplanationSheet(language = language, onDismiss = { showCareExplanation = false })
+    }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -148,7 +155,7 @@ fun BookingDetailScreen(
                 BookingMetaCard(session, language)
 
                 if (session.booking.perPilgrimUsd >= 1800.0) {
-                    BookingBalanceCard(language)
+                    BookingBalanceCard(language, onExplain = { showCareExplanation = true })
                 }
 
                 if (itinerary.isNotEmpty()) {
@@ -509,13 +516,43 @@ private fun SummaryRow(title: String, value: String) {
 }
 
 @Composable
-private fun BookingBalanceCard(language: AppLanguage) {
-    BookingCard {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            BookingIconBadge(CupertinoSymbol.HeartFill, BookingCareLight, size = 44.dp, symbolSize = 18.dp, radius = 15.dp)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text("iumrah Care Balance", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                Text(bookingText(language, "Поддержка включена в ваш пакет", "Care support is included in your package", "Care yordami paketingizga kiritilgan", "Care ёрдами пакетингизга киритилган"), fontSize = 13.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .54f))
+private fun BookingBalanceCard(language: AppLanguage, onExplain: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .background(bookingIosCard())
+            .border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .06f), RoundedCornerShape(28.dp)),
+    ) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(com.iumrah.beta.R.drawable.care_price_support),
+            contentDescription = null,
+            modifier = Modifier.fillMaxWidth().background(Color.Black),
+            contentScale = ContentScale.FillWidth,
+        )
+        Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                bookingText(language, "iumrah Care проверит баланс вашей поездки", "iumrah Care will review your journey balance", "iumrah Care safaringiz muvozanatini tekshiradi", "iumrah Care сафарингиз мувозанатини текширади"),
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                bookingText(language, "Цена этой поездки выше обычного ориентира. До окончательного оформления мы дополнительно проверим более удобные рейсы, распределение ночей и сопоставимые отели, чтобы стабилизировать поездку без потери качества.", "This trip is above our usual reference range. Before final ticketing we will review more convenient flights, night allocation and comparable hotels to stabilize the journey without compromising quality.", "Bu safar odatiy mo‘ljaldan yuqoriroq. Yakuniy rasmiylashtirishdan oldin qulayroq reyslar, tunlar taqsimoti va mos mehmonxonalar yana tekshiriladi.", "Бу сафар одатий мўлжалдан юқорироқ. Якуний расмийлаштиришдан олдин қулайроқ рейслар, тунлар тақсимоти ва мос меҳмонхоналар яна текширилади."),
+                fontSize = 14.sp,
+                lineHeight = 19.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = .56f),
+            )
+            IumrahPressable(
+                onClick = onExplain,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                cornerRadius = 18.dp,
+                background = bookingIosRaised(),
+                shadowElevation = 0.dp,
+            ) {
+                Row(Modifier.fillMaxSize().padding(horizontal = 15.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(bookingText(language, "Как это работает", "How it works", "Qanday ishlaydi", "Қандай ишлайди"), modifier = Modifier.weight(1f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    CupertinoIcon(CupertinoSymbol.ArrowUpRight, null, Modifier.size(15.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .48f))
+                }
             }
         }
     }
@@ -927,14 +964,17 @@ private fun BookingTelegramCompactCard(session: StoredBookingSession, language: 
     }
 }
 
-private fun bookingStatusVisual(status: String): Pair<CupertinoSymbol, Color> = when (status) {
-    "AVAILABILITY_CHECK", "NEW" -> CupertinoSymbol.Hourglass to Color(0xFFFFCC00)
-    "PAYMENT_PENDING" -> CupertinoSymbol.CreditCard to Color(0xFF007AFF)
-    "BOOKING_CONFIRMED" -> CupertinoSymbol.CheckCircleFill to Color(0xFF34C759)
-    "READY_TO_TRAVEL" -> CupertinoSymbol.Passport to Color(0xFF34C759)
-    "IN_TRIP" -> CupertinoSymbol.Airplane to Color(0xFF5856D6)
-    "COMPLETED" -> CupertinoSymbol.CheckCircleFill to Color(0xFF34C759)
-    else -> CupertinoSymbol.ExclamationCircle to Color(0xFFFF3B30)
+private fun bookingStatusVisual(status: String): Pair<CupertinoSymbol, Color> {
+    val icon = when (status.uppercase()) {
+        "AVAILABILITY_CHECK", "NEW" -> CupertinoSymbol.Hourglass
+        "PAYMENT_PENDING", "AVAILABILITY_CONFIRMED" -> CupertinoSymbol.CreditCard
+        "PAID", "BOOKING_CONFIRMED" -> CupertinoSymbol.CheckCircleFill
+        "DOCUMENTS_READY", "READY_TO_TRAVEL" -> CupertinoSymbol.ShieldCheck
+        "IN_TRIP" -> CupertinoSymbol.Airplane
+        "COMPLETED" -> CupertinoSymbol.CheckCircleFill
+        else -> CupertinoSymbol.ExclamationCircle
+    }
+    return icon to IumrahBookingStatusVisual.color(status)
 }
 
 private fun bookingStatusText(status: String, language: AppLanguage): String = when (status) {

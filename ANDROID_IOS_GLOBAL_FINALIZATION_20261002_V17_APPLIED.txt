@@ -1,0 +1,17 @@
+ANDROID iOS GLOBAL FINALIZATION v17 APPLIED
+Date: 2026-10-02
+Source of truth: kepler-ios-main(10).zip
+Base Android: kepler-android-main(4).zip
+
+Scope:
+- Global parity/finalization pass over already ported Android surfaces.
+- Onboarding intentionally excluded by user request.
+- Umrah Advisor / Umrah Flow intentionally excluded by user request.
+- Apple Wallet surface replaced with Google Wallet · Coming Soon on Android.
+- Booking status semantic colors unified with current iOS status visuals.
+- Notification bell routed to the complete Signal / Reminders / Telegram surface.
+- Booking Telegram CTA wired to real Telegram integration flow.
+- Post-booking iOS-style celebration flow restored.
+- iumrah Care package explanation sheet restored.
+- Configurator airport globe chooser restored with a dependency-free Compose globe.
+- Existing Home / Hotels / Booking / Care / Account / Ziyarats / eSIM / Flights / Umrah Plan parity work preserved.

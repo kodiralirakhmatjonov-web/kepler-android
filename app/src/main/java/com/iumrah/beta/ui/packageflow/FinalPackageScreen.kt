@@ -107,6 +107,7 @@ fun FinalPackageScreen(
     var focusedTier by remember { mutableStateOf(state.trip.packageTier) }
     var isLoadingComparisons by remember { mutableStateOf(false) }
     var isApplyingComparison by remember { mutableStateOf(false) }
+    var showCareExplanation by remember { mutableStateOf(false) }
 
     LaunchedEffect(
         quote?.quoteId,
@@ -187,11 +188,11 @@ fun FinalPackageScreen(
         )
         PackageRecommendationCard(language, focusedOption.tier)
         PackageDifferenceCard(language, state, focusedOption)
-        PackageSupportCard(language)
+        PackageSupportCard(language, onCareExplanation = { showCareExplanation = true })
         IncludedServicesCard(language, state)
         RefundPolicyCard(language)
         ManualPaymentCard(language)
-        CareReassuranceCard(language)
+        CareReassuranceCard(language, onExplain = { showCareExplanation = true })
         NotificationCard(language)
         if (focusedOption.tier == state.trip.packageTier) {
             FinalBlackButton(
@@ -214,6 +215,10 @@ fun FinalPackageScreen(
             )
         }
         Spacer(Modifier.height(32.dp))
+    }
+
+    if (showCareExplanation) {
+        UmrahCarePackageExplanationSheet(language = language, onDismiss = { showCareExplanation = false })
     }
 }
 
@@ -533,7 +538,7 @@ private fun PackageRecommendationCard(language: AppLanguage, tier: PackageTier) 
 }
 
 @Composable
-private fun PackageSupportCard(language: AppLanguage) {
+private fun PackageSupportCard(language: AppLanguage, onCareExplanation: () -> Unit) {
     var expanded by remember { mutableStateOf<SupportExplainer?>(null) }
     Column(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(MaterialTheme.colorScheme.surface).padding(18.dp),
@@ -550,7 +555,7 @@ private fun PackageSupportCard(language: AppLanguage) {
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f),
         )
         SupportRow(language, CupertinoSymbol.Document, SupportExplainer.VISA, expanded, { expanded = if (expanded == it) null else it })
-        SupportRow(language, CupertinoSymbol.Heart, SupportExplainer.CARE, expanded, { expanded = if (expanded == it) null else it })
+        SupportRow(language, CupertinoSymbol.Heart, SupportExplainer.CARE, expanded, { onCareExplanation() })
         SupportRow(language, CupertinoSymbol.Persons, SupportExplainer.GUIDE, expanded, { expanded = if (expanded == it) null else it })
     }
 }
@@ -850,8 +855,7 @@ private fun ManualPaymentCard(language: AppLanguage) {
 }
 
 @Composable
-private fun CareReassuranceCard(language: AppLanguage) {
-    var expanded by remember { mutableStateOf(false) }
+private fun CareReassuranceCard(language: AppLanguage, onExplain: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).background(MaterialTheme.colorScheme.surface),
     ) {
@@ -879,7 +883,7 @@ private fun CareReassuranceCard(language: AppLanguage) {
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f),
             )
             IumrahPressable(
-                onClick = { expanded = !expanded },
+                onClick = onExplain,
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 cornerRadius = 18.dp,
                 background = Color.Black,
@@ -889,20 +893,6 @@ private fun CareReassuranceCard(language: AppLanguage) {
                     Spacer(Modifier.weight(1f))
                     Icon(CupertinoSymbol.ArrowUpRight, null, modifier = Modifier.size(17.dp), tint = Color.White)
                 }
-            }
-            AnimatedVisibility(expanded) {
-                Text(
-                    finalText(
-                        language,
-                        "После бронирования команда Care проверит логику маршрута и доступные альтернативы. Если найдётся вариант заметно удобнее без потери качества, его предложат до окончательного подтверждения компонентов.",
-                        "After booking, the Care team reviews the route logic and available alternatives. If a clearly more convenient option is available without reducing quality, it can be proposed before the components are finally confirmed.",
-                        "Bron qilingandan keyin Care jamoasi yo‘nalish mantiqini va mavjud alternativalarni tekshiradi. Sifatni pasaytirmasdan ancha qulay variant topilsa, komponentlar yakuniy tasdiqlanishidan oldin taklif qilinadi.",
-                        "Брон қилингандан кейин Care жамоаси йўналиш мантиғини ва мавжуд альтернативаларни текширади. Сифатни пасайтирмасдан анча қулай вариант топилса, компонентлар якуний тасдиқланишидан олдин таклиф қилинади.",
-                    ),
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f),
-                )
             }
         }
     }

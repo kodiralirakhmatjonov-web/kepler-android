@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iumrah.beta.R
 import com.iumrah.beta.core.design.IumrahHaptics
+import com.iumrah.beta.core.design.IumrahBookingStatusVisual
 import com.iumrah.beta.core.localization.L10n
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.navigation.AppTab
@@ -272,15 +273,15 @@ private fun ActiveBookingHome(
 
         item {
             Spacer(Modifier.height(28.dp))
-            RootTelegramCompactCard(language, session)
+            RootTelegramCompactCard(language, session, chrome)
         }
     }
 }
 
 @Composable
-private fun RootTelegramCompactCard(language: AppLanguage, session: StoredBookingSession) {
+private fun RootTelegramCompactCard(language: AppLanguage, session: StoredBookingSession, chrome: AppChromeStore) {
     IumrahPressable(
-        onClick = { },
+        onClick = chrome::openBookingTelegramIntegration,
         modifier = Modifier.fillMaxWidth(),
         cornerRadius = 24.dp,
         background = bookingCardColor(),
@@ -2201,16 +2202,7 @@ private fun progressIndex(status: String): Int = when (status.uppercase()) {
     else -> 1
 }
 
-private fun statusColor(status: String): Color = when (status.uppercase()) {
-    "NEW", "AVAILABILITY_CHECK" -> iOSYellow
-    "PAYMENT_PENDING" -> iOSOrange
-    "PAID", "BOOKING_CONFIRMED" -> iOSGreen
-    "DOCUMENTS_READY", "READY_TO_TRAVEL" -> iOSTeal
-    "IN_TRIP" -> iOSBlue
-    "COMPLETED" -> iOSIndigo
-    "CANCELLED" -> iOSRed
-    else -> iOSOrange
-}
+private fun statusColor(status: String): Color = IumrahBookingStatusVisual.color(status)
 
 private fun statusIcon(status: String): CupertinoSymbol = when (status.uppercase()) {
     "NEW", "AVAILABILITY_CHECK" -> CupertinoSymbol.Hourglass
