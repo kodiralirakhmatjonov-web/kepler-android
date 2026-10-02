@@ -1,0 +1,17 @@
+iumrah Android cumulative parity update v15
+Date: 2026-10-02
+Source of truth: kepler-ios-main(10).zip
+Baseline: kepler-android-main(4).zip
+
+Included in this pass:
+- iumrah Flights live-status destination (separate from Configurator flight selection)
+- Umrah Plan with persistent trip plan and scheduled Android reminders
+- Telegram booking integration with live backend endpoints
+- Iumrah Care Request builder with live backend submission
+- Standalone Iumrah Transfer Service
+- iumrah Backend System presentation
+- iumrah Story / About page
+- Home CTA wiring to each destination
+
+Intentionally excluded per user request: Umrah Advisor / Umrah Flow.
+Cumulative: preserves v10 Home/Account, v11 Hotels, v12 Booking, v13 Care/Chat, v14 Ziyarats/eSIM.

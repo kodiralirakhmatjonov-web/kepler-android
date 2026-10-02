@@ -139,7 +139,7 @@ fun HomeScreen(
         item { PhilosophyCard(language) }
         item { ConnectedTripCard(language) }
         item { PersonalUmrahFAQ(language) }
-        item { AboutFooter(language) }
+        item { AboutFooter(language, chrome) }
     }
 
     storyStartIndex?.let { start -> EmotionalJourneyFullscreen(language = language, initialPage = start, onClose = { storyStartIndex = null }) }
@@ -373,31 +373,31 @@ private fun ServicesSection(language: AppLanguage, chrome: AppChromeStore) {
     val ziyaratImages = listOf(R.drawable.ziyarat_quba_1, R.drawable.ziyarat_quba_2, R.drawable.ziyarat_quba_3, R.drawable.ziyarat_quba_4, R.drawable.ziyarat_quba_5)
     val serviceItems = when (language) {
         AppLanguage.RUSSIAN -> listOf(
-            ServiceItem(transferImages, "Iumrah Transfer", "Встреча в аэропорту и приватные поездки между ключевыми точками маршрута. Комфортный автомобиль под Ваш формат поездки.", "В пакете", CupertinoSymbol.Car, chrome::openTransferSelection),
+            ServiceItem(transferImages, "Iumrah Transfer", "Встреча в аэропорту и приватные поездки между ключевыми точками маршрута. Комфортный автомобиль под Ваш формат поездки.", "В пакете", CupertinoSymbol.Car, chrome::openTransferService),
             ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Места Мекки и Медины в одном маршруте. История, навигация и понятный порядок посещения без лишней суеты.", "Маршруты", CupertinoSymbol.Location, chrome::openZiyarats),
             ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Интернет в Саудовской Аравии готов к подключению сразу после приземления — без поиска SIM-карты в аэропорту.", "Связь", CupertinoSymbol.SignalWave, chrome::openESIM),
-            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Статус Вашего рейса в реальном времени: изменения времени, задержки и важные обновления поездки в одном месте.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
+            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Статус Вашего рейса в реальном времени: изменения времени, задержки и важные обновления поездки в одном месте.", "Live status", CupertinoSymbol.Airplane, chrome::openLiveFlights),
             ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Человеческая поддержка, когда она действительно нужна: до поездки, в Саудовской Аравии и во время возвращения домой.", "Поддержка", CupertinoSymbol.HeartFill) { chrome.navigate(AppTab.CARE) },
         )
         AppLanguage.ENGLISH -> listOf(
-            ServiceItem(transferImages, "Iumrah Transfer", "Airport pickup and private rides between key stops, with the right vehicle for your journey.", "Included", CupertinoSymbol.Car, chrome::openTransferSelection),
+            ServiceItem(transferImages, "Iumrah Transfer", "Airport pickup and private rides between key stops, with the right vehicle for your journey.", "Included", CupertinoSymbol.Car, chrome::openTransferService),
             ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Makkah and Madinah places in one route, with context, navigation and a clear visit sequence.", "Routes", CupertinoSymbol.Location, chrome::openZiyarats),
             ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Saudi internet ready from arrival, without having to search for a local SIM card at the airport.", "Connectivity", CupertinoSymbol.SignalWave, chrome::openESIM),
-            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Real-time flight status with schedule changes, delays and important journey updates in one place.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
+            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Real-time flight status with schedule changes, delays and important journey updates in one place.", "Live status", CupertinoSymbol.Airplane, chrome::openLiveFlights),
             ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Human support when it matters — before the trip, in Saudi Arabia and on the way home.", "Support", CupertinoSymbol.HeartFill) { chrome.navigate(AppTab.CARE) },
         )
         AppLanguage.UZBEK -> listOf(
-            ServiceItem(transferImages, "Iumrah Transfer", "Aeroportdan kutib olish va yo‘nalishning muhim nuqtalari orasida safaringizga mos xususiy transport.", "Paketda", CupertinoSymbol.Car, chrome::openTransferSelection),
+            ServiceItem(transferImages, "Iumrah Transfer", "Aeroportdan kutib olish va yo‘nalishning muhim nuqtalari orasida safaringizga mos xususiy transport.", "Paketda", CupertinoSymbol.Car, chrome::openTransferService),
             ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Makka va Madina ziyorat joylari bitta yo‘nalishda: ma’lumot, navigatsiya va tushunarli tashrif tartibi.", "Yo‘nalishlar", CupertinoSymbol.Location, chrome::openZiyarats),
             ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Saudiya Arabistonida internet qo‘nganingizdan boshlab tayyor — aeroportda SIM-karta izlash shart emas.", "Internet", CupertinoSymbol.SignalWave, chrome::openESIM),
-            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Parvoz holati real vaqtda: vaqt o‘zgarishi, kechikish va safar uchun muhim yangilanishlar bir joyda.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
+            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Parvoz holati real vaqtda: vaqt o‘zgarishi, kechikish va safar uchun muhim yangilanishlar bir joyda.", "Live status", CupertinoSymbol.Airplane, chrome::openLiveFlights),
             ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Kerak bo‘lgan paytda insoniy yordam — safardan oldin, Saudiya Arabistonida va uyga qaytishda.", "Yordam", CupertinoSymbol.HeartFill) { chrome.navigate(AppTab.CARE) },
         )
         AppLanguage.UZBEK_CYRILLIC -> listOf(
-            ServiceItem(transferImages, "Iumrah Transfer", "Аэропортдан кутиб олиш ва йўналишнинг муҳим нуқталари орасида сафарингизга мос хусусий транспорт.", "Пакетда", CupertinoSymbol.Car, chrome::openTransferSelection),
+            ServiceItem(transferImages, "Iumrah Transfer", "Аэропортдан кутиб олиш ва йўналишнинг муҳим нуқталари орасида сафарингизга мос хусусий транспорт.", "Пакетда", CupertinoSymbol.Car, chrome::openTransferService),
             ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Макка ва Мадина зиёрат жойлари битта йўналишда: маълумот, навигация ва тушунарли ташриф тартиби.", "Йўналишлар", CupertinoSymbol.Location, chrome::openZiyarats),
             ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Саудия Арабистонида интернет қўнганингиздан бошлаб тайёр — аэропортда SIM-карта излаш шарт эмас.", "Интернет", CupertinoSymbol.SignalWave, chrome::openESIM),
-            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Парвоз ҳолати реал вақтда: вақт ўзгариши, кечикиш ва сафар учун муҳим янгиланишлар бир жойда.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
+            ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Парвоз ҳолати реал вақтда: вақт ўзгариши, кечикиш ва сафар учун муҳим янгиланишлар бир жойда.", "Live status", CupertinoSymbol.Airplane, chrome::openLiveFlights),
             ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Керак бўлган пайтда инсоний ёрдам — сафардан олдин, Саудия Арабистонида ва уйга қайтишда.", "Ёрдам", CupertinoSymbol.HeartFill) { chrome.navigate(AppTab.CARE) },
         )
     }
@@ -745,8 +745,8 @@ private fun HomeIntegrationsSection(language: AppLanguage, chrome: AppChromeStor
             tr(language, "Планируйте следующую Umrah, подключайте Telegram и используйте новые возможности iumrah в одном месте.", "Plan your next Umrah, connect Telegram and access new iumrah integrations in one place.", "Keyingi Umrani rejalashtiring, Telegram’ni ulang va yangi iumrah integratsiyalaridan bir joyda foydalaning.", "Кейинги Умрани режалаштиринг, Telegram’ни уланг ва янги iumrah интеграцияларидан бир жойда фойдаланинг."),
         )
         LazyRow(state = rowState, horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
-            item { IntegrationCard(language, cardWidth, R.drawable.home_integration_calendar, tr(language, "ПЛАНИРОВАНИЕ", "PLANNING", "REJALASHTIRISH", "РЕЖАЛАШТИРИШ"), tr(language, "Запланировать Umrah", "Plan your Umrah", "Umrani rejalashtirish", "Умрани режалаштириш"), tr(language, "Выберите будущие даты и настройте напоминания за 2 месяца, месяц и последние дни перед поездкой.", "Choose future dates and set reminders for two months, one month and the final days before departure.", "Kelajakdagi sanalarni tanlang va safargacha 2 oy, 1 oy hamda so‘nggi kunlar uchun eslatmalarni sozlang.", "Келажакдаги саналарни танланг ва сафаргача 2 ой, 1 ой ҳамда сўнгги кунлар учун эслатмаларни созланг."), tr(language, "Запланировать", "Plan trip", "Rejalashtirish", "Режалаштириш")) { chrome.startNewTrip() } }
-            item { IntegrationCard(language, cardWidth, R.drawable.telegram_integration_hero, "Telegram", tr(language, "Статус бронирования в Telegram", "Booking status in Telegram", "Bron holati Telegram’da", "Брон ҳолати Telegram’да"), tr(language, "Получайте изменения статуса, оплаты, подтверждения и документов прямо в Telegram.", "Receive status, payment, confirmation and document updates directly in Telegram.", "Status, to‘lov, tasdiq va hujjat yangilanishlarini to‘g‘ridan-to‘g‘ri Telegram’da oling.", "Статус, тўлов, тасдиқ ва ҳужжат янгиланишларини тўғридан-тўғри Telegram’да олинг."), tr(language, "Открыть Telegram", "Open Telegram", "Telegram’ni ochish", "Telegram’ни очиш")) { chrome.navigate(AppTab.ACCOUNT) } }
+            item { IntegrationCard(language, cardWidth, R.drawable.home_integration_calendar, tr(language, "ПЛАНИРОВАНИЕ", "PLANNING", "REJALASHTIRISH", "РЕЖАЛАШТИРИШ"), tr(language, "Запланировать Umrah", "Plan your Umrah", "Umrani rejalashtirish", "Умрани режалаштириш"), tr(language, "Выберите будущие даты и настройте напоминания за 2 месяца, месяц и последние дни перед поездкой.", "Choose future dates and set reminders for two months, one month and the final days before departure.", "Kelajakdagi sanalarni tanlang va safargacha 2 oy, 1 oy hamda so‘nggi kunlar uchun eslatmalarni sozlang.", "Келажакдаги саналарни танланг ва сафаргача 2 ой, 1 ой ҳамда сўнгги кунлар учун эслатмаларни созланг."), tr(language, "Запланировать", "Plan trip", "Rejalashtirish", "Режалаштириш")) { chrome.openUmrahPlan() } }
+            item { IntegrationCard(language, cardWidth, R.drawable.telegram_integration_hero, "Telegram", tr(language, "Статус бронирования в Telegram", "Booking status in Telegram", "Bron holati Telegram’da", "Брон ҳолати Telegram’да"), tr(language, "Получайте изменения статуса, оплаты, подтверждения и документов прямо в Telegram.", "Receive status, payment, confirmation and document updates directly in Telegram.", "Status, to‘lov, tasdiq va hujjat yangilanishlarini to‘g‘ridan-to‘g‘ri Telegram’da oling.", "Статус, тўлов, тасдиқ ва ҳужжат янгиланишларини тўғридан-тўғри Telegram’да олинг."), tr(language, "Открыть Telegram", "Open Telegram", "Telegram’ni ochish", "Telegram’ни очиш")) { chrome.openTelegramIntegration() } }
             item { IntegrationCard(language, cardWidth, R.drawable.home_integration_soon, tr(language, "СКОРО", "COMING SOON", "TEZ ORADA", "ТЕЗ ОРАДА"), tr(language, "Следующая интеграция", "Next integration", "Keyingi integratsiya", "Кейинги интеграция"), tr(language, "Мы готовим ещё один способ связать iumrah с сервисами, которыми Вы пользуетесь каждый день.", "We are preparing another way to connect iumrah with the services you use every day.", "iumrah’ni har kuni foydalanadigan servislaringiz bilan bog‘lashning yana bir usulini tayyorlayapmiz.", "iumrah’ни ҳар куни фойдаланадиган сервисларингиз билан боғлашнинг яна бир усулини тайёрлаяпмиз."), null, null) }
         }
         HomeCarouselDots(3, selected)
@@ -793,7 +793,7 @@ private fun BuildMyUmrahSection(language: AppLanguage, chrome: AppChromeStore) {
         )
         LazyRow(state = rowState, horizontalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
             item { ConfiguratorCard(language, chrome, cardWidth) }
-            item { CareBuilderCard(language, cardWidth) { chrome.navigate(AppTab.CARE) } }
+            item { CareBuilderCard(language, cardWidth) { chrome.openCareRequest() } }
         }
         HomeCarouselDots(2, selected)
     }
@@ -890,7 +890,7 @@ private fun ProductsSection(language: AppLanguage, chrome: AppChromeStore) {
     Column(verticalArrangement = Arrangement.spacedBy(15.dp)) {
         SectionHeader(tr(language, "Наши продукты", "Our products", "Mahsulotlarimiz", "Маҳсулотларимиз"))
         LazyRow(state = rowState, horizontalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
-            item { BackendSystemCard(language, cardWidth) }
+            item { BackendSystemCard(language, chrome, cardWidth) }
             item { AdvisorCard(language, chrome, cardWidth) }
             item { SundayUmrahClubCard(language, chrome, cardWidth) }
         }
@@ -920,8 +920,9 @@ private fun SundayUmrahClubCard(language: AppLanguage, chrome: AppChromeStore, c
 }
 
 @Composable
-private fun BackendSystemCard(language: AppLanguage, cardWidth: androidx.compose.ui.unit.Dp) {
+private fun BackendSystemCard(language: AppLanguage, chrome: AppChromeStore, cardWidth: androidx.compose.ui.unit.Dp) {
     val shape = RoundedCornerShape(34.dp)
+    IumrahPressable(onClick = chrome::openBackendSystem, modifier = Modifier.width(cardWidth).height(472.dp), cornerRadius = 34.dp, background = Color.Transparent, shadowElevation = 0.dp) {
     Column(
         Modifier.width(cardWidth).height(472.dp).clip(shape).background(Color(0xFF060608))
             .border(.8.dp, Color.White.copy(alpha = .08f), shape)
@@ -952,6 +953,7 @@ private fun BackendSystemCard(language: AppLanguage, cardWidth: androidx.compose
                 Icon(CupertinoSymbol.ChevronRight, null, tint = Color.White.copy(alpha = .90f), modifier = Modifier.size(11.dp))
             }
         }
+    }
     }
 }
 
@@ -1213,31 +1215,33 @@ private fun PersonalUmrahFAQ(language: AppLanguage) {
 }
 
 @Composable
-private fun AboutFooter(language: AppLanguage) {
+private fun AboutFooter(language: AppLanguage, chrome: AppChromeStore) {
     val shape = RoundedCornerShape(34.dp)
-    Column(
-        Modifier.fillMaxWidth().clip(shape).background(MaterialTheme.colorScheme.surface)
-            .border(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .07f), shape),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
-        Box(Modifier.fillMaxWidth().height(236.dp)) {
-            Image(painterResource(R.drawable.about_iumrah_kaaba_corner), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = .62f)))))
-            Column(Modifier.align(Alignment.BottomStart).padding(18.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(tr(language, "3 ГОДА ОПЫТА", "3 YEARS OF EXPERIENCE", "3 YILLIK TAJRIBA", "3 ЙИЛЛИК ТАЖРИБА"), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = .9.sp, color = Color.White.copy(alpha = .76f))
-                Text(tr(language, "О проекте iumrah", "About iumrah", "iumrah haqida", "iumrah ҳақида"), fontSize = 27.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.55).sp, color = Color.White)
+    IumrahPressable(onClick = chrome::openIumrahStory, modifier = Modifier.fillMaxWidth(), cornerRadius = 34.dp, background = Color.Transparent, shadowElevation = 0.dp) {
+        Column(
+            Modifier.fillMaxWidth().clip(shape).background(MaterialTheme.colorScheme.surface)
+                .border(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .07f), shape),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            Box(Modifier.fillMaxWidth().height(236.dp)) {
+                Image(painterResource(R.drawable.about_iumrah_kaaba_corner), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = .62f)))))
+                Column(Modifier.align(Alignment.BottomStart).padding(18.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(tr(language, "3 ГОДА ОПЫТА", "3 YEARS OF EXPERIENCE", "3 YILLIK TAJRIBA", "3 ЙИЛЛИК ТАЖРИБА"), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = .9.sp, color = Color.White.copy(alpha = .76f))
+                    Text(tr(language, "О проекте iumrah", "About iumrah", "iumrah haqida", "iumrah ҳақида"), fontSize = 27.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.55).sp, color = Color.White)
+                }
             }
-        }
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
-            Text(tr(language,
-                "iumrah — проект персональной и независимой Умры: собрать маршрут, отель, трансфер и сопровождение в одном спокойном приложении.",
-                "iumrah is a personal independent Umrah project: build your route, hotel, transfer and care in one calm application.",
-                "iumrah — shaxsiy va mustaqil Umra loyihasi: yo‘nalish, mehmonxona, transfer va yordamni bitta sokin ilovada jamlash uchun yaratilgan.",
-                "iumrah — шахсий ва мустақил Умра лойиҳаси: йўналиш, меҳмонхона, трансфер ва ёрдамни битта сокин иловада жамлаш учун яратилган."),
-                fontSize = 15.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(17.dp)).background(Color.Black).padding(horizontal = 17.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(tr(language, "Открыть страницу проекта", "Open the project page", "Loyiha sahifasini ochish", "Лойиҳа саҳифасини очиш"), color = Color.White, fontSize = 15.5.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Icon(CupertinoSymbol.ArrowRight, null, tint = Color.White, modifier = Modifier.size(15.dp))
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+                Text(tr(language,
+                    "iumrah — проект персональной и независимой Умры: собрать маршрут, отель, трансфер и сопровождение в одном спокойном приложении.",
+                    "iumrah is a personal independent Umrah project: build your route, hotel, transfer and care in one calm application.",
+                    "iumrah — shaxsiy va mustaqil Umra loyihasi: yo‘nalish, mehmonxona, transfer va yordamni bitta sokin ilovada jamlash uchun yaratilgan.",
+                    "iumrah — шахсий ва мустақил Умра лойиҳаси: йўналиш, меҳмонхона, трансфер ва ёрдамни битта сокин иловада жамлаш учун яратилган."),
+                    fontSize = 15.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(17.dp)).background(Color.Black).padding(horizontal = 17.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(tr(language, "Открыть страницу проекта", "Open the project page", "Loyiha sahifasini ochish", "Лойиҳа саҳифасини очиш"), color = Color.White, fontSize = 15.5.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Icon(CupertinoSymbol.ArrowRight, null, tint = Color.White, modifier = Modifier.size(15.dp))
+                }
             }
         }
     }

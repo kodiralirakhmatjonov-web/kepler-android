@@ -81,6 +81,13 @@ import com.iumrah.beta.ui.booking.PilgrimCheckoutScreen
 import com.iumrah.beta.ui.care.CareHomeScreen
 import com.iumrah.beta.ui.ziyarats.ZiyaratJourneyScreen
 import com.iumrah.beta.ui.esim.ESIMScreen
+import com.iumrah.beta.ui.liveflights.IumrahFlightsScreen
+import com.iumrah.beta.ui.planning.UmrahPlanScreen
+import com.iumrah.beta.ui.telegram.TelegramIntegrationScreen
+import com.iumrah.beta.ui.carerequest.IumrahCareRequestScreen
+import com.iumrah.beta.ui.transferservice.IumrahTransferServiceScreen
+import com.iumrah.beta.ui.backendsystem.IumrahBackendSystemScreen
+import com.iumrah.beta.ui.story.IumrahStoryScreen
 import com.iumrah.beta.ui.account.AccountRootScreen
 import com.iumrah.beta.ui.account.AccountTravelersScreen
 import com.iumrah.beta.ui.account.AccountPolicyScreen
@@ -246,6 +253,13 @@ fun AppShell(
                 is AppRoute.BookingChat -> BookingChatScreen(route.bookingID, language, bookingStore, chatService, chrome)
                 AppRoute.Ziyarats -> ZiyaratJourneyScreen(language, chrome)
                 AppRoute.ESIM -> ESIMScreen(language, bookingStore, chrome)
+                AppRoute.LiveFlights -> IumrahFlightsScreen(language, bookingStore, chrome)
+                AppRoute.UmrahPlan -> UmrahPlanScreen(language, chrome)
+                AppRoute.TelegramIntegration -> TelegramIntegrationScreen(language, bookingStore, accountStore, chrome)
+                AppRoute.CareRequest -> IumrahCareRequestScreen(language, airports, accountStore, settingsStore, chrome)
+                AppRoute.TransferService -> IumrahTransferServiceScreen(language, chrome)
+                AppRoute.BackendSystem -> IumrahBackendSystemScreen(language, chrome)
+                AppRoute.IumrahStory -> IumrahStoryScreen(language, chrome)
                 AppRoute.Notifications -> NotificationsScreen(language, notifications, accountStore, bookingStore, chrome)
                 AppRoute.AccountTravelers -> AccountTravelersScreen(language, accountStore, bookingStore, accountService, chrome)
                 is AppRoute.AccountPolicy -> AccountPolicyScreen(route.kind, language, chrome)

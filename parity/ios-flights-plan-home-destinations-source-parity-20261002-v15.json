@@ -1,0 +1,52 @@
+{
+  "schema": "iumrah.android-ios.home-destinations.parity.v15",
+  "date": "2026-10-02",
+  "ios_source_root": "kepler-ios-main(10).zip",
+  "android_baseline": "kepler-android-main(4).zip",
+  "cumulative_through": "v14 Ziyarats/eSIM + v13 Care/Chat + v12 Booking + v11 Hotels + v10 Home/Account",
+  "scope": [
+    "iumrah Flights live-status",
+    "Umrah Plan",
+    "Telegram Integration",
+    "Iumrah Care Request",
+    "Iumrah Transfer Service",
+    "iumrah Backend System presentation",
+    "iumrah Story/About"
+  ],
+  "excluded_by_user": [
+    "Umrah Advisor",
+    "Umrah Flow"
+  ],
+  "platform_notes": {
+    "flights_globe": "iOS MapKit globe is represented with native Compose Canvas to avoid a paid/credentialed map SDK while preserving page geometry/motion intent.",
+    "reminders": "iOS local notifications are implemented with Android AlarmManager + NotificationCompat."
+  },
+  "ios_sources": {
+    "Sources/Views/Flights/IumrahFlightsView.swift": "f611577ab959126f3a41bf0cee962741c5872e193122fa1641485b253eafdef6",
+    "Sources/Views/Planning/UmrahPlanFeature.swift": "13931a36180235207cbd7fee09f5e46d26858f06c5f7674e14b52916e842c8a9",
+    "Sources/Views/Telegram/IumrahTelegramIntegrationView.swift": "d45da18353aad11fe785e4a69f36ca5ba05c6b301ba691ab603f7b7981a830eb",
+    "Sources/Services/TelegramBookingIntegrationService.swift": "346ff2bd56d6426ae37e2c6c714dfcf2a42a28d1209f23c90111939bdb93c52f",
+    "Sources/Views/Home/IumrahCareRequestView.swift": "56bd703d47285fd6c2bade52c9cd0c374ea0bceec74af70f7d0aa9e1135b8e5d",
+    "Sources/Models/IumrahCareRequestModels.swift": "672f903c94c73c764b1a96d2ea0d1b3e31b4effeca35ba2f41e473e57b8c30ad",
+    "Sources/Services/IumrahCareRequestService.swift": "41a42b7972b4ad3eb0649ba78a3d04ed03261ec30628e5e69f63c34823f242bc",
+    "Sources/Views/Home/HomeAppleStoreSections.swift": "ae1fc3f6eb3450d2e6f90a919b507cc1afb99ba4b73b34ab86a035c8aa5a7a8d",
+    "Sources/Views/Home/IumrahBackendSystemView.swift": "34b0f86a8ccf8684087d85da199161ad8264e2fdb2f29c39a11c7808869e59f5",
+    "Sources/Views/Home/IumrahStoryView.swift": "d5f677871e0c4112ca4708ced2cd37808a371a9e1f798281900f80b59d29b10a"
+  },
+  "android_outputs": {
+    "app/src/main/java/com/iumrah/beta/ui/liveflights/IumrahFlightsScreen.kt": "ec1e754aff2bd523762584300076afba89f87b61a9b20acdc538662bc96ca3cc",
+    "app/src/main/java/com/iumrah/beta/ui/planning/UmrahPlanScreen.kt": "55e108aa06e18535e29df71f91887a9eedbf1df18a40da31cf52a938d34fe9d8",
+    "app/src/main/java/com/iumrah/beta/ui/telegram/TelegramIntegrationScreen.kt": "700c3694fc8e9f28482890995f38a71724115a60ebafdd2a63dacedf31592bf4",
+    "app/src/main/java/com/iumrah/beta/data/telegram/TelegramBookingIntegrationService.kt": "a12e542e1fa1d05ac783f27d6c672ced10da1646346047f2afb30bc718bfad0e",
+    "app/src/main/java/com/iumrah/beta/ui/carerequest/IumrahCareRequestScreen.kt": "96e18605c8c90cef02a46ba48cacbc66c5d4d100b2349114294054e7a9bbee2e",
+    "app/src/main/java/com/iumrah/beta/data/care/IumrahCareRequestService.kt": "941a78215109ede09450ab1b4f4afa0b4305d0fff003868b5673190800215748",
+    "app/src/main/java/com/iumrah/beta/ui/transferservice/IumrahTransferServiceScreen.kt": "79991d2937309004c69c64cf35e0dee78ed563fa49023bb0a16071e02229a227",
+    "app/src/main/java/com/iumrah/beta/ui/backendsystem/IumrahBackendSystemScreen.kt": "e16d83d51027d3c07c6cec3e6c9846f4bbb175c4ab2fb1bd3593d2131fda33cc",
+    "app/src/main/java/com/iumrah/beta/ui/story/IumrahStoryScreen.kt": "d5066bd2c33c03010145de382a4a07271bc0ce882d562bae337e8c0da20b2eb6",
+    "app/src/main/java/com/iumrah/beta/ui/homeflow/HomeDestinationCommon.kt": "696f3084d54a31479d54d5d8de16244361202046663868ebf1e25201ac414f7d",
+    "app/src/main/java/com/iumrah/beta/ui/home/HomeScreen.kt": "0e232d47950c28fea60843d74600711c2f3b448eb611e3bbd0bee2b39b13bf7b",
+    "app/src/main/java/com/iumrah/beta/ui/shell/AppShell.kt": "18748ad5296614f7604fe828c7bdc3bf61587a7f30847cbf71f608e43306cb8d",
+    "app/src/main/java/com/iumrah/beta/core/navigation/AppChromeStore.kt": "8c40d68e0340979d262d3432f40c68e4310bbe821bc51d993dc5c484bb7698ba",
+    "app/src/main/AndroidManifest.xml": "c45f1da67c10726d3455aff218851c1596991ea62dcc443cbb70ccca4d61bb9b"
+  }
+}

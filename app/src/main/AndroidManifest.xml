@@ -34,5 +34,8 @@
         <activity-alias android:name=".LauncherMakkah" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_makkah_preview" android:label="iumrah" android:targetActivity=".MainActivity">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity-alias>
+        <receiver
+            android:name=".ui.planning.UmrahPlanReminderReceiver"
+            android:exported="false" />
     </application>
 </manifest>

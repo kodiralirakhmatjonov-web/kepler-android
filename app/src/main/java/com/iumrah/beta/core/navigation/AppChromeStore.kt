@@ -28,6 +28,13 @@ sealed interface AppRoute {
     data class BookingChat(val bookingID: String) : AppRoute
     data object Ziyarats : AppRoute
     data object ESIM : AppRoute
+    data object LiveFlights : AppRoute
+    data object UmrahPlan : AppRoute
+    data object TelegramIntegration : AppRoute
+    data object CareRequest : AppRoute
+    data object TransferService : AppRoute
+    data object BackendSystem : AppRoute
+    data object IumrahStory : AppRoute
     data object Notifications : AppRoute
     data object AccountTravelers : AppRoute
     data class AccountPolicy(val kind: String) : AppRoute
@@ -74,6 +81,13 @@ class AppChromeStore {
     fun openBookingChat(id: String) = push(AppRoute.BookingChat(id), tab = AppTab.CARE)
     fun openZiyarats() = push(AppRoute.Ziyarats, tab = AppTab.HOME)
     fun openESIM() = push(AppRoute.ESIM, tab = AppTab.HOME)
+    fun openLiveFlights() = push(AppRoute.LiveFlights, tab = AppTab.HOME)
+    fun openUmrahPlan() = push(AppRoute.UmrahPlan, tab = AppTab.HOME)
+    fun openTelegramIntegration() = push(AppRoute.TelegramIntegration, tab = AppTab.HOME)
+    fun openCareRequest() = push(AppRoute.CareRequest, tab = AppTab.HOME)
+    fun openTransferService() = push(AppRoute.TransferService, tab = AppTab.HOME)
+    fun openBackendSystem() = push(AppRoute.BackendSystem, tab = AppTab.HOME)
+    fun openIumrahStory() = push(AppRoute.IumrahStory, tab = AppTab.HOME)
     fun openNotifications() = push(AppRoute.Notifications)
     fun openAccountTravelers() = push(AppRoute.AccountTravelers, tab = AppTab.ACCOUNT)
     fun openAccountPolicy(kind: String) = push(AppRoute.AccountPolicy(kind), tab = AppTab.ACCOUNT)
