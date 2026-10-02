@@ -1,0 +1,58 @@
+{
+  "schema": "iumrah.android.ios-care-chat-parity.v13",
+  "date": "2026-10-02",
+  "source_of_truth": "kepler-ios-main(10).zip",
+  "base_android": "v12 cumulative booking parity",
+  "scope": [
+    "Care root verified against CareHomeView.swift",
+    "BookingChatView",
+    "CareChatMessageRow",
+    "CareContactInfoView",
+    "CareChatAppearance",
+    "CareChatFeedback",
+    "CareNativeGlass semantics",
+    "CareChatAvatar asset"
+  ],
+  "ios_source_sha256": {
+    "Sources/Views/Tabs/CareHomeView.swift": "3f294e1690a4897fc123f69be9477d8ec9eec1b5efdbcf3a94381a7b061adec7",
+    "Sources/Views/Chat/BookingChatView.swift": "06f308889d7889eb4da8bdf4eeeeeb583051332515d28f839b5c3ef4fab5f2b6",
+    "Sources/Views/Chat/CareChatMessageRow.swift": "206a7a05145172beb9f7894c40027bee23dc61a642f885d6eb24eb2b7e556ff3",
+    "Sources/Views/Chat/CareContactInfoView.swift": "ef89570696fd8211a5c37382f826ffff3e21abc39a5d0180b3cc44d69fd6c1f5",
+    "Sources/Views/Chat/CareChatAppearance.swift": "d505d1c9f914d5b8880141288ca9ea038977ba58d1bec2a4fe60c76a6b19fbcc",
+    "Sources/Views/Chat/CareChatFeedback.swift": "08ba59e32d0357180fd619ec68b88f5ccc91bf21b1fe71d09323d6bae848642d",
+    "Sources/Views/Chat/CareNativeGlass.swift": "7ce3921a63a4724fcc3d231eb5efb1aef2a7dfffe5e2addcc284ea4175a68d3e",
+    "CareChatAvatar@3x": "269ee889faf978a0ebae016e86e64b8cf80e7dab159d81e7836daa9e7199433e"
+  },
+  "android_v13": {
+    "CareHomeScreen.kt": "verified existing parity; retained",
+    "BookingChatScreen.kt": "rebuilt for iOS Care chat hierarchy/motion/states",
+    "care_chat_avatar.png": "copied byte-for-byte from iOS @3x asset"
+  },
+  "implemented": [
+    "native-style chat header with Care profile entry and info action",
+    "iMessage-like composer geometry and sending/pending state",
+    "message grouping at 120-second boundaries",
+    "date separators",
+    "Delivered/Read presentation",
+    "incoming/outgoing uneven bubbles with group-end tails",
+    "authenticated photo attachment loading",
+    "full-screen photo viewer",
+    "scroll-to-latest control and unseen incoming badge",
+    "Care info/profile screen",
+    "Call, Telegram and WhatsApp contact actions",
+    "Info/Background segmented control",
+    "chat sounds and haptics preferences",
+    "founder/Abdulaziz connection state",
+    "booking identity card",
+    "none/photo/dawn/sky/water/aurora/sand/Makkah wallpapers",
+    "custom persistent photo wallpaper",
+    "animated Care wallpaper gradients",
+    "Care avatar asset parity"
+  ],
+  "qa": {
+    "stage_1_to_10": "passed",
+    "api_36_env": "passed",
+    "kotlin_delimiter_smoke": "passed",
+    "device_screenshot_overlay": "required for mathematical pixel certification"
+  }
+}

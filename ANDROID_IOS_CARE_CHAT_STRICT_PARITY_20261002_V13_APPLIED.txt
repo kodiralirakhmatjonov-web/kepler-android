@@ -1,0 +1,15 @@
+IUMRAH ANDROID — iOS CARE + CHAT STRICT PARITY V13
+Date: 2026-10-02
+Source of truth: kepler-ios-main(10).zip
+
+Scope:
+- Care root verified against current iOS CareHomeView.
+- Booking Chat rebuilt around current iOS BookingChatView.
+- Message grouping/date separators/read states/photo attachments.
+- iMessage-style composer and pending/error states.
+- Care Contact Info + Background pages.
+- CareChatAvatar copied from iOS source asset.
+- Chat wallpaper, sounds, haptics and founder connection preferences.
+
+This update is cumulative on top of Android v12 parity.
+Device screenshot overlay remains the final pixel-for-pixel certification step.
