@@ -90,12 +90,18 @@ import com.iumrah.beta.ui.backendsystem.IumrahBackendSystemScreen
 import com.iumrah.beta.ui.story.IumrahStoryScreen
 import com.iumrah.beta.ui.account.AccountRootScreen
 import com.iumrah.beta.ui.account.AccountTravelersScreen
+import com.iumrah.beta.ui.account.AccountTripsHistoryScreen
+import com.iumrah.beta.ui.account.AccountTravelCompanionsParityScreen
+import com.iumrah.beta.ui.account.AccountPasswordRecoveryScreen
+import com.iumrah.beta.ui.account.AccountPolicyParityScreen
 import com.iumrah.beta.ui.account.AccountPolicyScreen
 import com.iumrah.beta.ui.account.AccountSecurityScreen
 import com.iumrah.beta.ui.account.AccountAppearanceScreen
+import com.iumrah.beta.ui.account.AccountAppearanceParityScreen
 import com.iumrah.beta.ui.account.AccountLanguageScreen
 import com.iumrah.beta.ui.account.AccountSignalsScreen
-import com.iumrah.beta.ui.account.AccountProfileEditorScreen
+import com.iumrah.beta.ui.account.AccountSignalsParityScreen
+import com.iumrah.beta.ui.account.AccountProfileEditorParityScreen
 import com.iumrah.beta.ui.account.AccountKycScreen
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
@@ -261,13 +267,15 @@ fun AppShell(
                 AppRoute.BackendSystem -> IumrahBackendSystemScreen(language, chrome)
                 AppRoute.IumrahStory -> IumrahStoryScreen(language, chrome)
                 AppRoute.Notifications -> NotificationsScreen(language, notifications, accountStore, bookingStore, chrome)
-                AppRoute.AccountTravelers -> AccountTravelersScreen(language, accountStore, bookingStore, accountService, chrome)
-                is AppRoute.AccountPolicy -> AccountPolicyScreen(route.kind, language, chrome)
+                AppRoute.AccountTravelers -> AccountTravelCompanionsParityScreen(language, accountStore, bookingStore, accountService, chrome)
+                is AppRoute.AccountTripsHistory -> AccountTripsHistoryScreen(language, bookingStore, chrome, route.initialPast)
+                AppRoute.AccountPasswordRecovery -> AccountPasswordRecoveryScreen(language, accountStore, chrome)
+                is AppRoute.AccountPolicy -> AccountPolicyParityScreen(route.kind, language, chrome)
                 AppRoute.AccountSecurity -> AccountSecurityScreen(language, accountStore, chrome)
-                AppRoute.AccountAppearance -> AccountAppearanceScreen(language, settingsStore, chrome)
+                AppRoute.AccountAppearance -> AccountAppearanceParityScreen(language, settingsStore, chrome)
                 AppRoute.AccountLanguage -> AccountLanguageScreen(language, settingsStore, chrome)
-                AppRoute.AccountSignals -> AccountSignalsScreen(language, notifications, accountStore, chrome)
-                AppRoute.AccountProfileEditor -> AccountProfileEditorScreen(language, accountStore, chrome)
+                AppRoute.AccountSignals -> AccountSignalsParityScreen(language, notifications, accountStore, chrome)
+                AppRoute.AccountProfileEditor -> AccountProfileEditorParityScreen(language, accountStore, chrome)
                 is AppRoute.AccountKyc -> AccountKycScreen(route.bookingID, language, bookingStore, chrome)
             }
         }

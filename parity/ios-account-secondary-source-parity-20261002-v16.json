@@ -1,0 +1,37 @@
+{
+  "schema": "iumrah.android-ios.account-secondary.parity.v16",
+  "date": "2026-10-02",
+  "ios_source_root": "kepler-ios-main(10).zip",
+  "android_baseline": "kepler-android-main(4).zip",
+  "cumulative_through": "v15 Flights/Plan/Home destinations + v14 Ziyarats/eSIM + v13 Care/Chat + v12 Booking + v11 Hotels + v10 Home/Account",
+  "scope": [
+    "Account Trips History",
+    "Travel Companions",
+    "Password Recovery",
+    "Account Profile Editor",
+    "Signal / Reminders / Telegram account notifications switcher",
+    "Appearance",
+    "Privacy / Refund / Payment & Security policy pages",
+    "Account child-route wiring"
+  ],
+  "excluded_by_user": ["Umrah Advisor", "Umrah Flow"],
+  "ios_sources": {
+    "Sources/AppShell/IumrahTripsHistoryView.swift": "a8fc31d8e3dc6fc47e30baa58921958c66df5f495f17c5baf8416101f2d6de39",
+    "Sources/AppShell/IumrahTravelCompanionsView.swift": "afbbe482fc9cafb916ada88a13f082e00e5622df1f17adb71fb8e824eead738d",
+    "Sources/AppShell/IumrahPasswordRecoveryView.swift": "f894a74acafbf73cb4d47f75b83dcdcedc04a70c790757cb85b3248f17e577ed",
+    "Sources/AppShell/IumrahAppearanceView.swift": "102f5cc09bd374f323c1ad5aa41c4102b3e8d1114105d9fec928e3854831af34",
+    "Sources/AppShell/IumrahAccountSecurityView.swift": "734b58fa6f2aae6ee163dd247ec7218974149b20466bf97afa76676cd7ce006c",
+    "Sources/AppShell/AccountNotificationsView.swift": "e30fe613c97fa52b71c78678354cd3b52aa03ab344b13f72b10b2e3cc1c697ef",
+    "Sources/AppShell/IumrahAccountView.swift": "d04e9106f2be5b24727a4a5ce84b26626ed067fdcbc37d519fc99f64f2e541a2",
+    "Sources/Legal/IumrahPolicies.swift": "4380ba90920cd9412a52b04832b9aa70274578b54d8c7b1c52487e1cb2287525",
+    "Resources/Animations/password-recovery-confirmation.mp4": "2b4ad76289064800ff07f12ae6121565cd12be05f4092e0a911dbe05b04785da"
+  },
+  "android_outputs": {
+    "app/src/main/java/com/iumrah/beta/core/navigation/AppChromeStore.kt": "6511061cf54d39cbedf7fa48b5fa8dc52d7e747851681fbeba23f621fd59165e",
+    "app/src/main/java/com/iumrah/beta/ui/shell/AppShell.kt": "7f8c435f8a61dd2364a86bf5706029541c94f95cca2f59beb6a49f670339342d",
+    "app/src/main/java/com/iumrah/beta/ui/account/AccountScreens.kt": "7cfcf2c6c636e37bbf2b32161b38cd188a42bb10b1cbf848dc490579b350e1e8",
+    "app/src/main/java/com/iumrah/beta/ui/account/AccountSecondaryParity.kt": "e1f535102b3907052d6018eb1903176e3338d0ca4f33e4cf8148fcc3963d72cb",
+    "app/src/main/java/com/iumrah/beta/ui/booking/PilgrimCheckoutScreen.kt": "cb33e6bed8d01b3422a405724d67b958d49c0c0b7a94d2488ff64879c741c7b1",
+    "app/src/main/res/raw/password_recovery_confirmation.mp4": "2b4ad76289064800ff07f12ae6121565cd12be05f4092e0a911dbe05b04785da"
+  }
+}

@@ -1,0 +1,6 @@
+iumrah Android v16 — Account secondary iOS parity
+Source of truth: kepler-ios-main(10).zip
+Android baseline: kepler-android-main(4).zip
+Cumulative through v15.
+Scope: Account Trips History, Travel Companions, Password Recovery, Profile Editor, Signal/Reminders/Telegram, Appearance, Policy pages and related Account navigation.
+Umrah Advisor / Umrah Flow remain intentionally excluded by user request.

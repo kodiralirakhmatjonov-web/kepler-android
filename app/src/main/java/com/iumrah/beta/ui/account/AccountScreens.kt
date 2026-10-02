@@ -102,7 +102,7 @@ fun AccountRootScreen(
                 item { ActiveTripCard(active, language) { chrome.openBookingDetail(active.id) } }
             }
             item { TripsSection(bookings.sessions, language, chrome) }
-            item { TelegramIntegrationCard(language) { chrome.navigate(AppTab.BOOKING) } }
+            item { TelegramIntegrationCard(language) { chrome.openAccountTelegramIntegration() } }
             item { TravelCompanionsParityCard(language) { chrome.openAccountTravelers() } }
             item { PaymentSecuritySection(language, bookings.sessions.firstOrNull(), true, chrome) }
             item { ProfileSection(profile, language) { chrome.openAccountProfileEditor() } }
@@ -119,8 +119,8 @@ fun AccountRootScreen(
             }
         } else {
             item { IumrahLockedIdentityCardAndroid(language) }
-            item { GuestLoginCard(language, accountStore, bookingStore) }
-            item { TelegramIntegrationCard(language) { chrome.navigate(AppTab.BOOKING) } }
+            item { GuestLoginCard(language, accountStore, bookingStore, chrome) }
+            item { TelegramIntegrationCard(language) { chrome.openAccountTelegramIntegration() } }
             item { PaymentSecuritySection(language, bookings.sessions.firstOrNull(), false, chrome) }
             item { GuestSettingsSection(language, settings.appearance, signalState.unreadCount, chrome, context) }
         }
@@ -237,7 +237,7 @@ private fun TripsSection(sessions: List<StoredBookingSession>, language: AppLang
     var expanded by remember { mutableStateOf(false) }
     val scoped = remember(sessions, past) { sessions.filter { it.isPastAccountTrip() == past } }
     CardBlock {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().clickable { chrome.openAccountTripsHistory(past) }, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(tr(language,"My trips","Мои поездки","Safarlarim","Сафарларим"), fontSize = 25.sp, fontWeight = FontWeight.Bold)
                 Text(tr(language,"Current and previous journeys","Активные и прошлые поездки","Faol va oldingi safarlar","Фаол ва олдинги сафарлар"), fontSize = 12.sp, color = IosGray)
@@ -269,10 +269,10 @@ private fun TripsSection(sessions: List<StoredBookingSession>, language: AppLang
             }
             if(scoped.size > 3) {
                 Spacer(Modifier.height(10.dp))
-                Surface(onClick={expanded=!expanded}, shape=RoundedCornerShape(16.dp), color=MaterialTheme.colorScheme.onSurface.copy(alpha=.055f)) {
+                Surface(onClick={chrome.openAccountTripsHistory(past)}, shape=RoundedCornerShape(16.dp), color=MaterialTheme.colorScheme.onSurface.copy(alpha=.055f)) {
                     Row(Modifier.fillMaxWidth().height(48.dp).padding(horizontal=14.dp), verticalAlignment=Alignment.CenterVertically) {
-                        Text(if(expanded) tr(language,"Show less","Свернуть","Kamroq ko‘rsatish","Камроқ кўрсатиш") else tr(language,"Open all trips","Открыть все поездки","Barcha safarlarni ochish","Барча сафарларни очиш"), fontSize=14.sp, fontWeight=FontWeight.SemiBold, modifier=Modifier.weight(1f))
-                        CupertinoIcon(if(expanded) CupertinoSymbol.ChevronDown else CupertinoSymbol.ArrowRight, null, Modifier.size(14.dp), MaterialTheme.colorScheme.onSurface)
+                        Text(tr(language,"Open all trips","Открыть все поездки","Barcha safarlarni ochish","Барча сафарларни очиш"), fontSize=14.sp, fontWeight=FontWeight.SemiBold, modifier=Modifier.weight(1f))
+                        CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(14.dp), MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -433,7 +433,7 @@ private fun GuestSettingsSection(language: AppLanguage, appearance: AppAppearanc
 }
 
 @Composable
-private fun GuestLoginCard(language:AppLanguage,accountStore:IumrahAccountStore,bookingStore:BookingStore){
+private fun GuestLoginCard(language:AppLanguage,accountStore:IumrahAccountStore,bookingStore:BookingStore,chrome:AppChromeStore){
     val scope=rememberCoroutineScope(); var register by remember{mutableStateOf(false)}; var method by remember{mutableStateOf("sms")}
     var identifier by remember{mutableStateOf("")};var password by remember{mutableStateOf("")};var code by remember{mutableStateOf("")};var challenge by remember{mutableStateOf<String?>(null)}
     var first by remember{mutableStateOf("")};var last by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)};var error by remember{mutableStateOf<String?>(null)}
@@ -466,6 +466,7 @@ private fun GuestLoginCard(language:AppLanguage,accountStore:IumrahAccountStore,
                 else -> throw IllegalStateException(tr(language,"iumrah ID registration is completed from an active booking.","Регистрация по iumrah ID завершается из активного бронирования.","iumrah ID orqali ro‘yxatdan o‘tish faol bron ichida yakunlanadi.","iumrah ID орқали рўйхатдан ўтиш фаол брон ичида якунланади."))
             }
         }.onFailure{error=it.message ?: "Error"};busy=false}},modifier=Modifier.fillMaxWidth().height(56.dp),shape=RoundedCornerShape(19.dp),enabled=!busy,colors=ButtonDefaults.buttonColors(containerColor=Color.Black)){if(busy) CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=Color.White) else Text(if(challenge==null) tr(language,"Continue","Продолжить","Davom etish","Давом этиш") else tr(language,"Confirm","Подтвердить","Tasdiqlash","Тасдиқлаш"),fontWeight=FontWeight.Bold)}
+        if(!register && (method=="email" || method=="id")){Spacer(Modifier.height(8.dp));TextButton(onClick={chrome.openAccountPasswordRecovery()},modifier=Modifier.fillMaxWidth()){Text(tr(language,"Forgot password?","Забыли пароль?","Parolni unutdingizmi?","Паролни унутдингизми?"),fontSize=14.sp,fontWeight=FontWeight.SemiBold)}}
         if(register && method=="id" && bookingStore.state.value.sessions.isNotEmpty()){Spacer(Modifier.height(10.dp));Text(tr(language,"Use the active booking to finish creating this account.","Используйте активную бронь, чтобы завершить создание аккаунта.","Akkaunt yaratishni yakunlash uchun faol brondan foydalaning.","Аккаунт яратишни якунлаш учун фаол брондан фойдаланинг."),fontSize=12.sp,color=IosGray)}
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

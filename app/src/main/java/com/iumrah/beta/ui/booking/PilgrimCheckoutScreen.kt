@@ -148,6 +148,7 @@ internal fun PilgrimCheckoutEmbedded(
                         password = loginPassword,
                         onPassword = { loginPassword = it },
                         busy = busy,
+                        onRecover = { chrome.openPasswordRecovery() },
                         onLogin = {
                             if (loginPassword.isBlank()) return@CheckoutLoginCard
                             busy = true
@@ -329,6 +330,7 @@ private fun CheckoutLoginCard(
     password: String,
     onPassword: (String) -> Unit,
     busy: Boolean,
+    onRecover: () -> Unit,
     onLogin: () -> Unit,
 ) {
     BookingCard {
@@ -350,6 +352,9 @@ private fun CheckoutLoginCard(
             onClick = onLogin,
             trailing = CupertinoSymbol.ArrowRight,
         )
+        TextButton(onClick = onRecover, modifier = Modifier.fillMaxWidth()) {
+            Text(bookingText(language, "Забыли пароль?", "Forgot password?", "Parolni unutdingizmi?", "Паролни унутдингизми?"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 

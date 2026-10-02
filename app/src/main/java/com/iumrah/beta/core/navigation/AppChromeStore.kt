@@ -37,6 +37,8 @@ sealed interface AppRoute {
     data object IumrahStory : AppRoute
     data object Notifications : AppRoute
     data object AccountTravelers : AppRoute
+    data class AccountTripsHistory(val initialPast: Boolean = false) : AppRoute
+    data object AccountPasswordRecovery : AppRoute
     data class AccountPolicy(val kind: String) : AppRoute
     data object AccountSecurity : AppRoute
     data object AccountAppearance : AppRoute
@@ -84,12 +86,16 @@ class AppChromeStore {
     fun openLiveFlights() = push(AppRoute.LiveFlights, tab = AppTab.HOME)
     fun openUmrahPlan() = push(AppRoute.UmrahPlan, tab = AppTab.HOME)
     fun openTelegramIntegration() = push(AppRoute.TelegramIntegration, tab = AppTab.HOME)
+    fun openAccountTelegramIntegration() = push(AppRoute.TelegramIntegration, tab = AppTab.ACCOUNT)
     fun openCareRequest() = push(AppRoute.CareRequest, tab = AppTab.HOME)
     fun openTransferService() = push(AppRoute.TransferService, tab = AppTab.HOME)
     fun openBackendSystem() = push(AppRoute.BackendSystem, tab = AppTab.HOME)
     fun openIumrahStory() = push(AppRoute.IumrahStory, tab = AppTab.HOME)
     fun openNotifications() = push(AppRoute.Notifications)
     fun openAccountTravelers() = push(AppRoute.AccountTravelers, tab = AppTab.ACCOUNT)
+    fun openAccountTripsHistory(initialPast: Boolean = false) = push(AppRoute.AccountTripsHistory(initialPast), tab = AppTab.ACCOUNT)
+    fun openAccountPasswordRecovery() = push(AppRoute.AccountPasswordRecovery, tab = AppTab.ACCOUNT)
+    fun openPasswordRecovery() = push(AppRoute.AccountPasswordRecovery)
     fun openAccountPolicy(kind: String) = push(AppRoute.AccountPolicy(kind), tab = AppTab.ACCOUNT)
     fun openBookingPolicy(kind: String) = push(AppRoute.AccountPolicy(kind), tab = AppTab.BOOKING)
     fun openAccountSecurity() = push(AppRoute.AccountSecurity, tab = AppTab.ACCOUNT)
