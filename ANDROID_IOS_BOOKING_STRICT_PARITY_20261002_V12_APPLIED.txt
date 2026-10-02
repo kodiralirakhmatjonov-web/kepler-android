@@ -1,0 +1,18 @@
+IUMRAH ANDROID — iOS BOOKING STRICT PARITY V12
+
+Source of truth: kepler-ios-main(10).zip
+Target: Android Booking tab and Booking-owned screens/states.
+Built cumulatively on v11 (which includes v9 + v10).
+
+Key parity targets:
+- Rounded Booking / Status segmented controls
+- Booking root and Booking Detail hierarchy
+- Animated iumrah Booking card
+- Booking Status stages and state-specific cards
+- Traveler editor / passport data flow
+- Itinerary day carousel and event cards
+- Flights / hotels / included-service component cards
+- Booking-scoped Security navigation
+
+Verification: repository structural Stage 2–10 + API 36 checks after clean overlay.
+Pixel-perfect screenshot overlay certification still requires rendered iOS/Android captures on matching viewports.

@@ -211,7 +211,7 @@ private fun ActiveBookingHome(
             BookingPanelPicker(language, panel, onPanel)
             Spacer(Modifier.height(12.dp))
             BookingIdentity(language, session)
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(18.dp))
         }
 
         if (panel == BookingPanel.BOOKING) {
@@ -222,7 +222,7 @@ private fun ActiveBookingHome(
         } else {
             item {
                 BookingTimerOverview(language, session)
-                if (lifecyclePhase(session) != null) Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(28.dp))
                 BookingFulfillmentCenter(language, session, checkout, chrome)
                 Spacer(Modifier.height(34.dp))
 
@@ -268,6 +268,46 @@ private fun ActiveBookingHome(
                         .padding(14.dp),
                 )
             }
+        }
+
+        item {
+            Spacer(Modifier.height(28.dp))
+            RootTelegramCompactCard(language, session)
+        }
+    }
+}
+
+@Composable
+private fun RootTelegramCompactCard(language: AppLanguage, session: StoredBookingSession) {
+    IumrahPressable(
+        onClick = { },
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 24.dp,
+        background = bookingCardColor(),
+        pressedScale = .985f,
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xFF229ED9)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CupertinoIcon(CupertinoSymbol.Send, null, Modifier.size(23.dp), Color.White)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Telegram", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    t(language, "Подключите уведомления по бронированию", "Connect booking notifications", "Bron bildirishnomalarini ulang", "Брон билдиришномаларини уланг"),
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
+                    maxLines = 2,
+                )
+            }
+            CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(14.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .34f))
         }
     }
 }
@@ -540,9 +580,10 @@ private fun <T> SegmentedPicker(
     Row(
         Modifier
             .fillMaxWidth()
-            .height(32.dp)
-            .clip(RoundedCornerShape(9.dp))
-            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = .055f))
+            .height(34.dp)
+            .clip(RoundedCornerShape(11.dp))
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = .06f))
+            .border(.55.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .045f), RoundedCornerShape(11.dp))
             .padding(2.dp),
     ) {
         items.forEach { (value, label) ->
@@ -555,7 +596,7 @@ private fun <T> SegmentedPicker(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxSize(),
-                cornerRadius = 7.dp,
+                cornerRadius = 9.dp,
                 background = if (active) MaterialTheme.colorScheme.surface else Color.Transparent,
                 shadowElevation = if (active) 1.dp else 0.dp,
                 pressedScale = .985f,
@@ -1144,7 +1185,7 @@ private fun BookingFulfillmentCenter(
             body = t(language, "Подтвердите личность владельца бронирования.", "Confirm the booking holder’s identity.", "Bron egasining shaxsini tasdiqlang.", "Брон эгасининг шахсини тасдиқланг."),
             action = t(language, "Проверить личность", "Confirm identity", "Shaxsni tasdiqlash", "Шахсни тасдиқлаш"),
             ready = false,
-        ) { chrome.openAccountKyc(session.id) }
+        ) { chrome.openBookingSecurity(session.id) }
 
         BookingActionCard(
             icon = CupertinoSymbol.Persons,

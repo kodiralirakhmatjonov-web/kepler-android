@@ -1,0 +1,55 @@
+{
+  "schema": "iumrah.android.ios-booking-source-parity.v12",
+  "generated_date": "2026-10-02",
+  "source_of_truth": "kepler-ios-main(10).zip",
+  "target_baseline": "kepler-android-main(4).zip",
+  "inherits": [
+    "v9 current-source parity",
+    "v10 Home/Account parity",
+    "v11 Hotels parity"
+  ],
+  "scope": "Booking tab and directly related booking/status/component flows",
+  "verification_level": "source-level geometry/state/navigation parity; screenshot overlay certification not included",
+  "geometry": {
+    "page_padding_pt_dp": 18,
+    "segmented_height": 34,
+    "segmented_outer_radius": 11,
+    "segmented_active_radius": 9,
+    "standard_card_radius": 28,
+    "compact_radius": 19,
+    "primary_control_height": 56,
+    "itinerary_day_chip": "58x64 radius19",
+    "hotel_component_height": 150
+  },
+  "ios_sources": {
+    "Sources/Views/Tabs/BookingsHomeView.swift": "50b231a42afdac423cc4eb85211fb7b2fb39f31e5b7a59d2bcb89c8b56e26c61",
+    "Sources/Views/Booking/BookingDetailView.swift": "bb5f23c0158f9b2bc4ed5394027ab43b7eb71bb329a98206cb3ca51a0a0b16ff",
+    "Sources/Views/Booking/BookingPageSwitcher.swift": "244405bf2747bc84fa589465936545386938e7970d165f35c4f960a8fdcbf0f5",
+    "Sources/Views/Booking/BookingStatusView.swift": "e2eb77abe291e414a329e0d9d1fac592a5e0b8e88f53ba9b9a3544e3f3a55972",
+    "Sources/Views/Booking/PilgrimCheckoutView.swift": "f316533499ab135545391139481a15dc05cbae25ceef10a0522782ad0296863c",
+    "Sources/Views/Booking/IumrahBookingDomeCard.swift": "3f603e77e08b829e705599346b4ed2a78341dd35e221c734769c63e177c4404f",
+    "Sources/Views/Booking/BookingItineraryCalendarView.swift": "b28b347ec7f0f554faa90dcfffc4faf012d8329bae781587f708b953ddf60d10",
+    "Sources/Views/Booking/BookingFlightFirstComponentsView.swift": "db65f220ac49a8d99859db32410dda9c6f6c6c8b1d69de9b837fcb63f12cddcf",
+    "Sources/Views/Booking/BookingHotelChangeView.swift": "e9b4e62e2f2ff662da807b851748a9faa1652ce529560382fa473eddaa615768",
+    "Sources/Views/Booking/IumrahSecurityConfirmationView.swift": "5f97671095fe6db18e1b890f1661fd88fb0c0d6a17804044b4b4332811284743",
+    "Sources/Legal/IumrahInvoiceRenderer.swift": "1b54e79c15917a67202913c20b059b096416975af625d3f0c3fd0778a4ee2cbf",
+    "Sources/Legal/IumrahPolicies.swift": "4380ba90920cd9412a52b04832b9aa70274578b54d8c7b1c52487e1cb2287525"
+  },
+  "android_payload": {
+    "app/src/main/java/com/iumrah/beta/ui/booking/BookingDetailScreen.kt": "eff7fe45e7eb9199f133322bd11a36e54b594653ec0035f4c2408dd7641ab660",
+    "app/src/main/java/com/iumrah/beta/ui/booking/PilgrimCheckoutScreen.kt": "1dec2201b164ddb200529494e33cd2f87ca3ea83326e798f77168ba4a28022a4",
+    "app/src/main/java/com/iumrah/beta/ui/booking/BookingParityComponents.kt": "686e15590281692ace5f536b1f9707c5c70e6537efc50a3b50bc7f818852eb91",
+    "app/src/main/java/com/iumrah/beta/ui/booking/BookingHotelChangeScreen.kt": "6589dd43b8f7942e47848a17090d46c3d5b99411323f13fee354ee90f217bab0",
+    "app/src/main/java/com/iumrah/beta/ui/booking/IumrahBookingDomeCard.kt": "8f69e80650f0b290c44cbec23dc63d3f115b8a5ee909e7be0fc57a8dacf22440",
+    "app/src/main/java/com/iumrah/beta/ui/booking/BookingsHomeScreen.kt": "143c1d77313d5f7f9de54a8f6316a39ff6379916879798e33b6b8a2b9c5ace9a",
+    "app/src/main/java/com/iumrah/beta/ui/shell/AppShell.kt": "c14565d43f8365d498dfcc43c643c601bac100daaa97641403cdbb5a02d39aa2",
+    "app/src/main/java/com/iumrah/beta/core/navigation/AppChromeStore.kt": "5b0bdbc0c2a18ce7a1427315c1af99bb6e7d72949160b8b3e46a84dcbb8c6d52"
+  },
+  "notes": [
+    "Booking/Status top switchers are rounded to match current SwiftUI geometry.",
+    "Booking detail follows iOS information hierarchy: identity, animated booking card, status, metadata, itinerary, components, Care/actions.",
+    "Booking Status uses canonical checkout stages and functional traveler editor.",
+    "Payment-pending state restores manual-payment, refund-policy and invoice cards.",
+    "Booking KYC navigation remains visually under the Booking tab."
+  ]
+}

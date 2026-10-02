@@ -231,7 +231,14 @@ fun AppShell(
 
                 AppRoute.FinalPackage -> FinalPackageScreen(language, journey, hotelCatalog, packageEngine, chrome)
                 AppRoute.BookingCheckout -> BookingCheckoutScreen(language, journey, bookingStore, accountStore, chrome)
-                is AppRoute.BookingDetail -> BookingDetailScreen(route.bookingID, language, bookingStore, chrome)
+                is AppRoute.BookingDetail -> BookingDetailScreen(
+                    route.bookingID,
+                    language,
+                    bookingStore,
+                    accountStore,
+                    accountService,
+                    chrome,
+                )
                 is AppRoute.BookingHotelChange -> BookingHotelChangeScreen(route.bookingID, route.role, language, bookingStore, hotelCatalog, packageEngine, chrome)
                 is AppRoute.PilgrimCheckout -> PilgrimCheckoutScreen(route.bookingID, language, bookingStore, accountStore, accountService, chrome)
                 is AppRoute.BookingChat -> BookingChatScreen(route.bookingID, language, bookingStore, chatService, chrome)

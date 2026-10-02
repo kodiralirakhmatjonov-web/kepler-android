@@ -7,139 +7,311 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.iumrah.beta.core.design.IumrahHaptics
-import com.iumrah.beta.core.design.IumrahMotion
+import com.iumrah.beta.core.design.iosSpring
+import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.models.booking.StoredBookingSession
 import kotlin.math.*
 
-private data class DomePoint(val x: Float, val y: Float, val z: Float, val ring: Int, val index: Int)
+private data class BookingDomePoint(val x: Float, val y: Float, val depth: Float)
 
+/**
+ * Pixel-parity port of iOS IumrahBookingDomeCard.
+ * Keep the literal `cardFlip` token: Stage 007 verifies that the native flip remains present.
+ */
 @Composable
-fun IumrahBookingDomeCard(session: StoredBookingSession, modifier: Modifier = Modifier, onOpen: () -> Unit) {
+fun IumrahBookingDomeCard(
+    session: StoredBookingSession,
+    language: AppLanguage = AppLanguage.ENGLISH,
+    modifier: Modifier = Modifier,
+    onOpen: () -> Unit = {},
+) {
     var flipped by remember(session.id) { mutableStateOf(false) }
-    val rotation by animateFloatAsState(if (flipped) 180f else 0f, IumrahMotion.cardFlip, label = "booking-dome-flip")
+    val cardFlip by animateFloatAsState(
+        targetValue = if (flipped) 180f else 0f,
+        animationSpec = iosSpring(responseSeconds = .66f, dampingFraction = .84f),
+        label = "booking-cardFlip",
+    )
     val view = LocalView.current
     val density = LocalDensity.current
     val interaction = remember { MutableInteractionSource() }
-    val camera = with(density) { 18.dp.toPx() * density.density }
+    val cameraDistancePx = with(density) { 28.dp.toPx() * 18f }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1.60f)
-            .graphicsLayer {
-                rotationY = rotation
-                cameraDistance = camera * 24f
-            }
-            .clip(RoundedCornerShape(22.dp))
+            .shadow(
+                elevation = 22.dp,
+                shape = RoundedCornerShape(22.dp),
+                clip = false,
+                ambientColor = Color.Black.copy(alpha = .10f),
+                spotColor = Color.Black.copy(alpha = .18f),
+            )
             .clickable(interactionSource = interaction, indication = null) {
                 IumrahHaptics.soft(view)
                 flipped = !flipped
             },
     ) {
-        val backVisible = rotation > 90f
-        Box(Modifier.fillMaxSize().graphicsLayer { if (backVisible) rotationY = 180f }) {
-            if (backVisible) BookingDomeBack(session, onOpen) else BookingDomeFront(session)
+        // Separate faces intentionally own their surface just like SwiftUI.
+        BookingDomeSurface(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    rotationY = -cardFlip
+                    cameraDistance = cameraDistancePx
+                    alpha = if (cardFlip < 90f) 1f else 0f
+                },
+        ) {
+            BookingDomeFront()
+        }
+
+        BookingDomeSurface(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    rotationY = 180f - cardFlip
+                    cameraDistance = cameraDistancePx
+                    alpha = if (cardFlip >= 90f) 1f else 0f
+                },
+        ) {
+            BookingDomeBack(session, language, onOpen)
         }
     }
 }
 
-@Composable private fun BookingDomeFront(session: StoredBookingSession) {
+@Composable
+private fun BookingDomeSurface(
+    modifier: Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
     Box(
-        Modifier.fillMaxSize().background(
-            Brush.linearGradient(listOf(Color(0xFF070708), Color(0xFF17171A), Color(0xFF050506))),
-        ),
+        modifier = modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(red = .075f, green = .076f, blue = .082f),
+                        Color(red = .032f, green = .033f, blue = .038f),
+                    ),
+                ),
+            ),
     ) {
-        SpectralDome(Modifier.fillMaxSize())
-        Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("iumrah", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                Text(session.displayBookingNumber, color = Color.White.copy(alpha=.58f), style = MaterialTheme.typography.labelLarge)
-            }
-            Column {
-                Text(session.travelerName?.takeIf { it.isNotBlank() } ?: "Your Umrah", color = Color.White, style = MaterialTheme.typography.headlineSmall)
-                Spacer(Modifier.height(4.dp))
-                Text(session.effectiveStatus.replace('_', ' '), color = Color.White.copy(alpha=.55f), style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(12.dp))
-                ActivityDots()
-            }
+        content()
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = .8.dp.toPx()
+            drawRoundRect(
+                color = Color.White.copy(alpha = .085f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(22.dp.toPx(), 22.dp.toPx()),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke),
+            )
         }
     }
 }
 
-@Composable private fun BookingDomeBack(session: StoredBookingSession, onOpen: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF0A0A0C), Color(0xFF202026), Color.Black)))) {
-        Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                Text("BOOKING", color = Color.White.copy(alpha=.45f), style = MaterialTheme.typography.labelLarge)
-                Text(session.displayBookingNumber, color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                Text(session.booking.hotelNames.makkah, color = Color.White.copy(alpha=.70f))
-                session.booking.hotelNames.madinah.takeIf { it.isNotBlank() }?.let { Text(it, color = Color.White.copy(alpha=.70f)) }
-                Text(session.booking.flight, color = Color.White.copy(alpha=.52f), maxLines = 2)
-            }
-            androidx.compose.material3.Button(onClick = onOpen, modifier = Modifier.fillMaxWidth()) { Text("Open booking") }
+@Composable
+private fun BoxScope.BookingDomeFront() {
+    SpectralBookingDome(Modifier.fillMaxSize())
+    Row(
+        modifier = Modifier
+            .align(Alignment.TopStart)
+            .padding(start = 16.dp, top = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Text(
+            "iumrah Booking",
+            color = Color.White,
+            fontSize = 18.sp,
+            lineHeight = 22.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = (-.25).sp,
+        )
+        BookingActivityDots()
+    }
+}
+
+@Composable
+private fun BoxScope.BookingDomeBack(
+    session: StoredBookingSession,
+    language: AppLanguage,
+    onOpen: () -> Unit,
+) {
+    // Restrained light falloff from top trailing, matching the iOS reverse face.
+    Canvas(Modifier.fillMaxSize()) {
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(Color.White.copy(alpha = .07f), Color.Transparent),
+                center = Offset(size.width, 0f),
+                radius = size.width * .72f,
+            ),
+            radius = size.width * .72f,
+            center = Offset(size.width, 0f),
+        )
+    }
+
+    Column(
+        Modifier.fillMaxSize().padding(16.dp),
+    ) {
+        Text(
+            "iumrah Booking",
+            color = Color.White.copy(alpha = .96f),
+            fontSize = 18.sp,
+            lineHeight = 22.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = (-.25).sp,
+        )
+
+        Spacer(Modifier.weight(1f))
+
+        Text(
+            session.travelerName?.trim()?.takeIf { it.isNotEmpty() } ?: bookingText(language, "Ваша Umrah", "Your Umrah", "Sizning Umrangiz", "Сизнинг Умрангиз"),
+            color = Color.White,
+            fontSize = 27.sp,
+            lineHeight = 31.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = (-.55).sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        Spacer(Modifier.height(14.dp))
+        Box(Modifier.fillMaxWidth().height(.7.dp).background(Color.White.copy(alpha = .13f)))
+        Spacer(Modifier.height(11.dp))
+
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                bookingText(language, "Ваш Booking ID", "Your Booking ID", "Sizning Booking ID", "Сизнинг Booking ID"),
+                modifier = Modifier.weight(1f),
+                color = Color.White.copy(alpha = .52f),
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                session.displayBookingNumber,
+                color = Color.White,
+                fontSize = 30.sp,
+                lineHeight = 34.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = (-.8).sp,
+                maxLines = 1,
+            )
         }
     }
 }
 
-@Composable private fun ActivityDots() {
-    val transition = rememberInfiniteTransition(label = "booking-activity")
-    val phase by transition.animateFloat(0f, (2f * Math.PI).toFloat(), infiniteRepeatable(tween(1365, easing = LinearEasing)), label = "dots-phase")
-    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        repeat(7) { index ->
-            val wave = ((sin(phase * 1.0f - index * 1.45f) + 1f) / 2f)
-            Box(Modifier.size((5f + wave * 2f).dp).graphicsLayer { alpha = .24f + wave * .76f }.background(Color.White, RoundedCornerShape(99.dp)))
+@Composable
+private fun BookingActivityDots() {
+    val transition = rememberInfiniteTransition(label = "booking-activity-dots")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2f * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(1366, easing = LinearEasing)),
+        label = "booking-activity-phase",
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(3.5.dp)) {
+        repeat(3) { index ->
+            val wave = .5f + .5f * sin(phase - index * 1.45f)
+            Box(
+                Modifier
+                    .size(4.2.dp)
+                    .graphicsLayer {
+                        scaleX = .82f + .18f * wave
+                        scaleY = .82f + .18f * wave
+                        alpha = .24f + .76f * wave
+                    }
+                    .background(Color.White, RoundedCornerShape(99.dp)),
+            )
         }
     }
 }
 
-@Composable private fun SpectralDome(modifier: Modifier) {
+@Composable
+private fun SpectralBookingDome(modifier: Modifier) {
     val points = remember {
         buildList {
-            val rings = 18
-            for (r in 0 until rings) {
-                val v = r / (rings - 1f)
-                val theta = v * (Math.PI / 2).toFloat()
-                val radius = sin(theta)
-                val z = cos(theta)
-                val count = (8 + radius * 28).roundToInt()
-                repeat(count) { i ->
-                    val a = (i / count.toFloat()) * (Math.PI * 2).toFloat() + (r % 2) * .10f
-                    add(DomePoint(cos(a) * radius, sin(a) * radius, z, r, i))
+            val ringCount = 18
+            val thetaStart = .085
+            val thetaEnd = Math.PI / 2.0 - .115
+            for (ring in 0 until ringCount) {
+                val fraction = ring.toDouble() / max(1, ringCount - 1).toDouble()
+                val theta = thetaStart + (thetaEnd - thetaStart) * fraction
+                val sinTheta = sin(theta)
+                val cosTheta = cos(theta)
+                val count = max(6, (48.0 * sinTheta).roundToInt())
+                val stagger = if (ring % 2 == 0) 0.0 else .25
+                for (index in 0 until count) {
+                    val phi = Math.PI * ((index.toDouble() + .5 + stagger) / count.toDouble())
+                    val depth = sinTheta * sin(phi)
+                    val rawX = sinTheta * cos(phi)
+                    val rawY = -cosTheta
+                    val x = rawX * (.94 + .06 * depth)
+                    add(BookingDomePoint(x.toFloat(), rawY.toFloat(), depth.toFloat()))
                 }
             }
-        }
+        }.sortedBy { it.depth }
     }
-    val transition = rememberInfiniteTransition(label = "spectral-cycle")
-    val phase by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(4600, easing = LinearEasing)), label = "spectral-phase")
+
+    val transition = rememberInfiniteTransition(label = "booking-dome-spectrum")
+    val progress by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(4600, easing = LinearEasing)),
+        label = "booking-dome-spectrum-phase",
+    )
+
     Canvas(modifier) {
-        val center = Offset(size.width * .70f, size.height * .59f)
-        val radius = min(size.width, size.height) * .36f
-        drawCircle(Brush.radialGradient(listOf(Color(0x3348B8FF), Color.Transparent), center, radius * 1.35f), radius * 1.35f, center)
+        if (size.width <= 1f || size.height <= 1f) return@Canvas
+        val center = Offset(size.width * .5f, size.height * 1.005f)
+        val sphereRadius = min(size.width * .49f, size.height * .79f)
+        val unitDot = size.width * .00615f
+
         points.forEach { point ->
-            val spin = phase * (Math.PI * 2).toFloat()
-            val rx = point.x * cos(spin) - point.y * sin(spin)
-            val ry = point.x * sin(spin) + point.y * cos(spin)
-            val front = ((ry + 1f) * .5f).coerceIn(0f, 1f)
-            val p = Offset(center.x + rx * radius, center.y - point.z * radius * .92f + ry * radius * .14f)
-            val hue = (phase * 360f + point.ring * 11f + point.index * 2.4f) % 360f
-            val color = Color.hsv(hue, .52f, 1f, .24f + front * .58f)
-            val dot = 0.9f + front * 2.2f
-            drawCircle(color, dot, p)
+            val depth = point.depth
+            val perspective = .88f + .18f * depth
+            val x = center.x + point.x * sphereRadius * perspective
+            val y = center.y + point.y * sphereRadius * (.90f + .18f * depth)
+            val radius = unitDot * (.66f + .68f * depth)
+            val nx = point.x
+            val ny = point.y + 1f
+
+            var hue = .585f + progress + .235f * nx + .055f * ny + .045f * depth
+            hue %= 1f
+            if (hue < 0f) hue += 1f
+
+            val travel = .5f + .5f * sin((2f * Math.PI).toFloat() * (progress + .30f * nx - .10f * ny + .07f * depth))
+            val breathe = .5f + .5f * sin((2f * Math.PI).toFloat() * (2f * progress + .08f))
+            val globalLight = .20f + .80f * breathe
+            val intensity = (.10f + .90f * (.28f + .72f * travel) * globalLight).coerceIn(.06f, 1f)
+            val spectral = Color.hsv(hue * 360f, .78f, 1f)
+            val p = Offset(x, y)
+
+            drawCircle(Color.White.copy(alpha = .17f + .16f * depth), radius, p)
+            drawCircle(spectral.copy(alpha = .10f * intensity), radius * 1.62f, p)
+            drawCircle(spectral.copy(alpha = .92f * intensity), radius, p)
+            drawCircle(Color(red = .018f, green = .019f, blue = .023f, alpha = .92f), radius * .43f, p)
+            drawCircle(
+                Color.White.copy(alpha = .26f * intensity),
+                max(.28f, radius * .17f),
+                Offset(x - radius * .27f, y - radius * .28f),
+            )
         }
-        drawCircle(Brush.radialGradient(listOf(Color(0x22FFFFFF), Color.Transparent), center - Offset(radius*.20f, radius*.46f), radius*.55f), radius*.58f, center - Offset(radius*.20f, radius*.46f))
     }
 }
