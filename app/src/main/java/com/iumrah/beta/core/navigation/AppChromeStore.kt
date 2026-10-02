@@ -26,6 +26,8 @@ sealed interface AppRoute {
     data class BookingHotelChange(val bookingID: String, val role: String) : AppRoute
     data class PilgrimCheckout(val bookingID: String) : AppRoute
     data class BookingChat(val bookingID: String) : AppRoute
+    data object Ziyarats : AppRoute
+    data object ESIM : AppRoute
     data object Notifications : AppRoute
     data object AccountTravelers : AppRoute
     data class AccountPolicy(val kind: String) : AppRoute
@@ -70,6 +72,8 @@ class AppChromeStore {
     fun openBookingHotelChange(id: String, role: String) = push(AppRoute.BookingHotelChange(id, role), tab = AppTab.BOOKING)
     fun openPilgrimCheckout(id: String) = push(AppRoute.PilgrimCheckout(id), tab = AppTab.BOOKING)
     fun openBookingChat(id: String) = push(AppRoute.BookingChat(id), tab = AppTab.CARE)
+    fun openZiyarats() = push(AppRoute.Ziyarats, tab = AppTab.HOME)
+    fun openESIM() = push(AppRoute.ESIM, tab = AppTab.HOME)
     fun openNotifications() = push(AppRoute.Notifications)
     fun openAccountTravelers() = push(AppRoute.AccountTravelers, tab = AppTab.ACCOUNT)
     fun openAccountPolicy(kind: String) = push(AppRoute.AccountPolicy(kind), tab = AppTab.ACCOUNT)

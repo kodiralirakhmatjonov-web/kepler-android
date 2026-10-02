@@ -15,11 +15,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,11 +29,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import com.iumrah.beta.core.design.IumrahMotion
+import com.iumrah.beta.core.design.IumrahColors
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppLanguage
@@ -105,6 +110,7 @@ private fun SidebarDrawer(language: AppLanguage, chrome: AppChromeStore) {
         DrawerRow(CupertinoSymbol.Suitcase, sidebarCopy(language).trips) { chrome.navigate(AppTab.BOOKING) }
         DrawerRow(CupertinoSymbol.Heart, "iumrah Care") { chrome.navigate(AppTab.CARE) }
         DrawerRow(CupertinoSymbol.PersonCircle, sidebarCopy(language).account) { chrome.navigate(AppTab.ACCOUNT) }
+        SidebarESIMCard(language, chrome)
         Spacer(Modifier.weight(1f))
         Text("Independent Umrah · iumrah", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .35f))
     }
@@ -118,6 +124,52 @@ private fun DrawerRow(icon: CupertinoSymbol, title: String, onClick: () -> Unit)
             Text(title, modifier = Modifier.padding(start = 14.dp), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.weight(1f))
             Icon(CupertinoSymbol.ArrowRight, contentDescription = null, modifier = Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .35f))
+        }
+    }
+}
+
+@Composable
+private fun SidebarESIMCard(language: AppLanguage, chrome: AppChromeStore) {
+    val body = when (language) {
+        AppLanguage.RUSSIAN -> "Интернет для поездки и данные активации — прямо внутри Вашего пакета."
+        AppLanguage.ENGLISH -> "Trip connectivity and activation data live directly inside your package."
+        AppLanguage.UZBEK -> "Safar interneti va faollashtirish ma’lumotlari to‘g‘ridan-to‘g‘ri paketingiz ichida."
+        AppLanguage.UZBEK_CYRILLIC -> "Сафар интернети ва фаоллаштириш маълумотлари тўғридан-тўғри пакетингиз ичида."
+    }
+    val badge = when (language) {
+        AppLanguage.RUSSIAN -> "ВНУТРИ ПАКЕТА"
+        AppLanguage.ENGLISH -> "INSIDE PACKAGE"
+        AppLanguage.UZBEK -> "PAKET ICHIDA"
+        AppLanguage.UZBEK_CYRILLIC -> "ПАКЕТ ИЧИДА"
+    }
+    IumrahPressable(
+        onClick = chrome::openESIM,
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+        cornerRadius = 28.dp,
+        background = Color.Transparent,
+        pressedScale = .975f,
+    ) {
+        Column(
+            Modifier.fillMaxWidth().background(
+                Brush.linearGradient(listOf(IumrahColors.CareDark, IumrahColors.Graphite)),
+                RoundedCornerShape(28.dp),
+            ).padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = .11f)), contentAlignment = Alignment.Center) {
+                    Icon(CupertinoSymbol.SignalWave, null, modifier = Modifier.size(22.dp), tint = Color.White)
+                }
+                Spacer(Modifier.weight(1f))
+                Icon(CupertinoSymbol.ArrowUpRight, null, modifier = Modifier.size(15.dp), tint = Color.White.copy(alpha = .70f))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("iumrah eSIM", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+                Text(body, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = .72f))
+            }
+            Box(Modifier.height(32.dp).clip(CircleShape).background(Color.White.copy(alpha = .12f)).padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
+                Text(badge, style = MaterialTheme.typography.labelSmall, color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            }
         }
     }
 }

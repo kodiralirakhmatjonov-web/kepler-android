@@ -1,0 +1,6 @@
+iumrah Android — Ziyarats + eSIM iOS parity v14
+Date: 2026-10-02
+Source of truth: kepler-ios-main(10).zip
+Scope: iumrah Ziyarats and iumrah eSIM, including live data, child states, Home/sidebar navigation and activation flows.
+Cumulative: includes prior v9-v13 parity payload.
+Map note: Apple MapKit basemap imagery/tiles are platform-specific and are not emulated with a paid Android SDK; Android mirrors the surrounding iOS experience and coordinate behavior.

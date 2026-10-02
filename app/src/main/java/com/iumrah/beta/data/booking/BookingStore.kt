@@ -21,6 +21,7 @@ import kotlinx.serialization.builtins.ListSerializer
 
 data class BookingStoreState(
     val sessions: List<StoredBookingSession> = emptyList(),
+    val esimProfilesByBooking: Map<String, List<ClientESIMProfile>> = emptyMap(),
     val isMutating: Boolean = false,
     val lastError: String? = null,
 )
@@ -36,6 +37,27 @@ class BookingStore(
     val state: StateFlow<BookingStoreState> = _state.asStateFlow()
 
     fun booking(id: String): StoredBookingSession? = _state.value.sessions.firstOrNull { it.id == id }
+
+    fun esimProfiles(bookingID: String): List<ClientESIMProfile> = _state.value.esimProfilesByBooking[bookingID].orEmpty()
+    fun primaryESIM(bookingID: String): ClientESIMProfile? = esimProfiles(bookingID).firstOrNull()
+
+    suspend fun loadESIMs(bookingID: String): List<ClientESIMProfile> {
+        val session = booking(bookingID) ?: run {
+            _state.update { it.copy(esimProfilesByBooking = it.esimProfilesByBooking - bookingID) }
+            return emptyList()
+        }
+        val headers = headersFor(session)
+        if (headers.isEmpty()) {
+            _state.update { it.copy(esimProfilesByBooking = it.esimProfilesByBooking - bookingID) }
+            return emptyList()
+        }
+        val response = service.fetchOperationalTrip(bookingID, headers)
+        val profiles = response.esims.orEmpty()
+        _state.update { current ->
+            current.copy(esimProfilesByBooking = if (profiles.isEmpty()) current.esimProfilesByBooking - bookingID else current.esimProfilesByBooking + (bookingID to profiles))
+        }
+        return profiles
+    }
 
     fun headersFor(session: StoredBookingSession): Map<String, String> =
         accountStore.authorizationHeaders(session.accessToken).ifEmpty {
@@ -148,6 +170,11 @@ class BookingStore(
             )
         }
         if (operational != null) {
+            operational.esims?.let { profiles ->
+                _state.update { current ->
+                    current.copy(esimProfilesByBooking = if (profiles.isEmpty()) current.esimProfilesByBooking - id else current.esimProfilesByBooking + (id to profiles))
+                }
+            }
             next = next.mergeOperationalTrip(
                 trip = operational.trip,
                 history = operational.statusHistory,

@@ -374,29 +374,29 @@ private fun ServicesSection(language: AppLanguage, chrome: AppChromeStore) {
     val serviceItems = when (language) {
         AppLanguage.RUSSIAN -> listOf(
             ServiceItem(transferImages, "Iumrah Transfer", "Встреча в аэропорту и приватные поездки между ключевыми точками маршрута. Комфортный автомобиль под Ваш формат поездки.", "В пакете", CupertinoSymbol.Car, chrome::openTransferSelection),
-            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Места Мекки и Медины в одном маршруте. История, навигация и понятный порядок посещения без лишней суеты.", "Маршруты", CupertinoSymbol.Location, {}),
-            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Интернет в Саудовской Аравии готов к подключению сразу после приземления — без поиска SIM-карты в аэропорту.", "Связь", CupertinoSymbol.SignalWave, {}),
+            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Места Мекки и Медины в одном маршруте. История, навигация и понятный порядок посещения без лишней суеты.", "Маршруты", CupertinoSymbol.Location, chrome::openZiyarats),
+            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Интернет в Саудовской Аравии готов к подключению сразу после приземления — без поиска SIM-карты в аэропорту.", "Связь", CupertinoSymbol.SignalWave, chrome::openESIM),
             ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Статус Вашего рейса в реальном времени: изменения времени, задержки и важные обновления поездки в одном месте.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
             ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Человеческая поддержка, когда она действительно нужна: до поездки, в Саудовской Аравии и во время возвращения домой.", "Поддержка", CupertinoSymbol.HeartFill) { chrome.navigate(AppTab.CARE) },
         )
         AppLanguage.ENGLISH -> listOf(
             ServiceItem(transferImages, "Iumrah Transfer", "Airport pickup and private rides between key stops, with the right vehicle for your journey.", "Included", CupertinoSymbol.Car, chrome::openTransferSelection),
-            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Makkah and Madinah places in one route, with context, navigation and a clear visit sequence.", "Routes", CupertinoSymbol.Location, {}),
-            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Saudi internet ready from arrival, without having to search for a local SIM card at the airport.", "Connectivity", CupertinoSymbol.SignalWave, {}),
+            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Makkah and Madinah places in one route, with context, navigation and a clear visit sequence.", "Routes", CupertinoSymbol.Location, chrome::openZiyarats),
+            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Saudi internet ready from arrival, without having to search for a local SIM card at the airport.", "Connectivity", CupertinoSymbol.SignalWave, chrome::openESIM),
             ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Real-time flight status with schedule changes, delays and important journey updates in one place.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
             ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Human support when it matters — before the trip, in Saudi Arabia and on the way home.", "Support", CupertinoSymbol.HeartFill) { chrome.navigate(AppTab.CARE) },
         )
         AppLanguage.UZBEK -> listOf(
             ServiceItem(transferImages, "Iumrah Transfer", "Aeroportdan kutib olish va yo‘nalishning muhim nuqtalari orasida safaringizga mos xususiy transport.", "Paketda", CupertinoSymbol.Car, chrome::openTransferSelection),
-            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Makka va Madina ziyorat joylari bitta yo‘nalishda: ma’lumot, navigatsiya va tushunarli tashrif tartibi.", "Yo‘nalishlar", CupertinoSymbol.Location, {}),
-            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Saudiya Arabistonida internet qo‘nganingizdan boshlab tayyor — aeroportda SIM-karta izlash shart emas.", "Internet", CupertinoSymbol.SignalWave, {}),
+            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Makka va Madina ziyorat joylari bitta yo‘nalishda: ma’lumot, navigatsiya va tushunarli tashrif tartibi.", "Yo‘nalishlar", CupertinoSymbol.Location, chrome::openZiyarats),
+            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Saudiya Arabistonida internet qo‘nganingizdan boshlab tayyor — aeroportda SIM-karta izlash shart emas.", "Internet", CupertinoSymbol.SignalWave, chrome::openESIM),
             ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Parvoz holati real vaqtda: vaqt o‘zgarishi, kechikish va safar uchun muhim yangilanishlar bir joyda.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
             ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Kerak bo‘lgan paytda insoniy yordam — safardan oldin, Saudiya Arabistonida va uyga qaytishda.", "Yordam", CupertinoSymbol.HeartFill) { chrome.navigate(AppTab.CARE) },
         )
         AppLanguage.UZBEK_CYRILLIC -> listOf(
             ServiceItem(transferImages, "Iumrah Transfer", "Аэропортдан кутиб олиш ва йўналишнинг муҳим нуқталари орасида сафарингизга мос хусусий транспорт.", "Пакетда", CupertinoSymbol.Car, chrome::openTransferSelection),
-            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Макка ва Мадина зиёрат жойлари битта йўналишда: маълумот, навигация ва тушунарли ташриф тартиби.", "Йўналишлар", CupertinoSymbol.Location, {}),
-            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Саудия Арабистонида интернет қўнганингиздан бошлаб тайёр — аэропортда SIM-карта излаш шарт эмас.", "Интернет", CupertinoSymbol.SignalWave, {}),
+            ServiceItem(ziyaratImages, "Iumrah Ziyarat", "Макка ва Мадина зиёрат жойлари битта йўналишда: маълумот, навигация ва тушунарли ташриф тартиби.", "Йўналишлар", CupertinoSymbol.Location, chrome::openZiyarats),
+            ServiceItem(listOf(R.drawable.iumrah_esim_home_card), "Iumrah eSIM", "Саудия Арабистонида интернет қўнганингиздан бошлаб тайёр — аэропортда SIM-карта излаш шарт эмас.", "Интернет", CupertinoSymbol.SignalWave, chrome::openESIM),
             ServiceItem(listOf(R.drawable.iumrah_flights_home_card), "Iumrah Flights", "Парвоз ҳолати реал вақтда: вақт ўзгариши, кечикиш ва сафар учун муҳим янгиланишлар бир жойда.", "Live status", CupertinoSymbol.Airplane, chrome::openFlights),
             ServiceItem(listOf(R.drawable.iumrah_care_showcase), "Iumrah Care", "Керак бўлган пайтда инсоний ёрдам — сафардан олдин, Саудия Арабистонида ва уйга қайтишда.", "Ёрдам", CupertinoSymbol.HeartFill) { chrome.navigate(AppTab.CARE) },
         )

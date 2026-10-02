@@ -1,0 +1,36 @@
+{
+  "schema": "iumrah.android-ios-parity.v14",
+  "date": "2026-10-02",
+  "scope": [
+    "Ziyarats",
+    "eSIM"
+  ],
+  "ios_source": "kepler-ios-main(10).zip",
+  "ios_source_sha256": "f6022357ff26e015ec431247ab1828b01b466c6e1b285aa360b1d058fb49a76e",
+  "ios_references": [
+    "Sources/Ziyarats/ZiyaratViews.swift",
+    "Sources/Models/ZiyaratModels.swift",
+    "Sources/Services/ZiyaratService.swift",
+    "Sources/Views/ESIM/ESIMView.swift",
+    "Sources/Views/ESIM/BookingStoreESIMCompatibility.swift",
+    "Sources/Core/DesignSystem.swift"
+  ],
+  "android_delta_sha256": {
+    "app/src/main/java/com/iumrah/beta/core/navigation/AppChromeStore.kt": "86fd9175b920d783bbf8e9a47a6c1496f411e7b011d1d277cacb825d0a3f3a57",
+    "app/src/main/java/com/iumrah/beta/data/booking/BookingStore.kt": "8d6cca9cb76607119af4d6103ca3798b5b2f4f735bc12a8b2a905f415a12e586",
+    "app/src/main/java/com/iumrah/beta/data/ziyarat/ZiyaratService.kt": "fb1fc7158ef164254e4f144ff76ecb049e8188b9e4e5e512b7099389feeb7bfd",
+    "app/src/main/java/com/iumrah/beta/models/ziyarat/ZiyaratModels.kt": "3d9d519d6535d712af6ac721a55b5a0b45f36d6eadf951568774309eb507cf87",
+    "app/src/main/java/com/iumrah/beta/ui/ziyarats/ZiyaratJourneyScreen.kt": "371a3232ed614a3170547561f36cb241bca4848124267fc84e53eeb2033c6ce0",
+    "app/src/main/java/com/iumrah/beta/ui/esim/ESIMScreen.kt": "b1a67a77b6808f9b4821e91f2dc07b49aa91397db048d3893250738defc3ba67",
+    "app/src/main/java/com/iumrah/beta/ui/home/HomeScreen.kt": "0ee9389b28c2c73b72b334c8f422e2d90956ede4b576363744d9052b1839db36",
+    "app/src/main/java/com/iumrah/beta/ui/shell/AppShell.kt": "58413b4d54a4d11efb78a23e8318cb2fe8340f611698f01668a70d6ca959ca0f",
+    "app/src/main/java/com/iumrah/beta/ui/shell/SidebarDrawer.kt": "3b71aa0e1a38162501ca72e6c9601cf31c6938f210cca548e47de84c21b89276"
+  },
+  "behavior": {
+    "ziyarats_catalog": "GET /api/catalog/ziyarats?city=...",
+    "esim_source": "existing authenticated operational trip endpoint",
+    "home_destinations": "Ziyarats/eSIM cards now open real module routes",
+    "sidebar_esim": "dedicated eSIM entry added"
+  },
+  "platform_note": "Apple MapKit tiles are iOS-only. Android preserves the iOS Ziyarats chrome, panel geometry, pins, route states and external-coordinate handoff without adding a paid map SDK/API key; geographic basemap pixels are therefore platform-specific."
+}
