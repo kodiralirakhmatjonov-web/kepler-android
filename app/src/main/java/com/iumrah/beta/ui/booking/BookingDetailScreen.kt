@@ -363,25 +363,25 @@ private fun BookingStatusHero(session: StoredBookingSession, language: AppLangua
     }
 }
 
-private data class LifecyclePhase(val kind: String, val deadlineMillis: Long, val tint: Color, val symbol: CupertinoSymbol)
+private data class BookingDetailLifecyclePhase(val kind: String, val deadlineMillis: Long, val tint: Color, val symbol: CupertinoSymbol)
 
 @Composable
-private fun BookingLifecycleTimer(session: StoredBookingSession, language: AppLanguage): LifecyclePhase? {
+private fun BookingLifecycleTimer(session: StoredBookingSession, language: AppLanguage): BookingDetailLifecyclePhase? {
     val status = session.effectiveStatus.uppercase()
     fun parsed(raw: String?): Long? = raw?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
     fun deadline(explicit: String?, start: String?, seconds: Long): Long? = parsed(explicit) ?: parsed(start)?.plus(seconds * 1000)
     return when (status) {
-        "NEW", "AVAILABILITY_CHECK" -> deadline(session.availabilityDeadlineAt, session.availabilityStartedAt ?: session.booking.createdAt, 6 * 60 * 60)?.let { LifecyclePhase("availability", it, Color(0xFFF2A900), CupertinoSymbol.Hourglass) }
+        "NEW", "AVAILABILITY_CHECK" -> deadline(session.availabilityDeadlineAt, session.availabilityStartedAt ?: session.booking.createdAt, 6 * 60 * 60)?.let { BookingDetailLifecyclePhase("availability", it, Color(0xFFF2A900), CupertinoSymbol.Hourglass) }
         "PAYMENT_PENDING" -> if (session.paymentReceivedAt != null)
-            deadline(session.paymentConfirmationDeadlineAt, session.paymentReceivedAt, 10 * 60)?.let { LifecyclePhase("confirmation", it, Color(0xFF34C759), CupertinoSymbol.CheckCircle) }
-        else deadline(session.priceLockExpiresAt, session.priceLockStartedAt ?: session.booking.updatedAt, 30 * 60)?.let { LifecyclePhase("price", it, Color(0xFF007AFF), CupertinoSymbol.CalendarClock) }
-        "BOOKING_CONFIRMED" -> deadline(session.documentsDeadlineAt, session.documentsStartedAt ?: session.booking.updatedAt, 24 * 60 * 60)?.let { LifecyclePhase("documents", it, Color(0xFF5856D6), CupertinoSymbol.Document) }
+            deadline(session.paymentConfirmationDeadlineAt, session.paymentReceivedAt, 10 * 60)?.let { BookingDetailLifecyclePhase("confirmation", it, Color(0xFF34C759), CupertinoSymbol.CheckCircle) }
+        else deadline(session.priceLockExpiresAt, session.priceLockStartedAt ?: session.booking.updatedAt, 30 * 60)?.let { BookingDetailLifecyclePhase("price", it, Color(0xFF007AFF), CupertinoSymbol.CalendarClock) }
+        "BOOKING_CONFIRMED" -> deadline(session.documentsDeadlineAt, session.documentsStartedAt ?: session.booking.updatedAt, 24 * 60 * 60)?.let { BookingDetailLifecyclePhase("documents", it, Color(0xFF5856D6), CupertinoSymbol.Document) }
         else -> null
     }
 }
 
 @Composable
-private fun LifecycleTimerCard(phase: LifecyclePhase, language: AppLanguage) {
+private fun LifecycleTimerCard(phase: BookingDetailLifecyclePhase, language: AppLanguage) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(phase.deadlineMillis) {
         while (true) { delay(1000); now = System.currentTimeMillis() }

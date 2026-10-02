@@ -378,11 +378,8 @@ fun BookingChatScreen(
                     }
                 }
 
-                AnimatedVisibility(
-                    visible = !atBottom && (messages.isNotEmpty() || pendingText != null),
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 14.dp),
-                ) {
-                    Box {
+                if (!atBottom && (messages.isNotEmpty() || pendingText != null)) {
+                    Box(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 14.dp)) {
                         IumrahPressable(
                             onClick = {
                                 scope.launch {
@@ -1308,7 +1305,7 @@ private fun CareFullscreenAttachment(
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
             AuthenticatedChatImage(path, bookingID, bookingStore, chatService, Modifier.fillMaxSize().padding(12.dp), fullScreen = true)
-            IumrahPressable(onClick = onDismiss, modifier = Modifier.statusBarsPadding().padding(14.dp).size(42.dp).align(Alignment.TopTrailing), cornerRadius = 99.dp, background = Color.White.copy(alpha = .16f)) {
+            IumrahPressable(onClick = onDismiss, modifier = Modifier.statusBarsPadding().padding(14.dp).size(42.dp).align(Alignment.TopEnd), cornerRadius = 99.dp, background = Color.White.copy(alpha = .16f)) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CupertinoIcon(CupertinoSymbol.Close, "Close", Modifier.size(18.dp), Color.White) }
             }
         }

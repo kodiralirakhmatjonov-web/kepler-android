@@ -301,9 +301,10 @@ private fun ESIMProfileCard(profile: ClientESIMProfile, language: AppLanguage) {
 
 @Composable
 private fun ESIMUsageRing(profile: ClientESIMProfile) {
+    val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .08f)
     Box(Modifier.size(104.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
-            drawArc(MaterialTheme.colorScheme.onSurface.copy(alpha = .08f), -90f, 360f, false, style = Stroke(10.dp.toPx(), cap = StrokeCap.Round))
+            drawArc(trackColor, -90f, 360f, false, style = Stroke(10.dp.toPx(), cap = StrokeCap.Round))
             if (profile.usageAvailable) drawArc(IumrahColors.CareDark, -90f, (360f * profile.remainingFraction).toFloat(), false, style = Stroke(10.dp.toPx(), cap = StrokeCap.Round))
         }
         if (profile.usageAvailable) {

@@ -425,7 +425,7 @@ private fun PrimaryStayCard(
             Box(Modifier.fillMaxWidth().height(174.dp).background(generatorRaisedColor())) {
                 AppConfig.absoluteUrl(hotel.coverImageURL)?.let { AsyncImage(it, hotel.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                 val label = if (selected) hotelTr(language, "Выбрано", "Selected", "Tanlangan", "Танланган") else badge
-                label?.let { Box(Modifier.align(Alignment.TopLeading).padding(12.dp).height(28.dp).clip(CircleShape).background(Color.Black.copy(alpha = .66f)).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) { Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White) } }
+                label?.let { Box(Modifier.align(Alignment.TopStart).padding(12.dp).height(28.dp).clip(CircleShape).background(Color.Black.copy(alpha = .66f)).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) { Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White) } }
             }
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(hotel.name, fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)

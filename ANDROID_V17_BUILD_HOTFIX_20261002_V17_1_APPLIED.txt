@@ -1,0 +1,14 @@
+iumrah Android v17.1 build hotfix
+Date: 2026-10-02
+Target: global-finalization v17
+
+Fixes compileDebugKotlin failures from GitHub Actions run logs_100204989867:
+- Booking LifecyclePhase top-level redeclaration/type cascade
+- PilgrimCheckout missing clip import
+- BookingChat BoxScope AnimatedVisibility/alignment errors
+- eSIM composable color access inside Canvas draw scope
+- Home missing AudienceItem/ServiceItem models and Compose geometry/layout imports
+- Hotels missing BoxWithConstraints/fillMaxHeight imports
+- HotelSelection invalid TopLeading alignment
+
+No changes to Onboarding or Umrah Flow.

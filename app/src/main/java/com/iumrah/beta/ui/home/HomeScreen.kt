@@ -21,6 +21,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -60,8 +61,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -326,6 +329,55 @@ private fun EmotionalPrompt(language: AppLanguage, onOpen: () -> Unit) {
                 Icon(CupertinoSymbol.Play, contentDescription = null, modifier = Modifier.size(11.dp), tint = Color.White)
             }
         }
+    }
+}
+
+
+private data class AudienceItem(
+    val icon: CupertinoSymbol,
+    val title: String,
+    val body: String,
+    val background: Color,
+    val foreground: Color,
+)
+
+private data class ServiceItem(
+    val images: List<Int>,
+    val title: String,
+    val body: String,
+    val badge: String,
+    val icon: CupertinoSymbol,
+    val action: () -> Unit,
+)
+
+private fun audienceItems(language: AppLanguage): List<AudienceItem> {
+    val blueBg = Color(0xFFE8F2FF)
+    val blueFg = Color(0xFF0D2957)
+    val greenBg = Color(0xFFF0FAEB)
+    val greenFg = Color(0xFF1A4721)
+    val sandBg = Color(0xFFFAF0E3)
+    val sandFg = Color(0xFF4F2E12)
+    return when (language) {
+        AppLanguage.RUSSIAN -> listOf(
+            AudienceItem(CupertinoSymbol.Sliders, "Соберите поездку сами", "Перелёт, отели, трансфер и сервисы — один персональный пакет Умры, который Вы собираете под себя.", blueBg, blueFg),
+            AudienceItem(CupertinoSymbol.Persons, "Семья и близкие", "Организуйте Умру для семьи или друзей вместе, сохраняя приватность и удобный темп поездки.", greenBg, greenFg),
+            AudienceItem(CupertinoSymbol.Sparkles, "Индивидуальный и VIP", "Премиальные отели, приватный транспорт, индивидуальный сервис и максимум личного пространства.", sandBg, sandFg),
+        )
+        AppLanguage.ENGLISH -> listOf(
+            AudienceItem(CupertinoSymbol.Sliders, "Build it your way", "Flights, hotels, transfer and services in one personal Umrah package you configure for yourself.", blueBg, blueFg),
+            AudienceItem(CupertinoSymbol.Persons, "Family & friends", "Organize Umrah together while keeping the journey private, comfortable and paced around your group.", greenBg, greenFg),
+            AudienceItem(CupertinoSymbol.Sparkles, "Private & VIP", "Premium hotels, private transport, individual service and more personal space throughout the journey.", sandBg, sandFg),
+        )
+        AppLanguage.UZBEK -> listOf(
+            AudienceItem(CupertinoSymbol.Sliders, "Safarni o‘zingiz tuzing", "Parvoz, mehmonxona, transfer va servislar — o‘zingizga mos bitta shaxsiy Umra paketi.", blueBg, blueFg),
+            AudienceItem(CupertinoSymbol.Persons, "Oila va yaqinlar", "Oila yoki do‘stlar bilan guruhingizga mos, qulay va xususiy tempda Umra safarini tashkil qiling.", greenBg, greenFg),
+            AudienceItem(CupertinoSymbol.Sparkles, "Individual va VIP", "Premium mehmonxonalar, xususiy transport, individual servis va safar davomida maksimal maxfiylik.", sandBg, sandFg),
+        )
+        AppLanguage.UZBEK_CYRILLIC -> listOf(
+            AudienceItem(CupertinoSymbol.Sliders, "Сафарни ўзингиз тузинг", "Парвоз, меҳмонхона, трансфер ва сервислар — ўзингизга мос битта шахсий Умра пакети.", blueBg, blueFg),
+            AudienceItem(CupertinoSymbol.Persons, "Оила ва яқинлар", "Оила ёки дўстлар билан гуруҳингизга мос, қулай ва хусусий темпда Умра сафарини ташкил қилинг.", greenBg, greenFg),
+            AudienceItem(CupertinoSymbol.Sparkles, "Индивидуал ва VIP", "Премиум меҳмонхоналар, хусусий транспорт, индивидуал сервис ва сафар давомида максимал махфийлик.", sandBg, sandFg),
+        )
     }
 }
 
