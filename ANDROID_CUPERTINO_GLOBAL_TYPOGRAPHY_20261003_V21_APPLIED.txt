@@ -1,0 +1,16 @@
+Iumrah Android v21 design-foundation checkpoint
+Base: current-ios-parity v20 checkpoint
+Date: 2026-10-03
+
+Applied globally:
+- IumrahFontFamily prefers Android system sans-serif-rounded with sans-serif fallback.
+- Root IumrahTheme provides the rounded family to ordinary Text() call sites.
+- Intentional monospace remains for identifiers, codes, timers and route codes.
+- Local Cupertino renderer expanded to 110 semantic symbols.
+- CupertinoSfCatalog maps all 159 SF Symbol system names currently used by the iOS repository.
+- Material Icons imports in app/src/main/java: 0.
+- Advisor / Umrah Plan / Trip Builder icon-like text glyphs replaced with Cupertino vectors.
+
+Validation:
+- Structural verifier stages 2 through 10: PASS.
+- Full Android/Gradle compile is delegated to repository CI because the supplied repository does not include gradlew/Android SDK tooling in this workspace.

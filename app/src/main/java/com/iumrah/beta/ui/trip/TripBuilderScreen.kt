@@ -625,7 +625,7 @@ private fun WeekendDatesSummary(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(if (selection == CuratedLegSelection.OUTBOUND) CupertinoSymbol.AirplaneTakeoff else CupertinoSymbol.AirplaneLand, null, Modifier.size(15.dp))
                 Text(leg.origin, fontSize = 15.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                Text("→", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .45f))
+                Icon(CupertinoSymbol.ArrowRight, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .45f))
                 Text(leg.destination, fontSize = 15.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 Spacer(Modifier.weight(1f))
                 Text(shortDate(language, date), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f))

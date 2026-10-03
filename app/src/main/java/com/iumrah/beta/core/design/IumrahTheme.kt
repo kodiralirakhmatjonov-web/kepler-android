@@ -3,6 +3,7 @@ package com.iumrah.beta.core.design
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -10,6 +11,8 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.DeviceFontFamilyName
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -124,82 +127,90 @@ private val DarkColors = darkColorScheme(
     outlineVariant = Color.White.copy(alpha = .055f),
 )
 
-// SwiftUI uses SF Pro / SF Pro Rounded. Android cannot legally bundle Apple's font,
-// so keep the platform sans face while matching the iOS point sizes, weights and tracking.
+// iOS uses SF Pro Rounded across the product. Android must not bundle Apple's font files,
+// so prefer the platform-installed rounded sans family and fall back to the device sans family.
+// DeviceFontFamilyName keeps the APK self-contained/offline and preserves OEM rendering quality.
+private val RoundedDevice = DeviceFontFamilyName("sans-serif-rounded")
+private val SansDevice = DeviceFontFamilyName("sans-serif")
+
+val IumrahFontFamily = FontFamily(
+    Font(RoundedDevice, FontWeight.W300),
+    Font(RoundedDevice, FontWeight.W400),
+    Font(RoundedDevice, FontWeight.W500),
+    Font(RoundedDevice, FontWeight.W600),
+    Font(RoundedDevice, FontWeight.W700),
+    Font(RoundedDevice, FontWeight.W800),
+    Font(SansDevice, FontWeight.W300),
+    Font(SansDevice, FontWeight.W400),
+    Font(SansDevice, FontWeight.W500),
+    Font(SansDevice, FontWeight.W600),
+    Font(SansDevice, FontWeight.W700),
+    Font(SansDevice, FontWeight.W800),
+)
+
 private val IumrahTypography = Typography(
+    fontFamily = IumrahFontFamily,
     displayLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 38.sp,
+                fontSize = 38.sp,
         lineHeight = 42.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = (-1.0).sp,
     ),
     headlineLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 31.sp,
+                fontSize = 31.sp,
         lineHeight = 36.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = (-0.8).sp,
     ),
     headlineMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 28.sp,
+                fontSize = 28.sp,
         lineHeight = 33.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = (-0.7).sp,
     ),
     headlineSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 23.sp,
+                fontSize = 23.sp,
         lineHeight = 28.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = (-0.45).sp,
     ),
     titleLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 20.sp,
+                fontSize = 20.sp,
         lineHeight = 25.sp,
         fontWeight = FontWeight.Bold,
     ),
     titleMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 16.sp,
+                fontSize = 16.sp,
         lineHeight = 21.sp,
         fontWeight = FontWeight.SemiBold,
     ),
     titleSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 14.sp,
+                fontSize = 14.sp,
         lineHeight = 19.sp,
         fontWeight = FontWeight.SemiBold,
     ),
     bodyLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 16.sp,
+                fontSize = 16.sp,
         lineHeight = 22.sp,
         fontWeight = FontWeight.Normal,
     ),
     bodyMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 14.sp,
+                fontSize = 14.sp,
         lineHeight = 19.sp,
         fontWeight = FontWeight.Normal,
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 15.sp,
+                fontSize = 15.sp,
         lineHeight = 20.sp,
         fontWeight = FontWeight.SemiBold,
     ),
     labelMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 13.sp,
+                fontSize = 13.sp,
         lineHeight = 18.sp,
         fontWeight = FontWeight.SemiBold,
     ),
     labelSmall = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontSize = 11.sp,
+                fontSize = 11.sp,
         lineHeight = 15.sp,
         fontWeight = FontWeight.SemiBold,
     ),
@@ -229,6 +240,11 @@ fun IumrahTheme(
         colorScheme = if (dark) DarkColors else LightColors,
         typography = IumrahTypography,
         shapes = IumrahShapes,
-        content = content,
-    )
+    ) {
+        // Many parity screens set explicit size/weight but intentionally omit fontFamily.
+        // This provider makes the rounded family global without forcing one global text size.
+        ProvideTextStyle(value = TextStyle(fontFamily = IumrahFontFamily)) {
+            content()
+        }
+    }
 }

@@ -95,6 +95,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
+import com.iumrah.beta.core.design.IumrahFontFamily
 import com.iumrah.beta.R
 import com.iumrah.beta.core.design.IumrahHaptics
 import com.iumrah.beta.core.localization.L10n
@@ -731,7 +732,7 @@ private fun CareChatMessageRow(
                 color = if (wallpaperActive) Color.White.copy(alpha = .82f) else MaterialTheme.colorScheme.onBackground.copy(alpha = .50f),
                 fontSize = 10.5.sp,
                 fontWeight = FontWeight.Medium,
-                fontFamily = FontFamily.SansSerif,
+                fontFamily = IumrahFontFamily,
             )
         }
     }

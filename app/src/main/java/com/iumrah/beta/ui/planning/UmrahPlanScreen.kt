@@ -278,7 +278,7 @@ private fun ReminderEditor(language: AppLanguage, trip: PlannedTrip, onBack: () 
                     NumberControl(customDays, { customDays = it.coerceIn(1, 180) }, 1..180, Modifier.weight(1f))
                     Spacer(Modifier.width(12.dp))
                     IumrahPressable({ days = days + customDays }, Modifier.size(42.dp), cornerRadius = 21.dp, background = MaterialTheme.colorScheme.onSurface.copy(alpha = .07f)) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CupertinoIcon(CupertinoSymbol.Plus, null, Modifier.size(20.dp)) }
                     }
                 }
                 IumrahPressable({
@@ -297,7 +297,7 @@ private fun ReminderEditor(language: AppLanguage, trip: PlannedTrip, onBack: () 
         }
     }
 }
-@Composable private fun NumberControl(value:Int,set:(Int)->Unit,range:IntRange,modifier:Modifier){Row(modifier.height(54.dp).background(MaterialTheme.colorScheme.surface,RoundedCornerShape(18.dp)),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceEvenly){Text("−",fontSize=22.sp,modifier=Modifier.clickable{set(if(value==range.first)range.last else value-1)});Text("%02d".format(value),fontWeight=FontWeight.Bold,fontSize=18.sp);Text("+",fontSize=22.sp,modifier=Modifier.clickable{set(if(value==range.last)range.first else value+1)})}}
+@Composable private fun NumberControl(value:Int,set:(Int)->Unit,range:IntRange,modifier:Modifier){Row(modifier.height(54.dp).background(MaterialTheme.colorScheme.surface,RoundedCornerShape(18.dp)),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceEvenly){CupertinoIcon(CupertinoSymbol.Minus,null,Modifier.size(20.dp).clickable{set(if(value==range.first)range.last else value-1)});Text("%02d".format(value),fontWeight=FontWeight.Bold,fontSize=18.sp);CupertinoIcon(CupertinoSymbol.Plus,null,Modifier.size(20.dp).clickable{set(if(value==range.last)range.first else value+1)})}}
 
 @Composable private fun PlanBackground(id:String){when(id){"photo-makkah-window"->Image(painterResource(R.drawable.iumrah_makkah_background),null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop);"photo-kaaba-arch"->Image(painterResource(R.drawable.umrah_plan_kaaba),null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop);else->Box(Modifier.fillMaxSize().background(Brush.linearGradient(backgroundColors(id))))}}
 private fun backgroundColors(id:String)=when(id){"gradient-dawn"->listOf(Color(0xFFFFA630),Color(0xFFF24F3B));"gradient-sky"->listOf(Color(0xFF2EA3F7),Color(0xFF3857E0));"gradient-mint"->listOf(Color(0xFF52D18C),Color(0xFF1A9687));"gradient-gold"->listOf(Color(0xFFFAD42E),Color(0xFFF77A26));"gradient-ocean"->listOf(Color(0xFF00C9E3),Color(0xFF0359BF));"gradient-lime"->listOf(Color(0xFFCCE619),Color(0xFF4DBA38));"gradient-night"->listOf(Color(0xFF424057),Color(0xFF0D1421));"gradient-sand"->listOf(Color(0xFFE0A870),Color(0xFF8C6147));else->listOf(Color(0xFFBA5E38),Color(0xFF597AA3))}

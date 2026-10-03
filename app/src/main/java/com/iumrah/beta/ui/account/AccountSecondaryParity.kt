@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.iumrah.beta.core.design.IumrahFontFamily
 import com.iumrah.beta.R
 import com.iumrah.beta.core.design.IumrahBookingStatusVisual
 import com.iumrah.beta.core.navigation.AppChromeStore
@@ -461,7 +462,7 @@ private fun RecoveryField(icon: CupertinoSymbol, value: String, onChange: (Strin
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = keyboard),
                 visualTransformation = if (secure) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
-                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontFamily = if (keyboard == KeyboardType.Number) FontFamily.Monospace else FontFamily.Default),
+                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontFamily = if (keyboard == KeyboardType.Number) FontFamily.Monospace else IumrahFontFamily),
                 decorationBox = { inner -> Box { if (value.isEmpty()) Text(placeholder, color = ApGray, fontSize = 16.sp); inner() } },
             )
         }

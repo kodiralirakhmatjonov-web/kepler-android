@@ -32,6 +32,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.settings.AppLanguage
+import com.iumrah.beta.ui.cupertino.CupertinoIcon
+import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 import com.iumrah.beta.data.advisor.UmrahFlowContent
 import com.iumrah.beta.data.advisor.UmrahFlowService
 import kotlinx.coroutines.launch
@@ -321,7 +323,7 @@ private fun LanguagePicker(selection: UmrahGuideLanguage, onSelect: (UmrahGuideL
                 ) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(language.nativeName, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, color = if(selected) Color.White else MaterialTheme.colorScheme.onSurface)
-                        Text(if(selected) "✓" else "○", color = if(selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
+                        CupertinoIcon(if(selected) CupertinoSymbol.CheckCircleFill else CupertinoSymbol.CheckCircle, null, Modifier.size(20.dp), tint = if(selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -336,12 +338,12 @@ private fun LanguagePicker(selection: UmrahGuideLanguage, onSelect: (UmrahGuideL
 private fun AdvisorHeader(title: String, subtitle: String, progress: Float, onBack: () -> Unit, onNavigate: () -> Unit) {
     Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("‹", fontSize = 32.sp, fontWeight = FontWeight.Light) }
+            TextButton(onClick = onBack) { CupertinoIcon(CupertinoSymbol.ChevronLeft, null, Modifier.size(22.dp)) }
             Column(Modifier.weight(1f)) {
                 Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 Text(subtitle, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
-            TextButton(onClick = onNavigate) { Text("☰", fontSize = 18.sp) }
+            TextButton(onClick = onNavigate) { CupertinoIcon(CupertinoSymbol.Menu, null, Modifier.size(20.dp)) }
         }
         LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth().height(3.dp).clip(CircleShape), color = Color(0xFF2E66E6), trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha=.08f))
     }
@@ -380,7 +382,7 @@ private fun VoiceStep(
             if(title.isNotBlank()) Text(title, fontSize = 29.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Spacer(Modifier.height(24.dp))
             Box(Modifier.size(112.dp).clip(CircleShape).background(Color(0xFF2E66E6).copy(alpha=.10f)).border(1.dp, Color(0xFF2E66E6).copy(alpha=.20f), CircleShape).clickable(enabled = audioAvailable) { onListen() }, contentAlignment = Alignment.Center) {
-                Text(if(audioAvailable) "◉" else "·", fontSize = 42.sp, color = Color(0xFF2E66E6))
+                CupertinoIcon(if(audioAvailable) CupertinoSymbol.SignalWave else CupertinoSymbol.SpeakerSlash, null, Modifier.size(42.dp), tint = Color(0xFF2E66E6))
             }
             Spacer(Modifier.height(24.dp))
             Text(body, modifier = if(onBodyTap != null) Modifier.clickable { onBodyTap() } else Modifier, fontSize = 22.sp, lineHeight = 31.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
@@ -392,9 +394,14 @@ private fun VoiceStep(
             Spacer(Modifier.height(100.dp))
         }
         Row(Modifier.fillMaxWidth().align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            if(showPrevious) FloatingActionButton(onClick = onPrevious, containerColor = MaterialTheme.colorScheme.surface) { Text("‹", fontSize = 28.sp) } else Spacer(Modifier.size(56.dp))
+            if(showPrevious) FloatingActionButton(onClick = onPrevious, containerColor = MaterialTheme.colorScheme.surface) { CupertinoIcon(CupertinoSymbol.ChevronLeft, null, Modifier.size(22.dp)) } else Spacer(Modifier.size(56.dp))
             Spacer(Modifier.weight(1f))
-            ExtendedFloatingActionButton(onClick = onNext, containerColor = Color.Black, contentColor = Color.White) { Text(if(nextDone) "Done ✓" else "Next ›", fontWeight = FontWeight.Bold) }
+            ExtendedFloatingActionButton(onClick = onNext, containerColor = Color.Black, contentColor = Color.White) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text(if(nextDone) "Done" else "Next", fontWeight = FontWeight.Bold)
+                    CupertinoIcon(if(nextDone) CupertinoSymbol.Checkmark else CupertinoSymbol.ChevronRight, null, Modifier.size(16.dp), tint = Color.White)
+                }
+            }
         }
     }
 }
@@ -458,16 +465,16 @@ private fun SafaReading(round: Int, step: Int, text: (String, String) -> String,
 @Composable
 private fun StepButtons(done: Boolean, onPrevious: () -> Unit, onNext: () -> Unit, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=16.dp, vertical=14.dp), verticalAlignment = Alignment.CenterVertically) {
-        FloatingActionButton(onClick = onPrevious, containerColor = MaterialTheme.colorScheme.surface) { Text("‹", fontSize = 28.sp) }
+        FloatingActionButton(onClick = onPrevious, containerColor = MaterialTheme.colorScheme.surface) { CupertinoIcon(CupertinoSymbol.ChevronLeft, null, Modifier.size(22.dp)) }
         Spacer(Modifier.weight(1f))
-        FloatingActionButton(onClick = onNext, containerColor = Color.Black, contentColor = Color.White) { Text(if(done) "✓" else "›", fontSize = 25.sp) }
+        FloatingActionButton(onClick = onNext, containerColor = Color.Black, contentColor = Color.White) { CupertinoIcon(if(done) CupertinoSymbol.Checkmark else CupertinoSymbol.ChevronRight, null, Modifier.size(22.dp), tint = Color.White) }
     }
 }
 
 @Composable
 private fun Completion(title: String, subtitle: String, done: String, restart: String, onDone: () -> Unit, onRestart: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 40.dp, vertical = 46.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("✓", fontSize = 58.sp, color = Color(0xFF2E66E6)); Spacer(Modifier.height(16.dp))
+        CupertinoIcon(CupertinoSymbol.CheckCircleFill, null, Modifier.size(58.dp), tint = Color(0xFF2E66E6)); Spacer(Modifier.height(16.dp))
         Text(title, fontSize = 30.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         Spacer(Modifier.height(10.dp)); Text(subtitle, fontSize = 17.sp, lineHeight = 24.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         Spacer(Modifier.height(30.dp)); Button(onClick=onDone, shape=CircleShape, colors=ButtonDefaults.buttonColors(containerColor=Color.Black), modifier=Modifier.height(54.dp)) { Text(done, fontWeight=FontWeight.Bold) }
@@ -478,7 +485,7 @@ private fun Completion(title: String, subtitle: String, done: String, restart: S
 @Composable
 private fun DuaSheet(title: String, arabic: String, transliteration: String, note: String, onClose: () -> Unit) {
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal=22.dp, vertical=14.dp), horizontalAlignment=Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically) { Text(title, Modifier.weight(1f), fontSize=24.sp, fontWeight=FontWeight.Bold); TextButton(onClick=onClose){Text("×", fontSize=26.sp)} }
+        Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically) { Text(title, Modifier.weight(1f), fontSize=24.sp, fontWeight=FontWeight.Bold); TextButton(onClick=onClose){CupertinoIcon(CupertinoSymbol.Close, null, Modifier.size(22.dp))} }
         Spacer(Modifier.height(20.dp)); Text(arabic, fontSize=27.sp, lineHeight=42.sp, textAlign=TextAlign.Center)
         Spacer(Modifier.height(20.dp)); Text(transliteration, fontSize=17.sp, lineHeight=25.sp, color=MaterialTheme.colorScheme.onSurfaceVariant, textAlign=TextAlign.Center)
         Spacer(Modifier.height(20.dp)); Surface(shape=RoundedCornerShape(24.dp), color=MaterialTheme.colorScheme.surfaceVariant){ Text(note, Modifier.padding(18.dp), textAlign=TextAlign.Center) }
