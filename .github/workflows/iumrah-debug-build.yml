@@ -116,7 +116,7 @@ jobs:
           echo "IUMRAH_GRADLE_BIN=$GRADLE" >> "$GITHUB_ENV"
           "$GRADLE" --version
 
-      - name: Build and install debug once
+      - name: Build and install debug robustly
         shell: bash
         env:
           APP_ID: com.iumrah.beta
@@ -128,16 +128,67 @@ jobs:
           GRADLE="$IUMRAH_GRADLE_BIN"
           ADB="$ANDROID_SDK_ROOT/platform-tools/adb"
           SERIAL="$IUMRAH_ADB_SERIAL"
+          APK="$GITHUB_WORKSPACE/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ "${{ inputs.clean_build }}" = "true" ]; then
             "$GRADLE" --daemon --console=plain clean
           fi
 
+          # Build separately. Do not use AGP installDebug/ddmlib: a stale
+          # self-hosted emulator package service can fail with Broken pipe (32)
+          # even after a completely successful APK build.
           set +e
-          "$GRADLE" --daemon --console=plain :app:installDebug 2>&1 | tee artifacts/debug-build/build-install.log
-          STATUS=${PIPESTATUS[0]}
+          "$GRADLE" --daemon --console=plain :app:assembleDebug 2>&1 | tee artifacts/debug-build/build-install.log
+          BUILD_STATUS=${PIPESTATUS[0]}
           set -e
-          [ "$STATUS" -eq 0 ] || exit "$STATUS"
+          [ "$BUILD_STATUS" -eq 0 ] || exit "$BUILD_STATUS"
+          [ -f "$APK" ] || { echo "Debug APK not found: $APK"; exit 1; }
+
+          wait_for_android() {
+            "$ADB" start-server >/dev/null 2>&1 || true
+            "$ADB" -s "$SERIAL" wait-for-device
+
+            local ready=0
+            for _ in $(seq 1 60); do
+              if [ "$("$ADB" -s "$SERIAL" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && \
+                 "$ADB" -s "$SERIAL" shell cmd package list packages >/dev/null 2>&1; then
+                ready=1
+                break
+              fi
+              sleep 2
+            done
+            [ "$ready" -eq 1 ]
+          }
+
+          install_apk() {
+            "$ADB" -s "$SERIAL" install -r -d "$APK"
+          }
+
+          wait_for_android || true
+
+          INSTALLED=0
+          for ATTEMPT in 1 2; do
+            echo "ADB install attempt $ATTEMPT" | tee -a artifacts/debug-build/build-install.log
+            if install_apk 2>&1 | tee -a artifacts/debug-build/build-install.log; then
+              INSTALLED=1
+              break
+            fi
+            echo "Install failed; restarting ADB and re-checking package service." | tee -a artifacts/debug-build/build-install.log
+            "$ADB" kill-server >/dev/null 2>&1 || true
+            sleep 2
+            wait_for_android || true
+          done
+
+          if [ "$INSTALLED" -ne 1 ]; then
+            echo "Package service is still unhealthy; rebooting emulator once." | tee -a artifacts/debug-build/build-install.log
+            "$ADB" -s "$SERIAL" reboot >/dev/null 2>&1 || true
+            sleep 4
+            wait_for_android || {
+              echo "Emulator did not recover after reboot." | tee -a artifacts/debug-build/build-install.log
+              exit 1
+            }
+            install_apk 2>&1 | tee -a artifacts/debug-build/build-install.log
+          fi
 
           "$ADB" -s "$SERIAL" shell am force-stop "$APP_ID" >/dev/null 2>&1 || true
           "$ADB" -s "$SERIAL" shell am start -n "$APP_ID/$ACTIVITY" >/dev/null 2>&1 || \
@@ -147,12 +198,14 @@ jobs:
           "$ADB" -s "$SERIAL" exec-out screencap -p > artifacts/debug-build/emulator.png 2>/dev/null || true
           "$ADB" -s "$SERIAL" shell pm path "$APP_ID"
 
+          cp "$APK" artifacts/debug-build/app-debug.apk
+
           {
-            echo '## ✅ iumrah Debug installed'
+            echo '## ✅ iumrah Debug built and installed'
             echo
             echo "- Device: \`$SERIAL\`"
             echo "- Commit: \`${GITHUB_SHA::7}\`"
-            echo '- Live UI can now be used without rebuilding for supported Compose edits.'
+            echo '- APK build and device installation are isolated, with ADB/package-service recovery.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload debug build log and screenshot
