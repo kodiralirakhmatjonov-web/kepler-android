@@ -67,8 +67,9 @@ fun IumrahGiftCardsScreen(
 
     LaunchedEffect(accountState.account?.iumrahID) { load() }
     val available = dashboard?.gifts?.filter { it.isAvailable }.orEmpty()
+    val selected = available.firstOrNull { it.id == selectedId } ?: available.firstOrNull()
     Box(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding()) {
-        GiftBackgroundGlow(selected?.position ?: available.firstOrNull()?.position ?: 1)
+        GiftBackgroundGlow(selected?.position ?: 1)
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().height(54.dp).padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
                 IumrahPressable(onClick = chrome::back, modifier = Modifier.size(40.dp), cornerRadius = 20.dp, background = Color.White.copy(alpha = .10f), shadowElevation = 0.dp) {

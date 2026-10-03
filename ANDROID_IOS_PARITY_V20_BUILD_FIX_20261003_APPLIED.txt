@@ -1,0 +1,10 @@
+Android v20 build hotfix — 2026-10-03
+
+Fixes CI compileDebugKotlin failure:
+IumrahGiftCardsScreen.kt:71:28 Unresolved reference 'selected'.
+
+Change:
+- resolve selected gift from selectedId before Box/GiftBackgroundGlow
+- preserve all v20 checkpoint functionality
+
+Apply over v20 checkpoint repository root.
