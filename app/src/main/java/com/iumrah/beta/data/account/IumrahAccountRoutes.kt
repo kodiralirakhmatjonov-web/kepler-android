@@ -1,7 +1,7 @@
 package com.iumrah.beta.data.account
 
 object IumrahAccountRoutes {
-    const val ACTIVATE = "/api/catalog/hotels/client/account/activate"
+    const val ACTIVATE = "/api/package/client/account/activate"
     const val LOGIN = "/api/package/client/account/login"
     const val PHONE_LOGIN_START = "/api/package/client/account/login/sms/start"
     const val PHONE_LOGIN_CONFIRM = "/api/package/client/account/login/sms/confirm"
@@ -20,6 +20,8 @@ object IumrahAccountRoutes {
     const val FRIENDS = "/api/package/client/account/friends"
     const val APPLE_LINK = "/api/package/client/account/apple/link"
     const val APPLE_SIGN_IN = "/api/package/client/account/apple/sign-in"
+    const val GOOGLE_LINK = "/api/package/client/account/google/link"
+    const val GOOGLE_SIGN_IN = "/api/package/client/account/google/sign-in"
     const val EMAIL_START = "/api/package/client/account/email/start"
     const val EMAIL_CONFIRM = "/api/package/client/account/email/confirm"
     const val PASSWORD_RECOVERY_START = "/api/package/client/account/password/recovery/start"

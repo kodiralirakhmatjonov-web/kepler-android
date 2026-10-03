@@ -1012,7 +1012,7 @@ private fun BackendSystemCard(language: AppLanguage, chrome: AppChromeStore, car
 @Composable
 private fun AdvisorCard(language: AppLanguage, chrome: AppChromeStore, cardWidth: androidx.compose.ui.unit.Dp) {
     val shape = RoundedCornerShape(34.dp)
-    IumrahPressable(onClick = { chrome.navigate(AppTab.CARE) }, modifier = Modifier.width(cardWidth).height(472.dp).border(.8.dp, Color.White.copy(alpha = .09f), shape), cornerRadius = 34.dp, background = Color.Black, shadowElevation = 0.dp) {
+    IumrahPressable(onClick = { chrome.openUmrahAdvisor() }, modifier = Modifier.width(cardWidth).height(472.dp).border(.8.dp, Color.White.copy(alpha = .09f), shape), cornerRadius = 34.dp, background = Color.Black, shadowElevation = 0.dp) {
         Box(Modifier.fillMaxSize()) {
             AdvisorAura(Modifier.fillMaxSize())
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .04f), Color.Black.copy(alpha = .10f), Color.Black.copy(alpha = .42f)))))

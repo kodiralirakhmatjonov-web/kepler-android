@@ -154,6 +154,44 @@ class BookingStore(
         return false
     }
 
+    suspend fun restoreAccountTrips() {
+        if (accountStore.bearerToken.isNullOrBlank()) return
+        val trips = runCatching { accountStore.accountTrips() }.getOrDefault(emptyList())
+        for (trip in trips) {
+            val detail = runCatching { accountStore.tripDetail(trip.bookingID) }.getOrNull() ?: continue
+            val remote = detail.booking
+            val existing = booking(trip.bookingID)
+            var session = if (existing != null) {
+                existing.copy(
+                    booking = remote,
+                    travelerName = remote.pilgrimProfile?.displayName ?: existing.travelerName,
+                    telegram = remote.pilgrimProfile?.telegram ?: existing.telegram,
+                    whatsapp = remote.pilgrimProfile?.whatsapp ?: existing.whatsapp,
+                    hotelSelection = remote.hotelSelection ?: existing.hotelSelection,
+                    madinahHotelSelection = remote.madinahHotelSelection ?: existing.madinahHotelSelection,
+                )
+            } else {
+                StoredBookingSession(
+                    id = trip.bookingID,
+                    accessToken = "",
+                    booking = remote,
+                    travelerName = remote.pilgrimProfile?.displayName,
+                    telegram = remote.pilgrimProfile?.telegram,
+                    whatsapp = remote.pilgrimProfile?.whatsapp,
+                    hotelSelection = remote.hotelSelection,
+                    madinahHotelSelection = remote.madinahHotelSelection,
+                )
+            }
+            session = session.mergeOperationalTrip(detail.trip, detail.statusHistory, detail.assignment)
+            detail.esims?.let { profiles ->
+                _state.update { current ->
+                    current.copy(esimProfilesByBooking = if (profiles.isEmpty()) current.esimProfilesByBooking - trip.bookingID else current.esimProfilesByBooking + (trip.bookingID to profiles))
+                }
+            }
+            upsert(session)
+        }
+    }
+
     suspend fun refresh(id: String): StoredBookingSession? {
         val current = booking(id) ?: return null
         val remote = runCatching { service.fetchBooking(id, current.accessToken) }.getOrNull()

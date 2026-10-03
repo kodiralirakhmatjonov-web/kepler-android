@@ -1,0 +1,16 @@
+iumrah Android current-iOS parity checkpoint v20
+Date: 2026-10-03
+Base: current iOS parity v19
+
+Included after v19:
+- Native Android Umrah Advisor / Umrah Flow module with Supabase translations/audio, 10 language picker, Tawaf 1-7, reading/listening, zikr, Sunnah Dua, post-Tawaf, Safa/Marwa 1-7, Tahallul, After Umrah, stage navigation.
+- Home Advisor card routes to the Advisor flow instead of Care.
+- Package share creates branded PNG + PDF + localized text + public iumrah package deep link.
+- Android deep-link routing for iumrah.app/flights/package, /hotel, /h, and iumrahapp://hotel.
+- Google Credential Manager sign-in support and account backend contracts.
+- Account activate endpoint moved to /api/package/client/account/activate and now sends device identity.
+- Permanent-account trip restoration from account /trips + trip detail, including operational state/eSIM data.
+
+Boundary:
+- Full configurator shared-link payload hydration is intentionally NOT included; work resumes there after this checkpoint.
+- Apple Sign-In Android Web Services redirect configuration is not invented; the UI reports that configuration is required.

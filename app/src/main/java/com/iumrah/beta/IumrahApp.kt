@@ -36,10 +36,17 @@ fun IumrahApp() {
     val container = remember(app) { app.container }
     val settings by container.settingsStore.state.collectAsState()
     val chrome by container.chromeStore.state.collectAsState()
+    val accountState by container.accountStore.state.collectAsState()
 
     LaunchedEffect(settings.hasCompletedOnboarding) {
         if (settings.hasCompletedOnboarding) {
             container.accountStore.restore()
+        }
+    }
+
+    LaunchedEffect(settings.hasCompletedOnboarding, accountState.iumrahID) {
+        if (settings.hasCompletedOnboarding && accountState.isAuthenticated) {
+            runCatching { container.bookingStore.restoreAccountTrips() }
         }
     }
 

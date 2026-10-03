@@ -14,7 +14,22 @@
         android:theme="@style/Theme.Iumrah">
         <activity
             android:name=".MainActivity"
-            android:exported="true" />
+            android:exported="true">
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="iumrah.app" android:pathPrefix="/flights/package/" />
+                <data android:scheme="https" android:host="iumrah.app" android:pathPrefix="/hotel/" />
+                <data android:scheme="https" android:host="iumrah.app" android:pathPrefix="/h/" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="iumrahapp" android:host="hotel" />
+            </intent-filter>
+        </activity>
 
         <activity-alias android:name=".LauncherStandard" android:enabled="true" android:exported="true" android:icon="@mipmap/ic_launcher" android:label="iumrah" android:targetActivity=".MainActivity">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
@@ -34,6 +49,16 @@
         <activity-alias android:name=".LauncherMakkah" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_makkah_preview" android:label="iumrah" android:targetActivity=".MainActivity">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity-alias>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
         <receiver
             android:name=".ui.planning.UmrahPlanReminderReceiver"
             android:exported="false" />

@@ -3,6 +3,7 @@ package com.iumrah.beta.models.account
 import com.iumrah.beta.models.booking.ClientBookingAssignment
 import com.iumrah.beta.models.booking.ClientESIMProfile
 import com.iumrah.beta.models.booking.ClientTripSnapshot
+import com.iumrah.beta.models.booking.BookingStatusHistoryEntry
 import com.iumrah.beta.models.booking.RemoteBooking
 import kotlinx.serialization.Serializable
 
@@ -81,7 +82,7 @@ data class IumrahAccountLoginRequest(val identifier: String, val password: Strin
 )
 
 @Serializable
-data class IumrahAccountActivateRequest(val bookingID: String, val password: String)
+data class IumrahAccountActivateRequest(val bookingID: String, val password: String, val device: IumrahClientDevice)
 
 @Serializable
 data class IumrahAccountTripsResponse(val ok: Boolean, val trips: List<ClientTripSnapshot>)
@@ -244,6 +245,9 @@ data class IumrahSecurityOverview(
 @Serializable data class IumrahAppleRequest(val identityToken: String, val nonce: String)
 @Serializable data class IumrahAppleSignInRequest(val identityToken: String, val nonce: String, val device: IumrahClientDevice)
 @Serializable data class IumrahAppleLinkResponse(val ok: Boolean, val appleLinked: Boolean, val iumrahID: String)
+@Serializable data class IumrahGoogleRequest(val identityToken: String, val nonce: String)
+@Serializable data class IumrahGoogleSignInRequest(val identityToken: String, val nonce: String, val device: IumrahClientDevice)
+@Serializable data class IumrahGoogleLinkResponse(val ok: Boolean, val googleLinked: Boolean, val iumrahID: String)
 @Serializable data class IumrahEmailChallengeStartRequest(val email: String, val locale: String)
 @Serializable data class IumrahEmailChallengeStartResponse(val ok: Boolean, val challengeID: String, val expiresAt: String? = null)
 @Serializable data class IumrahEmailChallengeConfirmRequest(val challengeID: String, val code: String)
@@ -259,6 +263,7 @@ data class IumrahAccountTripDetailResponse(
     val booking: RemoteBooking,
     val assignment: ClientBookingAssignment? = null,
     val esims: List<ClientESIMProfile>? = null,
+    val statusHistory: List<BookingStatusHistoryEntry>? = null,
 )
 
 @Serializable data class IumrahAccountLinkBookingRequest(val bookingID: String)
@@ -266,3 +271,5 @@ data class IumrahAccountTripDetailResponse(
 
 @Serializable
 data class IumrahAppleCredential(val identityToken: String, val nonce: String)
+
+data class IumrahGoogleCredential(val identityToken: String, val nonce: String)

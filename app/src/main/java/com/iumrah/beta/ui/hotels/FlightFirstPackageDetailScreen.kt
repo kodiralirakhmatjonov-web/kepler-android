@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.iumrah.beta.R
 import com.iumrah.beta.core.navigation.AppChromeStore
+import com.iumrah.beta.core.share.IumrahPackageShare
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.domain.journey.JourneyStore
@@ -225,7 +226,7 @@ fun FlightFirstPackageDetailScreen(
         PackageTopBar(
             language = language,
             onBack = chrome::back,
-            onShare = { sharePackage(context, loaded, currentQuote) },
+            onShare = { IumrahPackageShare.share(context, loaded, currentQuote, language) },
         )
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -303,7 +304,7 @@ fun FlightFirstPackageDetailScreen(
                 onChildren = { children = it },
                 onInfants = { infants = it },
                 onRooms = { rooms = it },
-                onInvite = { sharePackage(context, loaded, currentQuote) },
+                onInvite = { IumrahPackageShare.share(context, loaded, currentQuote, language) },
             )
         }
 
@@ -924,19 +925,6 @@ private fun buildJourneyCandidate(
         outbound = out,
         inbound = back,
     )
-}
-
-private fun sharePackage(context: android.content.Context, snapshot: StorefrontPackageSnapshot, quote: PackageQuote?) {
-    val text = buildString {
-        append("iumrah · ")
-        append(snapshot.routeSummary ?: snapshot.originCode)
-        append("\n")
-        append(money(quote?.pricePerPerson?.toDouble() ?: snapshot.pricePerPerson))
-        append(" / person")
-        append("\nPackage ID · ${snapshot.id}")
-    }
-    val intent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
-    context.startActivity(Intent.createChooser(intent, "iumrah"))
 }
 
 private fun parseDay(raw: String): LocalDate = runCatching { OffsetDateTime.parse(raw).toLocalDate() }.getOrElse { LocalDate.parse(raw.take(10)) }

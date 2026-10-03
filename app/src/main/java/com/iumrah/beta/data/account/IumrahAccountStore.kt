@@ -57,8 +57,8 @@ class IumrahAccountStore(
         }
     }
 
-    suspend fun activate(bookingID: String, bookingToken: String, password: String): IumrahAccountProfile {
-        val response = service.activate(bookingID, bookingToken, password)
+    suspend fun activate(bookingID: String, bookingToken: String, password: String, locale: String = Locale.getDefault().toLanguageTag()): IumrahAccountProfile {
+        val response = service.activate(bookingID, bookingToken, password, locale)
         setSession(response)
         runCatching { service.registerCurrentSession(response.session.token, Locale.getDefault().toLanguageTag()) }
         return response.account
@@ -140,6 +140,15 @@ class IumrahAccountStore(
     }
 
     suspend fun linkApple(credential: IumrahAppleCredential): IumrahAppleLinkResponse = service.linkApple(credential, requireToken())
+
+    suspend fun signInWithGoogle(credential: IumrahGoogleCredential, locale: String = Locale.getDefault().toLanguageTag()): IumrahAccountProfile {
+        val response = service.signInWithGoogle(credential, locale)
+        setSession(response)
+        runCatching { service.registerCurrentSession(response.session.token, locale) }
+        return response.account
+    }
+
+    suspend fun linkGoogle(credential: IumrahGoogleCredential): IumrahGoogleLinkResponse = service.linkGoogle(credential, requireToken())
 
     suspend fun startEmailVerification(email: String, locale: String): IumrahEmailChallengeStartResponse =
         service.startEmailVerification(email, locale, requireToken())

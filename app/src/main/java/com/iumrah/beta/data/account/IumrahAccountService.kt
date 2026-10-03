@@ -10,8 +10,8 @@ class IumrahAccountService(
     private val api: APIClient,
     private val deviceIdentity: IumrahAccountDeviceIdentity,
 ) {
-    suspend fun activate(bookingID: String, bookingToken: String, password: String): IumrahAccountAuthResponse =
-        api.post(IumrahAccountRoutes.ACTIVATE, IumrahAccountActivateRequest(bookingID, password), mapOf("x-booking-token" to bookingToken))
+    suspend fun activate(bookingID: String, bookingToken: String, password: String, locale: String): IumrahAccountAuthResponse =
+        api.post(IumrahAccountRoutes.ACTIVATE, IumrahAccountActivateRequest(bookingID, password, deviceIdentity.current(locale)), mapOf("x-booking-token" to bookingToken))
 
     suspend fun login(identifier: String, password: String, locale: String): IumrahAccountAuthResponse =
         api.post(IumrahAccountRoutes.LOGIN, IumrahAccountLoginRequest(identifier, password, deviceIdentity.current(locale)))
@@ -104,6 +104,12 @@ class IumrahAccountService(
 
     suspend fun linkApple(credential: IumrahAppleCredential, token: String): IumrahAppleLinkResponse =
         api.post(IumrahAccountRoutes.APPLE_LINK, IumrahAppleRequest(credential.identityToken, credential.nonce), deviceIdentity.securityHeaders(token))
+
+    suspend fun signInWithGoogle(credential: IumrahGoogleCredential, locale: String): IumrahAccountAuthResponse =
+        api.post(IumrahAccountRoutes.GOOGLE_SIGN_IN, IumrahGoogleSignInRequest(credential.identityToken, credential.nonce, deviceIdentity.current(locale)))
+
+    suspend fun linkGoogle(credential: IumrahGoogleCredential, token: String): IumrahGoogleLinkResponse =
+        api.post(IumrahAccountRoutes.GOOGLE_LINK, IumrahGoogleRequest(credential.identityToken, credential.nonce), deviceIdentity.securityHeaders(token))
 
     suspend fun startEmailVerification(email: String, locale: String, token: String): IumrahEmailChallengeStartResponse =
         api.post(IumrahAccountRoutes.EMAIL_START, IumrahEmailChallengeStartRequest(email, locale), deviceIdentity.securityHeaders(token))

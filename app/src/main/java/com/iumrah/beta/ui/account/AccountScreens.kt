@@ -1,6 +1,7 @@
 package com.iumrah.beta.ui.account
 import androidx.compose.foundation.layout.statusBarsPadding
 
+import android.app.Activity
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.Image
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iumrah.beta.R
+import com.iumrah.beta.core.auth.GoogleSignInSupport
 import com.iumrah.beta.core.design.IumrahBookingStatusVisual
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.navigation.AppTab
@@ -453,7 +455,7 @@ private fun GuestSettingsSection(language: AppLanguage, appearance: AppAppearanc
 
 @Composable
 private fun GuestLoginCard(language:AppLanguage,accountStore:IumrahAccountStore,bookingStore:BookingStore,chrome:AppChromeStore){
-    val scope=rememberCoroutineScope(); var register by remember{mutableStateOf(false)}; var method by remember{mutableStateOf("sms")}
+    val scope=rememberCoroutineScope(); val activity = LocalContext.current as? Activity; var register by remember{mutableStateOf(false)}; var method by remember{mutableStateOf("sms")}
     var identifier by remember{mutableStateOf("")};var password by remember{mutableStateOf("")};var code by remember{mutableStateOf("")};var challenge by remember{mutableStateOf<String?>(null)}
     var first by remember{mutableStateOf("")};var last by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)};var error by remember{mutableStateOf<String?>(null)}
     CardBlock{
@@ -494,9 +496,20 @@ private fun GuestLoginCard(language:AppLanguage,accountStore:IumrahAccountStore,
             HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface.copy(alpha = .20f))
         }
         Spacer(Modifier.height(16.dp))
-        ProviderButton(CupertinoSymbol.Apple,if(register)tr(language,"Continue with Apple","Продолжить с Apple","Apple bilan davom etish","Apple билан давом этиш") else tr(language,"Sign in with Apple","Войти с Apple","Apple orqali kirish","Apple орқали кириш"))
+        ProviderButton(CupertinoSymbol.Apple,if(register)tr(language,"Continue with Apple","Продолжить с Apple","Apple bilan davom etish","Apple билан давом этиш") else tr(language,"Sign in with Apple","Войти с Apple","Apple orqali kirish","Apple орқали кириш"), enabled = !busy) {
+            error = tr(language, "Apple Sign-In on Android requires the Apple Web Services redirect configuration.", "Для Apple Sign-In на Android требуется Web Services redirect Apple.", "Android’da Apple Sign-In uchun Apple Web Services redirect sozlamasi kerak.", "Android’да Apple Sign-In учун Apple Web Services redirect созламаси керак.")
+        }
         Spacer(Modifier.height(10.dp))
-        ProviderButton(CupertinoSymbol.Globe,if(register)tr(language,"Continue with Google","Продолжить с Google","Google bilan davom etish","Google билан давом этиш") else tr(language,"Sign in with Google","Войти с Google","Google orqali kirish","Google орқали кириш"))
+        ProviderButton(CupertinoSymbol.Globe,if(register)tr(language,"Continue with Google","Продолжить с Google","Google bilan davom etish","Google билан давом этиш") else tr(language,"Sign in with Google","Войти с Google","Google orqali kirish","Google орқали кириш"), enabled = !busy) {
+            val host = activity ?: return@ProviderButton
+            busy = true; error = null
+            scope.launch {
+                runCatching { GoogleSignInSupport.signIn(host) }
+                    .mapCatching { accountStore.signInWithGoogle(it, language.localeTag) }
+                    .onFailure { error = it.message ?: "Google Sign-In failed" }
+                busy = false
+            }
+        }
         Spacer(Modifier.height(12.dp))
         Text(
             tr(language,
@@ -510,7 +523,7 @@ private fun GuestLoginCard(language:AppLanguage,accountStore:IumrahAccountStore,
 }
 
 @Composable
-private fun ProviderButton(icon: CupertinoSymbol, title: String) {
+private fun ProviderButton(icon: CupertinoSymbol, title: String, enabled: Boolean = true, onClick: () -> Unit) {
     val isApple = icon == CupertinoSymbol.Apple
     val shape = RoundedCornerShape(19.dp)
     Surface(
@@ -518,6 +531,7 @@ private fun ProviderButton(icon: CupertinoSymbol, title: String) {
         color = if (isApple) Color.Black else Color.White,
         border = if (isApple) null else androidx.compose.foundation.BorderStroke(.8.dp, Color.Black.copy(alpha = .20f)),
         shadowElevation = if (isApple) 0.dp else 2.dp,
+        modifier = Modifier.clickable(enabled = enabled, onClick = onClick),
     ) {
         Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
             if (isApple) CupertinoIcon(CupertinoSymbol.Apple, null, Modifier.size(21.dp), Color.White)

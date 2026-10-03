@@ -98,6 +98,7 @@ import com.iumrah.beta.ui.account.AccountPolicyParityScreen
 import com.iumrah.beta.ui.account.AccountPolicyScreen
 import com.iumrah.beta.ui.account.AccountSecurityScreen
 import com.iumrah.beta.ui.account.AccountAppearanceScreen
+import com.iumrah.beta.ui.advisor.UmrahAdvisorScreen
 import com.iumrah.beta.ui.account.AccountAppearanceParityScreen
 import com.iumrah.beta.ui.account.AccountLanguageScreen
 import com.iumrah.beta.ui.account.AccountSignalsScreen
@@ -265,6 +266,7 @@ fun AppShell(
                 AppRoute.ESIM -> ESIMScreen(language, bookingStore, chrome)
                 AppRoute.LiveFlights -> IumrahFlightsScreen(language, bookingStore, chrome)
                 AppRoute.UmrahPlan -> UmrahPlanScreen(language, chrome)
+                AppRoute.UmrahAdvisor -> UmrahAdvisorScreen(language, chrome)
                 AppRoute.TelegramIntegration -> TelegramIntegrationScreen(language, bookingStore, accountStore, chrome)
                 AppRoute.CareRequest -> IumrahCareRequestScreen(language, airports, accountStore, settingsStore, chrome)
                 AppRoute.TransferService -> IumrahTransferServiceScreen(language, chrome)
