@@ -95,18 +95,18 @@ fun AccountRootScreen(
         item { AccountHeader(language, profile != null, signalState.unreadCount, chrome) }
         if (profile != null) {
             item { IumrahIdentityHeroAndroid(profile, language) }
+            item { IumrahUserDataEntryCardAndroid(language, profile.displayName) { chrome.openAccountUserData() } }
+            item { TravelCompanionsParityCard(language) { chrome.openAccountTravelers() } }
             bookings.sessions.firstOrNull { !it.isPastAccountTrip() }?.let { active ->
                 item { IumrahTripWalletEntryAndroid(active, profile, language) }
             }
-            item { WalletSection(profile, language) }
             bookings.sessions.firstOrNull { !it.isPastAccountTrip() }?.let { active ->
                 item { ActiveTripCard(active, language) { chrome.openBookingDetail(active.id) } }
             }
             item { TripsSection(bookings.sessions, language, chrome) }
+            item { WalletSection(profile, language) }
             item { TelegramIntegrationCard(language) { chrome.openAccountTelegramIntegration() } }
-            item { TravelCompanionsParityCard(language) { chrome.openAccountTravelers() } }
             item { PaymentSecuritySection(language, bookings.sessions.firstOrNull(), true, chrome) }
-            item { ProfileSection(profile, language) { chrome.openAccountProfileEditor() } }
             item { SettingsSection(language, settings.appearance, signalState.unreadCount, chrome, context) }
             item {
                 Row(

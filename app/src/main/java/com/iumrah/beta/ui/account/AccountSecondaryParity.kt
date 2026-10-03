@@ -332,9 +332,9 @@ private fun CompanionCard(language: AppLanguage, item: CompanionItem, chrome: Ap
         Column {
             Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-                    ApBadge(relationIcon(null), if (complete) ApGreen else ApCare)
+                    ApBadge(relationIcon(traveler.relationship), if (complete) ApGreen else ApCare)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(relationTitle(null, traveler.position, language).uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = .4.sp)
+                        Text(relationTitle(traveler.relationship, traveler.position, language).uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = .4.sp)
                         Text(name, fontSize = 21.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                         Text(item.tripTitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                     }

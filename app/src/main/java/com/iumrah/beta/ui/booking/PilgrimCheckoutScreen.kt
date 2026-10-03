@@ -197,6 +197,7 @@ internal fun PilgrimCheckoutEmbedded(
                         canUpload = !accountStore.bearerToken.isNullOrBlank(),
                         onUpload = { receiptLauncher.launch("image/*") },
                         chrome = chrome,
+                        session = session,
                     )
                 } else if (postPayment) {
                     if (value.receipts.isNotEmpty()) PaidReceiptCard(language, value)
@@ -209,6 +210,7 @@ internal fun PilgrimCheckoutEmbedded(
                         canUpload = !accountStore.bearerToken.isNullOrBlank(),
                         onUpload = { receiptLauncher.launch("image/*") },
                         chrome = chrome,
+                        session = session,
                     )
                     if (value.documents.isNotEmpty() || value.receipts.isNotEmpty()) DocumentsCard(language, value)
                 }
@@ -450,7 +452,7 @@ private fun TravelerRow(language: AppLanguage, traveler: IumrahTravelerForm, edi
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(travelerDisplayName(language, traveler), fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    bookingText(language, "Паломник ${traveler.position}", "Pilgrim ${traveler.position}", "Ziyoratchi ${traveler.position}", "Зиёратчи ${traveler.position}"),
+                    travelerRelationshipTitle(language, traveler.relationship, traveler.position),
                     fontSize = 12.sp,
                     lineHeight = 15.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -511,7 +513,9 @@ private fun TravelerEditorSheet(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var form by remember(traveler) { mutableStateOf(traveler) }
+    var form by remember(traveler) {
+        mutableStateOf(traveler.copy(relationship = traveler.relationship?.takeIf { it.isNotBlank() } ?: if (traveler.position == 1) "self" else "other"))
+    }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var passportBytes by remember { mutableStateOf<ByteArray?>(null) }
@@ -524,7 +528,7 @@ private fun TravelerEditorSheet(
         }
     }
 
-    val requiredReady = form.firstName.isNotBlank() && form.lastName.isNotBlank() && form.gender.isNotBlank() &&
+    val requiredReady = !form.relationship.isNullOrBlank() && form.firstName.isNotBlank() && form.lastName.isNotBlank() && form.gender.isNotBlank() &&
         form.dateOfBirth.isNotBlank() && form.nationality.isNotBlank() && form.passportNumber.isNotBlank() &&
         form.passportExpiryDate.isNotBlank() && form.phone.isNotBlank() && form.emergencyName.isNotBlank() &&
         form.emergencyPhone.isNotBlank() && (form.hasPassport || passportBytes != null)
@@ -545,6 +549,7 @@ private fun TravelerEditorSheet(
             }
 
             TravelerFormSection(CupertinoSymbol.PersonCircle, bookingText(language, "Личные данные", "Personal details", "Shaxsiy ma’lumotlar", "Шахсий маълумотлар")) {
+                TravelerRelationshipSelector(language, form.relationship ?: "other") { form = form.copy(relationship = it) }
                 TravelerField(bookingText(language, "Имя", "First name", "Ism", "Исм"), form.firstName) { form = form.copy(firstName = it) }
                 TravelerField(bookingText(language, "Отчество / второе имя", "Middle name", "Otasining ismi", "Отасининг исми"), form.middleName) { form = form.copy(middleName = it) }
                 TravelerField(bookingText(language, "Фамилия", "Last name", "Familiya", "Фамилия"), form.lastName) { form = form.copy(lastName = it) }
@@ -619,6 +624,50 @@ private fun TravelerEditorSheet(
 }
 
 @Composable
+private fun TravelerRelationshipSelector(language: AppLanguage, selected: String, onSelect: (String) -> Unit) {
+    val options = listOf(
+        "self" to bookingText(language, "Я", "Me", "Men", "Мен"),
+        "spouse" to bookingText(language, "Муж / жена", "Husband / wife", "Turmush o‘rtog‘i", "Турмуш ўртоғи"),
+        "mother" to bookingText(language, "Мама", "Mother", "Ona", "Она"),
+        "father" to bookingText(language, "Папа", "Father", "Ota", "Ота"),
+        "brother" to bookingText(language, "Брат", "Brother", "Aka / uka", "Ака / ука"),
+        "sister" to bookingText(language, "Сестра", "Sister", "Opa / singil", "Опа / сингил"),
+        "child" to bookingText(language, "Ребёнок", "Child", "Farzand", "Фарзанд"),
+        "relative" to bookingText(language, "Родственник", "Relative", "Qarindosh", "Қариндош"),
+        "friend" to bookingText(language, "Друг / подруга", "Friend", "Do‘st", "Дўст"),
+        "other" to bookingText(language, "Попутчик", "Travel companion", "Hamroh", "Ҳамроҳ"),
+    )
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IumrahPressable(
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth().height(60.dp),
+            cornerRadius = 19.dp,
+            background = bookingIosRaised().copy(alpha = .72f),
+            pressedScale = .985f,
+        ) {
+            Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CupertinoIcon(if (selected == "spouse") CupertinoSymbol.HeartFill else if (selected == "self") CupertinoSymbol.PersonCircle else CupertinoSymbol.Persons, null, Modifier.size(18.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(bookingText(language, "Кто едет?", "Who is traveling?", "Kim bormoqda?", "Ким бормоқда?"), fontSize = 11.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .48f))
+                    Text(options.firstOrNull { it.first == selected }?.second ?: options.last().second, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                }
+                CupertinoIcon(CupertinoSymbol.ChevronDown, null, Modifier.size(12.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .32f))
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { (value, title) ->
+                DropdownMenuItem(
+                    text = { Text(title) },
+                    onClick = { onSelect(value); expanded = false },
+                    leadingIcon = { if (value == selected) CupertinoIcon(CupertinoSymbol.Checkmark, null, Modifier.size(15.dp), MaterialTheme.colorScheme.onBackground) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun TravelerFormSection(symbol: CupertinoSymbol, title: String, content: @Composable ColumnScope.() -> Unit) {
     BookingCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -671,6 +720,49 @@ private fun AvailabilityPaymentLockedCard(language: AppLanguage) {
     }
 }
 
+private fun travelerRelationshipTitle(language: AppLanguage, value: String?, position: Int): String = when (value?.lowercase()) {
+    "self" -> bookingText(language, "Вы", "You", "Siz", "Сиз")
+    "spouse" -> bookingText(language, "Муж или жена", "Spouse", "Turmush o‘rtog‘i", "Турмуш ўртоғи")
+    "mother" -> bookingText(language, "Мама", "Mother", "Ona", "Она")
+    "father" -> bookingText(language, "Папа", "Father", "Ota", "Ота")
+    "brother" -> bookingText(language, "Брат", "Brother", "Aka yoki uka", "Ака ёки ука")
+    "sister" -> bookingText(language, "Сестра", "Sister", "Opa yoki singil", "Опа ёки сингил")
+    "child" -> bookingText(language, "Ребёнок", "Child", "Farzand", "Фарзанд")
+    "relative" -> bookingText(language, "Родственник", "Relative", "Qarindosh", "Қариндош")
+    "friend" -> bookingText(language, "Друг или подруга", "Friend", "Do‘st", "Дўст")
+    else -> if (position == 1) bookingText(language, "Вы", "You", "Siz", "Сиз") else bookingText(language, "Участник поездки", "Traveler", "Sayohatchi", "Саёҳатчи")
+}
+
+@Composable
+private fun FriendsBenefitUnavailableCard(language: AppLanguage) {
+    Column(
+        Modifier.fillMaxWidth().background(bookingIosRaised().copy(alpha = .45f), RoundedCornerShape(22.dp)).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            BookingIconBadge(CupertinoSymbol.Wallet, Color(0xFFFF2D55), 42.dp, 17.dp, 15.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("Iumrah Gift Cards", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text(bookingText(language, "Gift Card и Iumrah Balance", "Gift Card & Iumrah Balance", "Gift Card va Iumrah Balance", "Gift Card ва Iumrah Balance"), fontSize = 11.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+            }
+            CupertinoIcon(CupertinoSymbol.Lock, null, Modifier.size(14.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .45f))
+        }
+        Row(
+            Modifier.fillMaxWidth().background(Color(0xFFFF9500).copy(alpha = .08f), RoundedCornerShape(17.dp)).border(.8.dp, Color(0xFFFF9500).copy(alpha = .18f), RoundedCornerShape(17.dp)).padding(13.dp),
+            verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            CupertinoIcon(CupertinoSymbol.ExclamationCircle, null, Modifier.size(17.dp), Color(0xFFFF9500))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(bookingText(language, "Gift Card ещё недоступна", "Gift Cards are not available yet", "Gift Card hali mavjud emas", "Gift Card ҳали мавжуд эмас"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    bookingText(language, "Раздел уже виден в бронировании, но применение Gift Card и Iumrah Balance временно отключено. Мы включим его после готовности платёжного сценария.", "The section is already visible in the booking, but applying Gift Cards and Iumrah Balance is temporarily disabled. We will enable it after the payment flow is ready.", "Bo‘lim bron ichida ko‘rinadi, ammo Gift Card va Iumrah Balance qo‘llash vaqtincha o‘chirilgan. To‘lov jarayoni tayyor bo‘lgach yoqiladi.", "Бўлим брон ичида кўринади, аммо Gift Card ва Iumrah Balance қўллаш вақтинча ўчирилган. Тўлов жараёни тайёр бўлгач ёқилади."),
+                    fontSize = 11.sp, lineHeight = 15.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f),
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun PaymentCard(
     language: AppLanguage,
@@ -679,9 +771,18 @@ private fun PaymentCard(
     canUpload: Boolean,
     onUpload: () -> Unit,
     chrome: AppChromeStore,
+    session: StoredBookingSession,
 ) {
     BookingCard {
         StageHeader("03", CupertinoSymbol.CreditCard, bookingText(language, "Оплата", "Payment", "To‘lov", "Тўлов"))
+        Spacer(Modifier.height(14.dp))
+        BookingManualPaymentNotice(language)
+        Spacer(Modifier.height(10.dp))
+        BookingRefundPolicyCompact(language)
+        Spacer(Modifier.height(10.dp))
+        BookingInvoiceCompact(session, language)
+        Spacer(Modifier.height(10.dp))
+        FriendsBenefitUnavailableCard(language)
         Spacer(Modifier.height(14.dp))
 
         BookingRaisedCard(padding = 15.dp, radius = 20.dp) {

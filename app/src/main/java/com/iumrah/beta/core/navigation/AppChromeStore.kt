@@ -46,7 +46,9 @@ sealed interface AppRoute {
     data object AccountLanguage : AppRoute
     data object AccountSignals : AppRoute
     data object AccountProfileEditor : AppRoute
+    data object AccountUserData : AppRoute
     data class AccountKyc(val bookingID: String) : AppRoute
+    data object GiftCards : AppRoute
 }
 
 data class AppChromeState(
@@ -106,8 +108,10 @@ class AppChromeStore {
     fun openAccountLanguage() = push(AppRoute.AccountLanguage, tab = AppTab.ACCOUNT)
     fun openAccountSignals() = push(AppRoute.AccountSignals, tab = AppTab.ACCOUNT)
     fun openAccountProfileEditor() = push(AppRoute.AccountProfileEditor, tab = AppTab.ACCOUNT)
+    fun openAccountUserData() = push(AppRoute.AccountUserData, tab = AppTab.ACCOUNT)
     fun openAccountKyc(id: String) = push(AppRoute.AccountKyc(id), tab = AppTab.ACCOUNT)
     fun openBookingSecurity(id: String) = push(AppRoute.AccountKyc(id), tab = AppTab.BOOKING)
+    fun openGiftCards() = push(AppRoute.GiftCards, tab = AppTab.HOME)
 
     private fun push(route: AppRoute, tab: AppTab? = null) {
         _state.update { current ->

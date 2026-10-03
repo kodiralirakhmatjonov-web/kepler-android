@@ -103,12 +103,14 @@ import com.iumrah.beta.ui.account.AccountLanguageScreen
 import com.iumrah.beta.ui.account.AccountSignalsScreen
 import com.iumrah.beta.ui.account.AccountSignalsParityScreen
 import com.iumrah.beta.ui.account.AccountProfileEditorParityScreen
+import com.iumrah.beta.ui.account.IumrahUserDataScreen
 import com.iumrah.beta.ui.account.AccountKycScreen
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 import com.iumrah.beta.ui.chat.BookingChatScreen
 import com.iumrah.beta.ui.notifications.NotificationsScreen
 import com.iumrah.beta.ui.home.HomeScreen
+import com.iumrah.beta.ui.home.IumrahGiftCardsScreen
 import com.iumrah.beta.ui.hotels.FlightFirstPackageDetailScreen
 import com.iumrah.beta.ui.hotels.HotelDetailScreen
 import com.iumrah.beta.ui.hotels.HotelsScreen
@@ -278,7 +280,9 @@ fun AppShell(
                 AppRoute.AccountLanguage -> AccountLanguageScreen(language, settingsStore, chrome)
                 AppRoute.AccountSignals -> AccountSignalsParityScreen(language, notifications, accountStore, chrome)
                 AppRoute.AccountProfileEditor -> AccountProfileEditorParityScreen(language, accountStore, chrome)
+                AppRoute.AccountUserData -> IumrahUserDataScreen(language, accountStore, bookingStore, settingsStore, chrome)
                 is AppRoute.AccountKyc -> AccountKycScreen(route.bookingID, language, bookingStore, chrome)
+                AppRoute.GiftCards -> IumrahGiftCardsScreen(language, accountStore, chrome)
             }
         }
 

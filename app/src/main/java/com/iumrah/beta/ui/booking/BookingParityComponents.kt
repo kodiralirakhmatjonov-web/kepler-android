@@ -28,7 +28,7 @@ import com.iumrah.beta.ui.components.IumrahPressable
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
-enum class BookingPrimaryPageAndroid { BOOKING, STATUS }
+enum class BookingPrimaryPageAndroid { BOOKING, STATUS, SCHEDULE }
 
 internal const val BOOKING_PAGE_PADDING = 18
 
@@ -107,6 +107,7 @@ internal fun BookingPageSwitcher(
         items = listOf(
             BookingPrimaryPageAndroid.BOOKING to bookingText(language, "Бронирование", "Booking", "Bron", "Брон"),
             BookingPrimaryPageAndroid.STATUS to bookingText(language, "Статус", "Status", "Holat", "Ҳолат"),
+            BookingPrimaryPageAndroid.SCHEDULE to bookingText(language, "Расписание", "Schedule", "Jadval", "Жадвал"),
         ),
         selected = selected,
         onSelect = onSelected,

@@ -83,7 +83,7 @@ import java.util.Currency
 import java.util.Locale
 import kotlinx.coroutines.delay
 
-private enum class BookingPanel { BOOKING, STATUS }
+private enum class BookingPanel { BOOKING, STATUS, SCHEDULE }
 
 private const val IOS_PAGE_PADDING = 18
 private val iOSGreen = Color(0xFF34C759)
@@ -220,7 +220,7 @@ private fun ActiveBookingHome(
                 BookingProgress(language, session, chrome)
                 Spacer(Modifier.height(38.dp))
             }
-        } else {
+        } else if (panel == BookingPanel.STATUS) {
             item {
                 BookingTimerOverview(language, session)
                 Spacer(Modifier.height(28.dp))
@@ -232,10 +232,20 @@ private fun ActiveBookingHome(
                     Spacer(Modifier.height(34.dp))
                 }
 
-                TripPlanPreview(language, session, itinerary, chrome)
+                TripPlanPreview(language, session, itinerary) { onPanel(BookingPanel.SCHEDULE) }
                 Spacer(Modifier.height(34.dp))
                 TripManagement(language, session, chrome)
                 Spacer(Modifier.height(if (otherSessions.isNotEmpty()) 36.dp else 12.dp))
+            }
+        } else {
+            item {
+                BookingItineraryCalendarAndroid(
+                    language = language,
+                    session = session,
+                    remoteItems = itinerary,
+                    fullScreen = true,
+                )
+                Spacer(Modifier.height(28.dp))
             }
         }
 
@@ -564,7 +574,8 @@ private fun BookingPanelPicker(
     SegmentedPicker(
         items = listOf(
             BookingPanel.BOOKING to t(language, "Бронирование", "Booking", "Bron", "Брон"),
-            BookingPanel.STATUS to t(language, "Статус бронирования", "Booking status", "Bron holati", "Брон ҳолати"),
+            BookingPanel.STATUS to t(language, "Статус", "Status", "Holat", "Ҳолат"),
+            BookingPanel.SCHEDULE to t(language, "Расписание", "Schedule", "Jadval", "Жадвал"),
         ),
         selected = selected,
         onSelect = onSelect,
@@ -1577,7 +1588,7 @@ private fun TripPlanPreview(
     language: AppLanguage,
     session: StoredBookingSession,
     remoteItems: List<BookingItineraryItem>,
-    chrome: AppChromeStore,
+    onOpenSchedule: () -> Unit,
 ) {
     val items = previewItineraryItems(session, remoteItems)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -1612,7 +1623,7 @@ private fun TripPlanPreview(
             }
             DividerLine(17.dp)
             IumrahPressable(
-                onClick = { chrome.openBookingDetail(session.id) },
+                onClick = onOpenSchedule,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),

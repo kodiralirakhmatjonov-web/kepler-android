@@ -456,5 +456,8 @@ data class BookingItineraryItem(
     val notes: String,
     val createdAt: String,
     val updatedAt: String,
+    val timeLocal: String? = null,
+    val endTimeLocal: String? = null,
+    val kind: String? = null,
 )
 @Serializable data class BookingItineraryResponse(val ok: Boolean, val bookingID: String, val items: List<BookingItineraryItem>)

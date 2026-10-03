@@ -1,0 +1,181 @@
+{
+  "schema": "iumrah.android-current-ios-delta-parity.v19",
+  "generated_at": "2026-10-03",
+  "source_of_truth": {
+    "ios_zip": "kepler-ios-main 3(6).zip",
+    "ios_zip_sha256": "9e41e2880edd2f4cf4cf5094afa30ebb5ebd42e634e453b669d7a1e933023d52",
+    "android_base_zip": "kepler-android-main 2.zip",
+    "android_base_zip_sha256": "475296824248299674da2a7118b6d95e63ee01bfc260538c7d8479c365811a67"
+  },
+  "baseline_parity_observation": {
+    "specialized_ios_source_entries_checked": 30,
+    "current_ios_changed_files_against_latest_specialized_reports": 9,
+    "changed_ios_files": [
+      "Sources/AppShell/IumrahTravelCompanionsView.swift",
+      "Sources/AppShell/IumrahAccountView.swift",
+      "Sources/Views/Tabs/BookingsHomeView.swift",
+      "Sources/Views/Booking/BookingDetailView.swift",
+      "Sources/Views/Booking/BookingPageSwitcher.swift",
+      "Sources/Views/Booking/PilgrimCheckoutView.swift",
+      "Sources/Views/Booking/BookingItineraryCalendarView.swift",
+      "Sources/Views/Planning/UmrahPlanFeature.swift",
+      "Sources/Views/Home/IumrahStoryView.swift"
+    ],
+    "status": "all nine known post-parity iOS source deltas addressed in this revision or their Android counterpart updates"
+  },
+  "implemented": [
+    "Booking adds third Schedule / Расписание section and full itinerary calendar/timeline",
+    "Booking preview uses the same current schedule component/fallback path",
+    "Account adds current iOS Your Data / Ваши данные screen and current card ordering",
+    "Traveler relationship is persisted, sent to API, edited, and displayed instead of being dropped",
+    "Gift Cards screen and gift-pass sheet use existing friends dashboard API plus exact iOS artwork assets",
+    "Checkout/status restores manual-payment, refund policy, invoice PDF, and Gift Cards/Balance locked treatment",
+    "Umrah Plan current revision adds custom 1-180 day reminders, preview/test notification, exact staged notification copy, photo/color background tabs, and current hub copy/geometry refinements",
+    "Iumrah Story current revision synchronizes current text, image heights, spacing, corner radii, and hero geometry",
+    "Navigation adds AccountUserData and GiftCards routes"
+  ],
+  "explicit_existing_exclusions": [
+    "Onboarding",
+    "Umrah Advisor Flow"
+  ],
+  "validation": {
+    "scripts_verify_stage10": "PASS stages 2-10",
+    "all_changed_kotlin_delimiter_balance": "PASS",
+    "changed_drawable_references": "PASS",
+    "new_route_declaration_and_handling": "PASS",
+    "kotlin_parser_smoke_high_risk_files": "PASS for UmrahPlanScreen, IumrahStoryScreen, IumrahGiftCardsScreen, IumrahUserDataScreen, BookingItineraryCalendarAndroid",
+    "full_gradle_compile": "NOT_RUN locally: supplied Android archive contains no gradlew and this runtime has no Android SDK/system Gradle; repository CI is configured to provide Gradle/SDK"
+  },
+  "android_changed_files": {
+    "app/src/main/java/com/iumrah/beta/core/navigation/AppChromeStore.kt": {
+      "sha256": "9b77b40837d08ae9fff25558effe075533f530bd5317677c4d147a5c3b21f386",
+      "bytes": 8033
+    },
+    "app/src/main/java/com/iumrah/beta/core/settings/AppSettingsStore.kt": {
+      "sha256": "54c2815b3d0777d71e2d2da3586f1edc7670d9c647fc5a55bb1b4c5831fb56a8",
+      "bytes": 8728
+    },
+    "app/src/main/java/com/iumrah/beta/models/account/IumrahAccountModels.kt": {
+      "sha256": "a7d1f595ae0039b113452b9e55d6322bc0e73deff49ebb87b84536cd57bf4f7a",
+      "bytes": 9182
+    },
+    "app/src/main/java/com/iumrah/beta/models/booking/BookingSharedModels.kt": {
+      "sha256": "fa06c8751ea8e574c1fc984b92148eeac8004b346000804f94ff22fbcc3922d1",
+      "bytes": 16099
+    },
+    "app/src/main/java/com/iumrah/beta/ui/account/AccountScreens.kt": {
+      "sha256": "d49dd52dd9205f80492bf8ea79e4d025460b347d026bf620c406c644d6fa1df0",
+      "bytes": 84156
+    },
+    "app/src/main/java/com/iumrah/beta/ui/account/AccountSecondaryParity.kt": {
+      "sha256": "0555f475c2d104b17676e56e43ebf6e7654f986b7d0b16fa371f9e09ac954ae5",
+      "bytes": 86888
+    },
+    "app/src/main/java/com/iumrah/beta/ui/account/IumrahUserDataScreen.kt": {
+      "sha256": "9ae1c0cc21179fae9e376e73215329b965ec3e897c5e153ad1b7ff0e3605f47e",
+      "bytes": 27666
+    },
+    "app/src/main/java/com/iumrah/beta/ui/booking/BookingDetailScreen.kt": {
+      "sha256": "ae10c4c1ea28e57f4b581a955ff616ccb5141e12a35b1a35859c42ead6b76999",
+      "bytes": 68519
+    },
+    "app/src/main/java/com/iumrah/beta/ui/booking/BookingItineraryCalendarAndroid.kt": {
+      "sha256": "0130bc7c85b3a2151b6eb04d7712935663849bacce8d3747b1f84b3f69d56627",
+      "bytes": 22802
+    },
+    "app/src/main/java/com/iumrah/beta/ui/booking/BookingParityComponents.kt": {
+      "sha256": "5426c2fba97ae62b5aa00e40f9cabfc20d0428bd5b2b711d6175d51c8dd8a067",
+      "bytes": 13823
+    },
+    "app/src/main/java/com/iumrah/beta/ui/booking/BookingsHomeScreen.kt": {
+      "sha256": "488629ddc354db9b0020d438245765854771b7214c8e8a06262fe2c3658531c8",
+      "bytes": 116961
+    },
+    "app/src/main/java/com/iumrah/beta/ui/booking/PilgrimCheckoutScreen.kt": {
+      "sha256": "dfa1047d3dfba4341eb5d8b6eba809538db0507829cd4ac5cbe6d18355f4f3a7",
+      "bytes": 57989
+    },
+    "app/src/main/java/com/iumrah/beta/ui/home/IumrahGiftCardsScreen.kt": {
+      "sha256": "8bd15776839e928c5a0218031889cbb13eb15806687ee564f937b0812483dc18",
+      "bytes": 22701
+    },
+    "app/src/main/java/com/iumrah/beta/ui/planning/UmrahPlanScreen.kt": {
+      "sha256": "75705d309408fb5e0983137a170703c3fb3d7a51bca5ae4d7ae73a5d268ba381",
+      "bytes": 39221
+    },
+    "app/src/main/java/com/iumrah/beta/ui/shell/AppShell.kt": {
+      "sha256": "f750916b8440616885ab15b561ac1f9bc4831a390dea0e289365ee21dda1740f",
+      "bytes": 23039
+    },
+    "app/src/main/java/com/iumrah/beta/ui/story/IumrahStoryScreen.kt": {
+      "sha256": "af17b7708f0e73c56767c40f917c70ca4e84c8c499ee74681cb2aec371493fd3",
+      "bytes": 14519
+    },
+    "app/src/main/res/drawable-nodpi/gift_card_journey.jpg": {
+      "sha256": "8547b2a934629ff0094719f689a4df87df27a2879ad98c90b3acad949dbd3063",
+      "bytes": 273316
+    },
+    "app/src/main/res/drawable-nodpi/gift_card_kaaba.jpg": {
+      "sha256": "09347399badaebbcd58538a9a1776f8923dae33e552292a9ff0b8a7eaa725a49",
+      "bytes": 125688
+    },
+    "app/src/main/res/drawable-nodpi/gift_card_together.jpg": {
+      "sha256": "d0c86fc2c259c61a5c5bebc8df21c0e95ac4ae6e4db34886723e05bad2b5afb1",
+      "bytes": 113288
+    }
+  },
+  "ios_reference_files": {
+    "Sources/AppShell/IumrahTravelCompanionsView.swift": {
+      "sha256": "d4113b2622165ff8f2f8252919166b45b83c0e2fc2b553aa535850108e12607f",
+      "bytes": 18026
+    },
+    "Sources/AppShell/IumrahAccountView.swift": {
+      "sha256": "49240972f1484d50b2abd58875b78e9185beabe8a5554aba155fe33ef980da40",
+      "bytes": 129637
+    },
+    "Sources/Views/Tabs/BookingsHomeView.swift": {
+      "sha256": "88bda211563efb4512954c9d695034733a254d6bca815d7298ccbdbdcd200727",
+      "bytes": 107250
+    },
+    "Sources/Views/Booking/BookingDetailView.swift": {
+      "sha256": "02e48fe020e4d2e10675d0d5661ab6f6dce1020c76352d2795498510537326ce",
+      "bytes": 82663
+    },
+    "Sources/Views/Booking/BookingPageSwitcher.swift": {
+      "sha256": "a623a5c8306c0fd3032a59f97213af797471547d7f5ce24b92974f3ccaca48a6",
+      "bytes": 1753
+    },
+    "Sources/Views/Booking/PilgrimCheckoutView.swift": {
+      "sha256": "57c191264a276784dc9411ee4d600e4254d1ef12f7254cd3ba36447485a4e09d",
+      "bytes": 141576
+    },
+    "Sources/Views/Booking/BookingItineraryCalendarView.swift": {
+      "sha256": "2e23b0f0058c71a8a66fd723775b5cf6626d68fc7bc5431aa0ac9fba25578507",
+      "bytes": 29097
+    },
+    "Sources/Views/Planning/UmrahPlanFeature.swift": {
+      "sha256": "52e59692b5ffd37ff0d5a70677ec1de264ece4f794c1445ff3b879541d8d6c1d",
+      "bytes": 75798
+    },
+    "Sources/Views/Home/IumrahStoryView.swift": {
+      "sha256": "7d78a6c8616926497a6c31f47fdc4a78215e484319584c193461684a298ea8e1",
+      "bytes": 14685
+    },
+    "Sources/AppShell/IumrahUserDataView.swift": {
+      "sha256": "b9ff191c7a3a8a72b9eaeab5aa33199c0f598857e3fe0b6766918c5455c139c9",
+      "bytes": 31006
+    },
+    "Sources/Views/Home/IumrahFriendsView.swift": {
+      "sha256": "8d25200839247361733a93628e177e804cef1d12466ce59db00c0f845cb1e3a3",
+      "bytes": 23711
+    },
+    "Sources/Views/Home/IumrahGiftCardPass.swift": {
+      "sha256": "537df61e86b19bcc7bd8a9e0ea9739ec8bcd50e0385eab070a74b556eec47986",
+      "bytes": 3571
+    },
+    "Sources/Views/Booking/BookingScheduleView.swift": {
+      "sha256": "c22078172676e0d252483b33f89c84e44631c90102deffdb276fd543aebc7613",
+      "bytes": 5133
+    }
+  }
+}

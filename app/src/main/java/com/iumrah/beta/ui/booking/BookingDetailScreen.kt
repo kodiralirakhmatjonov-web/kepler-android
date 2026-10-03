@@ -158,9 +158,12 @@ fun BookingDetailScreen(
                     BookingBalanceCard(language, onExplain = { showCareExplanation = true })
                 }
 
-                if (itinerary.isNotEmpty()) {
-                    BookingItineraryCard(itinerary, language)
-                }
+                BookingItineraryCalendarAndroid(
+                    language = language,
+                    session = session,
+                    remoteItems = itinerary,
+                    fullScreen = false,
+                )
 
                 BookingFlightFirstComponents(session, language, chrome)
 
@@ -214,7 +217,7 @@ fun BookingDetailScreen(
                 }
 
                 BookingTelegramCompactCard(session, language)
-            } else {
+            } else if (selectedPage == BookingPrimaryPageAndroid.STATUS) {
                 PilgrimCheckoutEmbedded(
                     bookingID = bookingID,
                     language = language,
@@ -223,6 +226,13 @@ fun BookingDetailScreen(
                     accountStore = accountStore,
                     accountService = accountService,
                     chrome = chrome,
+                )
+            } else {
+                BookingItineraryCalendarAndroid(
+                    language = language,
+                    session = session,
+                    remoteItems = itinerary,
+                    fullScreen = true,
                 )
             }
 
@@ -425,7 +435,7 @@ private fun LifecycleTimerCard(phase: BookingDetailLifecyclePhase, language: App
 }
 
 @Composable
-private fun BookingManualPaymentNotice(language: AppLanguage) {
+internal fun BookingManualPaymentNotice(language: AppLanguage) {
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Color(0xFFFFCC00).copy(alpha = .14f)).border(.8.dp, Color(0xFFFFCC00).copy(alpha = .38f), RoundedCornerShape(22.dp)).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -450,7 +460,7 @@ private fun BookingManualPaymentNotice(language: AppLanguage) {
 }
 
 @Composable
-private fun BookingRefundPolicyCompact(language: AppLanguage) {
+internal fun BookingRefundPolicyCompact(language: AppLanguage) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(bookingIosCard()).border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha=.075f), RoundedCornerShape(20.dp)).padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -466,7 +476,7 @@ private fun BookingRefundPolicyCompact(language: AppLanguage) {
 }
 
 @Composable
-private fun BookingInvoiceCompact(session: StoredBookingSession, language: AppLanguage) {
+internal fun BookingInvoiceCompact(session: StoredBookingSession, language: AppLanguage) {
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(bookingIosCard()).border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha=.075f), RoundedCornerShape(22.dp)).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),

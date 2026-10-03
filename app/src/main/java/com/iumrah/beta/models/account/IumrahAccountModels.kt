@@ -90,6 +90,7 @@ data class IumrahAccountTripsResponse(val ok: Boolean, val trips: List<ClientTri
 data class IumrahTravelerForm(
     val position: Int,
     val travelerType: String,
+    val relationship: String? = null,
     val firstName: String,
     val middleName: String,
     val lastName: String,
@@ -113,6 +114,7 @@ data class IumrahTravelerForm(
 
 @Serializable
 data class IumrahTravelerSaveRequest(
+    val relationship: String? = null,
     val firstName: String,
     val middleName: String,
     val lastName: String,
@@ -132,10 +134,24 @@ data class IumrahTravelerSaveRequest(
     val emergencyRelation: String,
 ) {
     constructor(form: IumrahTravelerForm) : this(
-        form.firstName, form.middleName, form.lastName, form.gender, form.dateOfBirth,
-        form.placeOfBirth, form.nationality, form.residenceCountry, form.passportNumber,
-        form.passportIssueDate, form.passportExpiryDate, form.passportIssuingCountry,
-        form.phone, form.email, form.emergencyName, form.emergencyPhone, form.emergencyRelation,
+        relationship = form.relationship,
+        firstName = form.firstName,
+        middleName = form.middleName,
+        lastName = form.lastName,
+        gender = form.gender,
+        dateOfBirth = form.dateOfBirth,
+        placeOfBirth = form.placeOfBirth,
+        nationality = form.nationality,
+        residenceCountry = form.residenceCountry,
+        passportNumber = form.passportNumber,
+        passportIssueDate = form.passportIssueDate,
+        passportExpiryDate = form.passportExpiryDate,
+        passportIssuingCountry = form.passportIssuingCountry,
+        phone = form.phone,
+        email = form.email,
+        emergencyName = form.emergencyName,
+        emergencyPhone = form.emergencyPhone,
+        emergencyRelation = form.emergencyRelation,
     )
 }
 

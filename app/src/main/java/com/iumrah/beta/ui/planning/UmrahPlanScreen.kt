@@ -55,12 +55,64 @@ private class PlanStore(private val context:Context){
     private fun load():PlannedTrip?{ val s=prefs.getString("start",null)?:return null; return runCatching{PlannedTrip(prefs.getString("title","Umrah")?:"Umrah",LocalDate.parse(s),LocalDate.parse(prefs.getString("end",s)),prefs.getString("bg","gradient-sunset")?:"gradient-sunset",prefs.getString("days","")!!.split(',').mapNotNull{it.toIntOrNull()}.toSet().ifEmpty{setOf(60,30,20,15,10,7,5,3,2,1)},prefs.getInt("hour",19),prefs.getInt("minute",0),prefs.getBoolean("notifications",true),prefs.getString("language","ru")?:"ru")}.getOrNull() }
 }
 
-private object PlanScheduler{
-    fun cancel(context:Context){ val am=context.getSystemService(Context.ALARM_SERVICE) as AlarmManager; (0..200).forEach{ id-> am.cancel(PendingIntent.getBroadcast(context,8600+id,Intent(context,UmrahPlanReminderReceiver::class.java),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)) } }
-    fun reschedule(context:Context,t:PlannedTrip){ cancel(context); if(!t.notifications)return; val am=context.getSystemService(Context.ALARM_SERVICE) as AlarmManager; t.reminderDays.sortedDescending().forEachIndexed{idx,day-> val zdt=t.start.minusDays(day.toLong()).atTime(t.hour,t.minute).atZone(ZoneId.systemDefault()); if(zdt.toInstant().toEpochMilli()>System.currentTimeMillis()){ val intent=Intent(context,UmrahPlanReminderReceiver::class.java).putExtra("days",day).putExtra("language",t.language).putExtra("start",t.start.toString()); val pi=PendingIntent.getBroadcast(context,8600+idx,intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE); am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,zdt.toInstant().toEpochMilli(),pi) } } }
+private object PlanScheduler {
+    fun cancel(context: Context) {
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        (0..200).forEach { id ->
+            am.cancel(PendingIntent.getBroadcast(context, 8600 + id, Intent(context, UmrahPlanReminderReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+        }
+        am.cancel(PendingIntent.getBroadcast(context, 8999, Intent(context, UmrahPlanReminderReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+    }
+
+    fun reschedule(context: Context, trip: PlannedTrip) {
+        cancel(context)
+        if (!trip.notifications) return
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        trip.reminderDays.filter { it > 0 }.toSet().sortedDescending().forEachIndexed { index, day ->
+            val zdt = trip.start.minusDays(day.toLong()).atTime(trip.hour, trip.minute).atZone(ZoneId.systemDefault())
+            if (zdt.toInstant().toEpochMilli() > System.currentTimeMillis()) {
+                val intent = Intent(context, UmrahPlanReminderReceiver::class.java)
+                    .putExtra("days", day)
+                    .putExtra("language", trip.language)
+                    .putExtra("start", trip.start.toString())
+                val pi = PendingIntent.getBroadcast(context, 8600 + index, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, zdt.toInstant().toEpochMilli(), pi)
+            }
+        }
+    }
+
+    fun schedulePreview(context: Context, trip: PlannedTrip): Boolean = runCatching {
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, UmrahPlanReminderReceiver::class.java)
+            .putExtra("days", 20)
+            .putExtra("language", trip.language)
+            .putExtra("start", trip.start.toString())
+            .putExtra("preview", true)
+        val pi = PendingIntent.getBroadcast(context, 8999, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 4_000L, pi)
+        true
+    }.getOrDefault(false)
 }
 
-class UmrahPlanReminderReceiver:BroadcastReceiver(){ override fun onReceive(context:Context,intent:Intent){ val lang=intent.getStringExtra("language")?:"ru"; val days=intent.getIntExtra("days",7); val manager=context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager; if(Build.VERSION.SDK_INT>=26)manager.createNotificationChannel(NotificationChannel("umrah_plan","Umrah Plan",NotificationManager.IMPORTANCE_DEFAULT)); val title=if(lang=="en")"Umrah in $days days" else if(lang.startsWith("uz"))"Umragacha $days kun" else "Umrah через $days дней"; val body=if(lang=="en")"Open your plan and review dates, documents and route." else if(lang.startsWith("uz"))"Rejani ochib sana, hujjat va yo‘nalishni tekshiring." else "Откройте план и проверьте даты, документы и маршрут."; manager.notify(8700+days,NotificationCompat.Builder(context,"umrah_plan").setSmallIcon(R.mipmap.ic_launcher).setContentTitle(title).setContentText(body).setAutoCancel(true).build()) } }
+class UmrahPlanReminderReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val languageRaw = intent.getStringExtra("language") ?: "ru"
+        val days = intent.getIntExtra("days", 7)
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= 26) {
+            manager.createNotificationChannel(NotificationChannel("umrah_plan", "Umrah Plan", NotificationManager.IMPORTANCE_DEFAULT))
+        }
+        manager.notify(
+            if (intent.getBooleanExtra("preview", false)) 8799 else 8700 + days,
+            NotificationCompat.Builder(context, "umrah_plan")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(notificationTitle(languageRaw, days))
+                .setContentText(notificationBodyRaw(languageRaw, days))
+                .setAutoCancel(true)
+                .build(),
+        )
+    }
+}
 
 @Composable
 fun UmrahPlanScreen(language:AppLanguage, chrome:AppChromeStore){
@@ -82,9 +134,58 @@ fun UmrahPlanScreen(language:AppLanguage, chrome:AppChromeStore){
     }
 }
 
-@Composable private fun PlanHeader(language:AppLanguage,trip:PlannedTrip?,settings:()->Unit){ Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(tr(language,"Мои поездки","My trips","Safarlarim","Сафарларим"),fontSize=34.sp,fontWeight=FontWeight.Bold,letterSpacing=(-.8).sp);Text((trip?.start?:LocalDate.now()).year.toString(),color=Color(0xFFFF520F),fontSize=13.sp,fontWeight=FontWeight.Bold)};if(trip!=null) IumrahPressable(settings,Modifier.size(44.dp),cornerRadius=22.dp,background=MaterialTheme.colorScheme.surfaceVariant){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CupertinoIcon(CupertinoSymbol.Sliders,null,Modifier.size(20.dp))}} } }
-@Composable private fun UpcomingLabel(language:AppLanguage){Row(verticalAlignment=Alignment.CenterVertically){Text(tr(language,"Предстоящий","Upcoming","Kelgusi","Келгуси"),fontSize=14.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.5f));Spacer(Modifier.width(12.dp));HorizontalDivider(Modifier.weight(1f),color=MaterialTheme.colorScheme.onSurface.copy(alpha=.08f))}}
-@Composable private fun CreationCard(language:AppLanguage,onCreate:()->Unit,onBookings:()->Unit){ val shape=RoundedCornerShape(34.dp); Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFFFFF0E7),Color(0xFFF4EEFF),Color(0xFFEAF4FF))),shape).border(.8.dp,Color.Black.copy(alpha=.05f),shape).padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally){StackedPlanIcon();Spacer(Modifier.height(18.dp));Text(tr(language,"Организовать\nновую Umrah","Plan a new\nUmrah","Yangi Umrani\nrejalashtirish","Янги Умрани\nрежалаштириш"),fontSize=31.sp,fontWeight=FontWeight.Bold,textAlign=TextAlign.Center,lineHeight=34.sp);Spacer(Modifier.height(9.dp));Text(tr(language,"Выберите будущие даты и iumrah будет спокойно напоминать о подготовке к поездке.","Choose future dates and iumrah will calmly remind you as the trip gets closer.","Kelajakdagi sanalarni tanlang — iumrah tayyorgarlikni eslatib turadi.","Келажакдаги саналарни танланг — iumrah тайёргарликни эслатиб туради."),fontSize=15.sp,color=Color.Black.copy(alpha=.55f),textAlign=TextAlign.Center,lineHeight=20.sp);Spacer(Modifier.height(20.dp));OrangeButton(tr(language,"Создать новую поездку","Create a new trip","Yangi safar yaratish","Янги сафар яратиш"),onCreate);Spacer(Modifier.height(10.dp));IumrahPressable(onBookings,Modifier.fillMaxWidth().height(58.dp),cornerRadius=20.dp,background=Color.White.copy(alpha=.72f)){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Text(tr(language,"Открыть мои бронирования","Open my bookings","Bronlarimni ochish","Бронларимни очиш"),color=Color.Black,fontWeight=FontWeight.SemiBold)}} } }
+@Composable
+private fun PlanHeader(language: AppLanguage, trip: PlannedTrip?, settings: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(tr(language, "Мои поездки", "My trips", "Safarlarim", "Сафарларим"), fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.7).sp)
+            Text(
+                (trip?.start ?: LocalDate.now()).year.toString(),
+                color = Color(0xFFFF520F), fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.background(Color(0xFFFF520F).copy(alpha = .10f), CircleShape).padding(horizontal = 10.dp, vertical = 5.dp),
+            )
+        }
+        if (trip != null) IumrahPressable(settings, Modifier.size(44.dp), cornerRadius = 22.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CupertinoIcon(CupertinoSymbol.Sliders, null, Modifier.size(17.dp)) }
+        }
+    }
+}
+@Composable
+private fun UpcomingLabel(language: AppLanguage) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(tr(language, "Предстоящий", "Upcoming", "Kelgusi", "Келгуси"), fontSize = 16.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f))
+        Spacer(Modifier.width(12.dp))
+        HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface.copy(alpha = .18f))
+    }
+}
+@Composable
+private fun CreationCard(language: AppLanguage, onCreate: () -> Unit, onBookings: () -> Unit) {
+    val shape = RoundedCornerShape(34.dp)
+    Column(
+        Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFFFFFBF7), Color(0xFFFFE6D6))), shape)
+            .border(.8.dp, Color.Black.copy(alpha = .08f), shape).padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        StackedPlanIcon()
+        Spacer(Modifier.height(20.dp))
+        Text(tr(language, "Организовать\nновую Umrah", "Plan a new\nUmrah", "Yangi Umrani\nrejalashtirish", "Янги Умрани\nрежалаштириш"), fontSize = 31.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, lineHeight = 34.sp)
+        Spacer(Modifier.height(9.dp))
+        Text(
+            tr(language,
+                "Создайте будущую поездку, выберите даты и настройте напоминания о подготовке.",
+                "Create your future trip, choose dates and set preparation reminders.",
+                "Kelajakdagi safarni yarating, sanalarni tanlang va tayyorgarlik eslatmalarini sozlang.",
+                "Келажакдаги сафарни яратинг, саналарни танланг ва тайёргарлик эслатмаларини созланг."),
+            fontSize = 16.sp, color = Color.Black.copy(alpha = .55f), textAlign = TextAlign.Center, lineHeight = 21.sp,
+        )
+        Spacer(Modifier.height(20.dp))
+        OrangeButton(tr(language, "Создать новую поездку", "Create a new trip", "Yangi safar yaratish", "Янги сафар яратиш"), onCreate)
+        Spacer(Modifier.height(10.dp))
+        IumrahPressable(onBookings, Modifier.fillMaxWidth().height(58.dp), cornerRadius = 20.dp, background = Color.Black.copy(alpha = .06f)) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(tr(language, "Открыть мои бронирования", "Open my bookings", "Bronlarimni ochish", "Бронларимни очиш"), color = Color.Black, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
 @Composable private fun StackedPlanIcon(){Box(Modifier.height(66.dp).width(100.dp),contentAlignment=Alignment.Center){Box(Modifier.offset(x=(-18).dp).size(44.dp,54.dp).background(Color.White,RoundedCornerShape(10.dp)));Box(Modifier.size(44.dp,54.dp).background(Color(0xFFEBC09A),RoundedCornerShape(10.dp)));Box(Modifier.offset(x=18.dp).size(44.dp,54.dp).background(Color(0xFF8DBAE9),RoundedCornerShape(10.dp)));CupertinoIcon(CupertinoSymbol.MoonStarsFill,null,Modifier.size(19.dp),tint=Color.Black.copy(alpha=.72f))}}
 
 @Composable private fun PlannedHero(language:AppLanguage,t:PlannedTrip,onReminder:()->Unit){ val fg=if(backgroundPrefersLight(t.background))Color.White else Color.Black; Box(Modifier.fillMaxWidth().height(410.dp).clip(RoundedCornerShape(34.dp))){PlanBackground(t.background);Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha=.12f),Color.Transparent,Color.Black.copy(alpha=.36f)))));Column(Modifier.fillMaxSize().padding(20.dp)){Row{Box(Modifier.size(42.dp).background(Color.Black.copy(alpha=.24f),CircleShape),contentAlignment=Alignment.Center){CupertinoIcon(CupertinoSymbol.MoonStarsFill,null,Modifier.size(19.dp),tint=Color.White)};Spacer(Modifier.weight(1f));Box(Modifier.size(42.dp).background(Color.Black.copy(alpha=.24f),CircleShape),contentAlignment=Alignment.Center){CupertinoIcon(CupertinoSymbol.CalendarClock,null,Modifier.size(19.dp),tint=Color.White)}};Spacer(Modifier.weight(1f));Text(t.title,fontSize=31.sp,fontWeight=FontWeight.Bold,color=fg,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth());Text(heroCountdown(language,t),fontSize=14.sp,fontWeight=FontWeight.SemiBold,color=fg.copy(alpha=.82f),textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth());Text(formatRange(t.start,t.end),fontSize=13.5.sp,color=fg.copy(alpha=.78f),textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth());Spacer(Modifier.weight(1f));IumrahPressable(onReminder,Modifier.fillMaxWidth().height(50.dp),cornerRadius=18.dp,background=Color.White.copy(alpha=.18f)){Row(Modifier.fillMaxSize().padding(horizontal=15.dp),verticalAlignment=Alignment.CenterVertically){CupertinoIcon(CupertinoSymbol.BellBadge,null,Modifier.size(18.dp),tint=Color.White);Spacer(Modifier.width(9.dp));Text(tr(language,"Настроить напоминания","Manage reminders","Eslatmalarni sozlash","Эслатмаларни созлаш"),color=Color.White,fontWeight=FontWeight.SemiBold)}}} } }
@@ -97,9 +198,105 @@ fun UmrahPlanScreen(language:AppLanguage, chrome:AppChromeStore){
 @Composable private fun GlassCapsule(title:String,onClick:()->Unit){IumrahPressable(onClick,Modifier.height(42.dp),cornerRadius=21.dp,background=Color.Black.copy(alpha=.28f)){Box(Modifier.padding(horizontal=14.dp).fillMaxHeight(),contentAlignment=Alignment.Center){Text(title,color=Color.White,fontSize=14.5.sp,fontWeight=FontWeight.Bold)}}}
 @Composable private fun EditorAction(icon:CupertinoSymbol,title:String,modifier:Modifier,onClick:()->Unit){IumrahPressable(onClick,modifier.height(68.dp),cornerRadius=20.dp,background=Color.Black.copy(alpha=.27f)){Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){CupertinoIcon(icon,null,Modifier.size(20.dp),tint=Color.White);Spacer(Modifier.height(7.dp));Text(title,color=Color.White,fontSize=12.sp,fontWeight=FontWeight.SemiBold)}}}
 
-@Composable private fun BackgroundPicker(language:AppLanguage,selected:String,onBack:()->Unit,onSelect:(String)->Unit){ val bgs=listOf("photo-makkah-window","photo-kaaba-arch","gradient-sunset","gradient-dawn","gradient-sky","gradient-mint","gradient-gold","gradient-ocean","gradient-lime","gradient-night","gradient-sand");Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)){Row(Modifier.statusBarsPadding().height(56.dp).padding(horizontal=18.dp),verticalAlignment=Alignment.CenterVertically){Text(tr(language,"Фоны","Backgrounds","Fonlar","Фонлар"),fontSize=22.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));Text(tr(language,"Готово","Done","Tayyor","Тайёр"),fontWeight=FontWeight.SemiBold,color=Color(0xFF007AFF),modifier=Modifier.clickable{onBack()})};Column(Modifier.verticalScroll(rememberScrollState()).padding(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){bgs.chunked(3).forEach{row->Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){row.forEach{id->Box(Modifier.weight(1f).height(160.dp).clip(RoundedCornerShape(16.dp)).clickable{onSelect(id)}){PlanBackground(id);if(id==selected)Box(Modifier.align(Alignment.TopEnd).padding(8.dp).size(26.dp).background(Color.White,CircleShape),contentAlignment=Alignment.Center){CupertinoIcon(CupertinoSymbol.Checkmark,null,Modifier.size(16.dp),tint=Color.Black)}}};repeat(3-row.size){Spacer(Modifier.weight(1f))}}}}}}
+@Composable
+private fun BackgroundPicker(language: AppLanguage, selected: String, onBack: () -> Unit, onSelect: (String) -> Unit) {
+    val photos = listOf("photo-makkah-window", "photo-kaaba-arch")
+    val colors = listOf("gradient-sunset", "gradient-dawn", "gradient-sky", "gradient-mint", "gradient-gold", "gradient-ocean", "gradient-lime", "gradient-night", "gradient-sand")
+    var tab by remember { mutableIntStateOf(if (selected.startsWith("photo-")) 0 else 1) }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Row(Modifier.statusBarsPadding().height(56.dp).padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(tr(language, "Выберите фон", "Choose background", "Fon tanlang", "Фон танланг"), fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text(tr(language, "Готово", "Done", "Tayyor", "Тайёр"), fontWeight = FontWeight.SemiBold, color = Color(0xFF007AFF), modifier = Modifier.clickable { onBack() })
+        }
+        Row(Modifier.padding(horizontal = 18.dp).fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).padding(3.dp)) {
+            listOf(tr(language, "Фото", "Photos", "Rasmlar", "Расмлар"), tr(language, "Цвета", "Colors", "Ranglar", "Ранглар")).forEachIndexed { index, title ->
+                IumrahPressable({ tab = index }, Modifier.weight(1f).height(36.dp), cornerRadius = 9.dp, background = if (tab == index) MaterialTheme.colorScheme.surface else Color.Transparent) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
+                }
+            }
+        }
+        val items = if (tab == 0) photos else colors
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items.chunked(if (tab == 0) 2 else 3).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    row.forEach { id ->
+                        Box(Modifier.weight(1f).height(160.dp).clip(RoundedCornerShape(16.dp)).clickable { onSelect(id) }) {
+                            PlanBackground(id)
+                            if (id == selected) Box(Modifier.align(Alignment.TopEnd).padding(8.dp).size(26.dp).background(Color.White, CircleShape), contentAlignment = Alignment.Center) {
+                                CupertinoIcon(CupertinoSymbol.Checkmark, null, Modifier.size(16.dp), tint = Color.Black)
+                            }
+                        }
+                    }
+                    repeat((if (tab == 0) 2 else 3) - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
 
-@Composable private fun ReminderEditor(language:AppLanguage,trip:PlannedTrip,onBack:()->Unit,onSave:(PlannedTrip)->Unit){var enabled by remember{mutableStateOf(trip.notifications)};var days by remember{mutableStateOf(trip.reminderDays)};var hour by remember{mutableIntStateOf(trip.hour)};var minute by remember{mutableIntStateOf(trip.minute)};Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)){Row(Modifier.statusBarsPadding().height(56.dp).padding(horizontal=18.dp),verticalAlignment=Alignment.CenterVertically){Text(tr(language,"Напоминания","Reminders","Eslatmalar","Эслатмалар"),fontSize=22.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));Text(tr(language,"Готово","Done","Tayyor","Тайёр"),fontWeight=FontWeight.SemiBold,color=Color(0xFF007AFF),modifier=Modifier.clickable{onSave(trip.copy(reminderDays=days,hour=hour,minute=minute,notifications=enabled))})};Column(Modifier.verticalScroll(rememberScrollState()).padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(tr(language,"Напоминать о поездке","Trip reminders","Safar eslatmalari","Сафар эслатмалари"),fontSize=17.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));Switch(enabled,{enabled=it})};if(enabled){Text(tr(language,"Время уведомлений","Reminder time","Eslatma vaqti","Эслатма вақти"),fontSize=19.sp,fontWeight=FontWeight.Bold);Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){NumberControl(hour,{hour=(it+24)%24},0..23,Modifier.weight(1f));NumberControl(minute,{minute=(it+60)%60},0..59,Modifier.weight(1f))};Text(tr(language,"Когда напомнить","When to remind","Qachon eslatish","Қачон эслатиш"),fontSize=19.sp,fontWeight=FontWeight.Bold);listOf(60,30,20,15,10,7,5,3,2,1).forEach{day->Row(Modifier.fillMaxWidth().height(54.dp).background(MaterialTheme.colorScheme.surface,RoundedCornerShape(18.dp)).padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically){Text(daysBefore(language,day),fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f));Switch(day in days,{checked->days=if(checked)days+day else days-day})}}}}}}
+@Composable
+private fun ReminderEditor(language: AppLanguage, trip: PlannedTrip, onBack: () -> Unit, onSave: (PlannedTrip) -> Unit) {
+    val context = LocalContext.current
+    var enabled by remember { mutableStateOf(trip.notifications) }
+    var days by remember { mutableStateOf(trip.reminderDays) }
+    var hour by remember { mutableIntStateOf(trip.hour) }
+    var minute by remember { mutableIntStateOf(trip.minute) }
+    var customDays by remember { mutableIntStateOf(12) }
+    var previewMessage by remember { mutableStateOf<String?>(null) }
+    val allDays = (setOf(60, 30, 20, 15, 10, 7, 5, 3, 2, 1) + days).sortedDescending()
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Row(Modifier.statusBarsPadding().height(56.dp).padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(tr(language, "Напоминания", "Reminders", "Eslatmalar", "Эслатмалар"), fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text(tr(language, "Сохранить", "Save", "Saqlash", "Сақлаш"), fontWeight = FontWeight.Bold, color = Color(0xFF007AFF), modifier = Modifier.clickable { onSave(trip.copy(reminderDays = days, hour = hour, minute = minute, notifications = enabled, language = language.code)) })
+        }
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(tr(language, "Напоминать о поездке", "Trip reminders", "Safar eslatmalari", "Сафар эслатмалари"), fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Switch(enabled, { enabled = it })
+            }
+            if (enabled) {
+                Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(22.dp)).padding(16.dp)) {
+                    Text(tr(language, "Время уведомлений", "Reminder time", "Eslatma vaqti", "Эслатма вақти"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(tr(language, "Все выбранные напоминания приходят в это время.", "All selected reminders arrive at this time.", "Tanlangan eslatmalar shu vaqtda keladi.", "Танланган эслатмалар шу вақтда келади."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f))
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        NumberControl(hour, { hour = (it + 24) % 24 }, 0..23, Modifier.weight(1f))
+                        NumberControl(minute, { minute = (it + 60) % 60 }, 0..59, Modifier.weight(1f))
+                    }
+                }
+                Text(tr(language, "Расписание", "Schedule", "Jadval", "Жадвал"), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                allDays.forEach { day ->
+                    Row(Modifier.fillMaxWidth().heightIn(min = 54.dp).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp)).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(daysBefore(language, day), fontWeight = FontWeight.SemiBold)
+                            if (day == 20 || day == 15) Text(tr(language, "С этого этапа напоминания становятся чаще", "Reminders become more frequent from here", "Shu bosqichdan eslatmalar tezlashadi", "Шу босқичдан эслатмалар тезлашади"), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f))
+                        }
+                        Switch(day in days, { checked -> days = if (checked) days + day else days - day })
+                    }
+                }
+                Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    NumberControl(customDays, { customDays = it.coerceIn(1, 180) }, 1..180, Modifier.weight(1f))
+                    Spacer(Modifier.width(12.dp))
+                    IumrahPressable({ days = days + customDays }, Modifier.size(42.dp), cornerRadius = 21.dp, background = MaterialTheme.colorScheme.onSurface.copy(alpha = .07f)) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+                    }
+                }
+                IumrahPressable({
+                    val previewTrip = trip.copy(reminderDays = days, hour = hour, minute = minute, notifications = enabled, language = language.code)
+                    val ok = PlanScheduler.schedulePreview(context, previewTrip)
+                    previewMessage = if (ok) tr(language, "Тестовое уведомление придёт через несколько секунд.", "A test notification will arrive in a few seconds.", "Sinov bildirishnomasi bir necha soniyada keladi.", "Синов билдиришномаси бир неча сонияда келади.") else tr(language, "Разрешите уведомления для iumrah в настройках Android.", "Allow iumrah notifications in Android Settings.", "Android sozlamalarida iumrah bildirishnomalariga ruxsat bering.", "Android созламаларида iumrah билдиришномаларига рухсат беринг.")
+                }, Modifier.fillMaxWidth().height(56.dp), cornerRadius = 19.dp, background = MaterialTheme.colorScheme.onSurface.copy(alpha = .06f)) {
+                    Row(Modifier.fillMaxSize().padding(horizontal = 17.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CupertinoIcon(CupertinoSymbol.BellBadge, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(tr(language, "Отправить тестовое уведомление", "Send test notification", "Sinov bildirishnomasini yuborish", "Синов билдиришномасини юбориш"), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                previewMessage?.let { Text(it, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f)) }
+            }
+        }
+    }
+}
 @Composable private fun NumberControl(value:Int,set:(Int)->Unit,range:IntRange,modifier:Modifier){Row(modifier.height(54.dp).background(MaterialTheme.colorScheme.surface,RoundedCornerShape(18.dp)),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceEvenly){Text("−",fontSize=22.sp,modifier=Modifier.clickable{set(if(value==range.first)range.last else value-1)});Text("%02d".format(value),fontWeight=FontWeight.Bold,fontSize=18.sp);Text("+",fontSize=22.sp,modifier=Modifier.clickable{set(if(value==range.last)range.first else value+1)})}}
 
 @Composable private fun PlanBackground(id:String){when(id){"photo-makkah-window"->Image(painterResource(R.drawable.iumrah_makkah_background),null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop);"photo-kaaba-arch"->Image(painterResource(R.drawable.umrah_plan_kaaba),null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop);else->Box(Modifier.fillMaxSize().background(Brush.linearGradient(backgroundColors(id))))}}
@@ -110,5 +307,35 @@ private fun formatRange(a:LocalDate,b:LocalDate)="${a.format(DateTimeFormatter.o
 private fun shortDate(d:LocalDate)=d.format(DateTimeFormatter.ofPattern("d MMM"))
 private fun heroCountdown(language:AppLanguage,t:PlannedTrip):String{val days=max(0,ChronoUnit.DAYS.between(LocalDate.now(),t.start).toInt());val duration=ChronoUnit.DAYS.between(t.start,t.end).toInt()+1;return when(language){AppLanguage.ENGLISH->if(days>0)"Starts in $days days · $duration-day trip" else "Starts today · $duration-day trip";AppLanguage.RUSSIAN->if(days>0)"Начнётся через $days дней · $duration дней поездки" else "Начинается сегодня · $duration дней поездки";AppLanguage.UZBEK->if(days>0)"$days kundan keyin boshlanadi · $duration kun" else "Bugun boshlanadi · $duration kun";AppLanguage.UZBEK_CYRILLIC->if(days>0)"$days кундан кейин бошланади · $duration кун" else "Бугун бошланади · $duration кун"}}
 private fun daysBefore(l:AppLanguage,d:Int)=tr(l,"За $d дней","$d days before","$d kun oldin","$d кун олдин")
-private fun notificationBody(l:AppLanguage,d:Int)=if(d>=30)tr(l,"Проверьте документы, даты и бюджет.","Review documents, dates and budget.","Hujjatlar, sanalar va byudjetni tekshiring.","Ҳужжатлар, саналар ва бюджетни текширинг.") else if(d>=7)tr(l,"Проверьте финальные детали поездки.","Review final trip details.","Safarning yakuniy tafsilotlarini tekshiring.","Сафарнинг якуний тафсилотларини текширинг.") else tr(l,"Финальная подготовка к Umrah.","Final Umrah preparation.","Umraga yakuniy tayyorgarlik.","Умрага якуний тайёргарлик.")
+private fun notificationTitle(languageRaw: String, days: Int): String {
+    val l = when {
+        languageRaw == "en" -> AppLanguage.ENGLISH
+        languageRaw == "uz" -> AppLanguage.UZBEK
+        languageRaw.contains("cyrl", ignoreCase = true) || languageRaw.contains("cyr", ignoreCase = true) -> AppLanguage.UZBEK_CYRILLIC
+        else -> AppLanguage.RUSSIAN
+    }
+    return when (l) {
+        AppLanguage.RUSSIAN -> if (days == 1) "Umrah уже завтра" else "До Umrah осталось $days дней"
+        AppLanguage.ENGLISH -> if (days == 1) "Your Umrah starts tomorrow" else "$days days until your Umrah"
+        AppLanguage.UZBEK -> if (days == 1) "Umrangiz ertaga boshlanadi" else "Umragacha $days kun qoldi"
+        AppLanguage.UZBEK_CYRILLIC -> if (days == 1) "Умрангиз эртага бошланади" else "Умрагача $days кун қолди"
+    }
+}
+
+private fun notificationBodyRaw(languageRaw: String, days: Int): String {
+    val l = when {
+        languageRaw == "en" -> AppLanguage.ENGLISH
+        languageRaw == "uz" -> AppLanguage.UZBEK
+        languageRaw.contains("cyrl", ignoreCase = true) || languageRaw.contains("cyr", ignoreCase = true) -> AppLanguage.UZBEK_CYRILLIC
+        else -> AppLanguage.RUSSIAN
+    }
+    return when (l) {
+        AppLanguage.RUSSIAN -> when { days >= 60 -> "План уже создан. Начните спокойно готовить документы, даты и бюджет поездки."; days >= 30 -> "До поездки месяц. Проверьте паспорт, перелёт и отель — всё важное будет в одном плане iumrah."; days >= 15 -> "Поездка становится ближе. Проверьте документы, трансфер и список подготовки."; days >= 7 -> "Umrah уже скоро. Проверьте финальные детали поездки и всё необходимое в дороге."; else -> "Финальная подготовка к Umrah. Откройте план и проверьте даты, документы и маршрут." }
+        AppLanguage.ENGLISH -> when { days >= 60 -> "Your plan is saved. Start preparing documents, dates and budget at your own pace."; days >= 30 -> "One month to go. Check your passport, flight and hotel in your iumrah plan."; days >= 15 -> "Your trip is getting close. Review documents, transfers and preparation."; days >= 7 -> "Your Umrah is close. Review the final trip details and what you need to take."; else -> "Final Umrah preparation. Open your plan and check dates, documents and route." }
+        AppLanguage.UZBEK -> when { days >= 60 -> "Rejangiz saqlandi. Hujjatlar, sanalar va safar byudjetini xotirjam tayyorlashni boshlang."; days >= 30 -> "Safargacha bir oy. Pasport, parvoz va mehmonxonani iumrah rejangizda tekshiring."; days >= 15 -> "Safar yaqinlashmoqda. Hujjatlar, transfer va tayyorgarlik ro‘yxatini tekshiring."; days >= 7 -> "Umra yaqin. Safarning yakuniy tafsilotlarini va kerakli narsalarni tekshiring."; else -> "Umraga yakuniy tayyorgarlik. Rejangizni ochib sana, hujjat va yo‘nalishni tekshiring." }
+        AppLanguage.UZBEK_CYRILLIC -> when { days >= 60 -> "Режангиз сақланди. Ҳужжатлар, саналар ва сафар бюджетини хотиржам тайёрлашни бошланг."; days >= 30 -> "Сафаргача бир ой. Паспорт, парвоз ва меҳмонхонани iumrah режангизда текширинг."; days >= 15 -> "Сафар яқинлашмоқда. Ҳужжатлар, трансфер ва тайёргарлик рўйхатини текширинг."; days >= 7 -> "Умра яқин. Сафарнинг якуний тафсилотларини ва керакли нарсаларни текширинг."; else -> "Умрага якуний тайёргарлик. Режангизни очиб сана, ҳужжат ва йўналишни текширинг." }
+    }
+}
+
+private fun notificationBody(l: AppLanguage, d: Int) = notificationBodyRaw(l.code, d)
 private fun pickDate(context:Context,current:LocalDate,onSet:(LocalDate)->Unit){DatePickerDialog(context,{_,y,m,d->onSet(LocalDate.of(y,m+1,d))},current.year,current.monthValue-1,current.dayOfMonth).show()}

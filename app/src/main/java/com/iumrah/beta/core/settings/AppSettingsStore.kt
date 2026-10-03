@@ -41,6 +41,14 @@ data class AppSettingsState(
     val lastName: String = "",
     val telegram: String = "",
     val whatsapp: String = "",
+    val phone: String = "",
+    val email: String = "",
+    val dateOfBirth: String = "",
+    val gender: String = "",
+    val nationality: String = "",
+    val emergencyName: String = "",
+    val emergencyPhone: String = "",
+    val emergencyRelation: String = "",
     val launcherIcon: String = "standard",
     val hasCompletedOnboarding: Boolean = false,
     val isLoaded: Boolean = false,
@@ -70,6 +78,14 @@ class AppSettingsStore(private val context: Context) {
             lastName = values[Keys.LAST_NAME].orEmpty(),
             telegram = values[Keys.TELEGRAM].orEmpty(),
             whatsapp = values[Keys.WHATSAPP].orEmpty(),
+            phone = values[Keys.PHONE].orEmpty(),
+            email = values[Keys.EMAIL].orEmpty(),
+            dateOfBirth = values[Keys.DATE_OF_BIRTH].orEmpty(),
+            gender = values[Keys.GENDER].orEmpty(),
+            nationality = values[Keys.NATIONALITY].orEmpty(),
+            emergencyName = values[Keys.EMERGENCY_NAME].orEmpty(),
+            emergencyPhone = values[Keys.EMERGENCY_PHONE].orEmpty(),
+            emergencyRelation = values[Keys.EMERGENCY_RELATION].orEmpty(),
             launcherIcon = values[Keys.LAUNCHER_ICON] ?: "standard",
             hasCompletedOnboarding = values[Keys.ONBOARDING] == "true",
             isLoaded = true,
@@ -103,6 +119,54 @@ class AppSettingsStore(private val context: Context) {
         }
     }
 
+    fun updateOwnerDetails(
+        firstName: String,
+        lastName: String,
+        phone: String,
+        email: String,
+        telegram: String,
+        whatsapp: String,
+        dateOfBirth: String,
+        gender: String,
+        nationality: String,
+        emergencyName: String,
+        emergencyPhone: String,
+        emergencyRelation: String,
+    ) {
+        _state.update {
+            it.copy(
+                firstName = firstName,
+                lastName = lastName,
+                phone = phone,
+                email = email,
+                telegram = telegram,
+                whatsapp = whatsapp,
+                dateOfBirth = dateOfBirth,
+                gender = gender,
+                nationality = nationality,
+                emergencyName = emergencyName,
+                emergencyPhone = emergencyPhone,
+                emergencyRelation = emergencyRelation,
+            )
+        }
+        scope.launch {
+            context.iumrahPreferences.edit {
+                it[Keys.FIRST_NAME] = firstName
+                it[Keys.LAST_NAME] = lastName
+                it[Keys.PHONE] = phone
+                it[Keys.EMAIL] = email
+                it[Keys.TELEGRAM] = telegram
+                it[Keys.WHATSAPP] = whatsapp
+                it[Keys.DATE_OF_BIRTH] = dateOfBirth
+                it[Keys.GENDER] = gender
+                it[Keys.NATIONALITY] = nationality
+                it[Keys.EMERGENCY_NAME] = emergencyName
+                it[Keys.EMERGENCY_PHONE] = emergencyPhone
+                it[Keys.EMERGENCY_RELATION] = emergencyRelation
+            }
+        }
+    }
+
     private fun persist(key: Preferences.Key<String>, value: String, reducer: AppSettingsState.() -> AppSettingsState) {
         _state.update { it.reducer() }
         scope.launch { context.iumrahPreferences.edit { it[key] = value } }
@@ -115,6 +179,14 @@ class AppSettingsStore(private val context: Context) {
         val LAST_NAME = stringPreferencesKey("iumrah.profile.lastName")
         val TELEGRAM = stringPreferencesKey("iumrah.profile.telegram")
         val WHATSAPP = stringPreferencesKey("iumrah.profile.whatsapp")
+        val PHONE = stringPreferencesKey("iumrah.profile.phone")
+        val EMAIL = stringPreferencesKey("iumrah.profile.email")
+        val DATE_OF_BIRTH = stringPreferencesKey("iumrah.profile.dateOfBirth")
+        val GENDER = stringPreferencesKey("iumrah.profile.gender")
+        val NATIONALITY = stringPreferencesKey("iumrah.profile.nationality")
+        val EMERGENCY_NAME = stringPreferencesKey("iumrah.profile.emergencyName")
+        val EMERGENCY_PHONE = stringPreferencesKey("iumrah.profile.emergencyPhone")
+        val EMERGENCY_RELATION = stringPreferencesKey("iumrah.profile.emergencyRelation")
         val LAUNCHER_ICON = stringPreferencesKey("iumrah.launcherIcon")
         val ONBOARDING = stringPreferencesKey("iumrah.hasCompletedOnboarding.cinematic.v4")
     }
