@@ -17,6 +17,7 @@ data class ClientNotificationState(
     val dismissedHomeIDs: Set<String> = emptySet(),
     val isSyncing: Boolean = false,
     val lastError: String? = null,
+    val pushProviderReady: Boolean? = null,
 ) {
     val inbox: List<ClientSystemNotification> get() = notifications.sortedWith(
         compareBy<ClientSystemNotification> { it.isRead }
@@ -43,20 +44,31 @@ class ClientNotificationStore(context: Context, private val api: APIClient) {
     suspend fun sync(deviceToken: String?, accountToken: String?, hasTrip: Boolean, locale: String) {
         _state.update { it.copy(isSyncing = true, lastError = null) }
         val headers = authorizationHeaders(accountToken)
-        runCatching {
-            api.post<ClientNotificationDeviceResponse, ClientNotificationDeviceRegistration>(
-                "/api/catalog/hotels/client/notifications/devices",
-                ClientNotificationDeviceRegistration(
-                    installationID = installationID,
-                    deviceToken = deviceToken?.trim()?.takeIf(String::isNotEmpty)?.lowercase(),
-                    locale = locale,
-                    hasTrip = hasTrip,
-                ),
-                headers,
-            )
-            refresh(accountToken)
-        }.onFailure { error -> _state.update { it.copy(lastError = error.message, isSyncing = false) } }
-        if (_state.value.isSyncing) _state.update { it.copy(isSyncing = false) }
+        val request = ClientNotificationDeviceRegistration(
+            installationID = installationID,
+            // FCM registration tokens are case-sensitive. Never lowercase them.
+            deviceToken = deviceToken?.trim()?.takeIf(String::isNotEmpty),
+            locale = locale,
+            hasTrip = hasTrip,
+        )
+        var lastError: Throwable? = null
+        repeat(3) { attempt ->
+            try {
+                val response = api.post<ClientNotificationDeviceResponse, ClientNotificationDeviceRegistration>(
+                    "/api/catalog/hotels/client/notifications/devices",
+                    request,
+                    headers,
+                )
+                _state.update { it.copy(pushProviderReady = response.ready, lastError = null) }
+                refresh(accountToken)
+                _state.update { it.copy(isSyncing = false, lastError = null) }
+                return
+            } catch (error: Throwable) {
+                lastError = error
+                if (attempt < 2) kotlinx.coroutines.delay(650L * (attempt + 1))
+            }
+        }
+        _state.update { it.copy(lastError = lastError?.message, isSyncing = false) }
     }
 
     suspend fun refresh(accountToken: String?) {
@@ -93,6 +105,8 @@ class ClientNotificationStore(context: Context, private val api: APIClient) {
         _state.update { it.copy(dismissedHomeIDs = it.dismissedHomeIDs - id) }
         persist()
     }
+
+    fun notification(id: String): ClientSystemNotification? = _state.value.notifications.firstOrNull { it.id == id }
 
     private fun authorizationHeaders(token: String?): Map<String, String> = token?.trim()?.takeIf { it.isNotEmpty() }
         ?.let { mapOf("Authorization" to "Bearer $it") }.orEmpty()

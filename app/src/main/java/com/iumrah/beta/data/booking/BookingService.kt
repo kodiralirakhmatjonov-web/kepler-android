@@ -100,6 +100,23 @@ class BookingService(private val api: APIClient) {
     suspend fun applyFriendCredit(id: String, headers: Map<String, String>, amountUsd: Int): IumrahFriendsBookingSummary =
         api.post("/api/package/booking/$id/friends/credit", IumrahFriendCreditApplyRequest(amountUsd), headers)
 
+    suspend fun registerPushDevice(
+        id: String,
+        headers: Map<String, String>,
+        deviceToken: String,
+        locale: String,
+    ): ClientPushRegistrationResponse = api.post(
+        "/api/catalog/hotels/client/push/devices",
+        ClientPushRegistrationRequest(
+            deviceToken = deviceToken,
+            bookingID = id,
+            environment = "production",
+            appBundleID = "com.iumrah.beta",
+            locale = locale,
+        ),
+        headers,
+    )
+
     suspend fun deleteBooking(id: String, headers: Map<String, String>): BookingMutationResponse =
         api.delete("/api/catalog/hotels/client/bookings/$id", headers)
 }
@@ -119,4 +136,20 @@ private data class BookingProfileSyncRequest(
 private data class BookingGeneratorReportSyncRequest(
     val generatorTrace: BookingGeneratorTrace? = null,
     val pricingSnapshot: GeneratorPricingSnapshot? = null,
+)
+
+@Serializable
+data class ClientPushRegistrationRequest(
+    val deviceToken: String,
+    val bookingID: String,
+    val environment: String,
+    val appBundleID: String,
+    val locale: String,
+)
+
+@Serializable
+data class ClientPushRegistrationResponse(
+    val ok: Boolean,
+    val ready: Boolean? = null,
+    val bookingID: String? = null,
 )

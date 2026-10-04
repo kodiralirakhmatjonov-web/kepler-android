@@ -4,6 +4,18 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+private fun String.asBuildConfigString(): String = "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+private val firebaseProperties = java.util.Properties().apply {
+    val file = rootProject.file("firebase.properties")
+    if (file.isFile) file.inputStream().use(::load)
+}
+private val firebaseConfig: (String) -> String = { name ->
+    (providers.gradleProperty(name).orNull
+        ?: System.getenv(name)
+        ?: firebaseProperties.getProperty(name)
+        ?: "").trim()
+}
+
 android {
     namespace = "com.iumrah.beta"
     compileSdk = 36
@@ -14,6 +26,14 @@ android {
         targetSdk = 36
         versionCode = 10
         versionName = "0.8.2-stage8-stable36"
+
+        // FCM credentials are supplied as Gradle properties or environment variables.
+        // Keeping them optional lets the repository build before Firebase provisioning,
+        // while the runtime enables remote push immediately once all four values exist.
+        buildConfigField("String", "IUMRAH_FIREBASE_API_KEY", firebaseConfig("IUMRAH_FIREBASE_API_KEY").asBuildConfigString())
+        buildConfigField("String", "IUMRAH_FIREBASE_APP_ID", firebaseConfig("IUMRAH_FIREBASE_APP_ID").asBuildConfigString())
+        buildConfigField("String", "IUMRAH_FIREBASE_PROJECT_ID", firebaseConfig("IUMRAH_FIREBASE_PROJECT_ID").asBuildConfigString())
+        buildConfigField("String", "IUMRAH_FIREBASE_SENDER_ID", firebaseConfig("IUMRAH_FIREBASE_SENDER_ID").asBuildConfigString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -74,6 +94,11 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.5.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
     implementation("com.google.zxing:core:3.5.3")
+
+    // Remote push parity with iOS APNs. Firebase is initialized manually from
+    // BuildConfig so builds stay valid even before the Android Firebase app is provisioned.
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+    implementation("com.google.firebase:firebase-messaging")
 
     // Real interactive maps for Ziyarats and airport selection. OpenGL is used for widest device compatibility.
     implementation("org.maplibre.gl:android-sdk-opengl:13.6.1")

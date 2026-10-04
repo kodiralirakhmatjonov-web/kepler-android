@@ -1,0 +1,6 @@
+# Firebase Android app configuration for com.iumrah.beta.
+# These are project identifiers, not a service-account private key.
+IUMRAH_FIREBASE_API_KEY=
+IUMRAH_FIREBASE_APP_ID=
+IUMRAH_FIREBASE_PROJECT_ID=
+IUMRAH_FIREBASE_SENDER_ID=

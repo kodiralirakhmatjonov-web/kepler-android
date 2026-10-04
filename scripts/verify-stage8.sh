@@ -14,7 +14,10 @@ for f in "${required[@]}"; do test -s "$f" || { echo "STOP: missing Stage 008 fi
 grep -q '/client/chats/\$bookingID/messages' app/src/main/java/com/iumrah/beta/data/chat/ChatService.kt
 grep -q 'delay(6_000)' app/src/main/java/com/iumrah/beta/ui/chat/BookingChatScreen.kt
 grep -q '/client/notifications/devices' app/src/main/java/com/iumrah/beta/data/notification/ClientNotificationStore.kt
-grep -q 'deviceToken = null' app/src/main/java/com/iumrah/beta/ui/notifications/NotificationsScreen.kt
+grep -q 'pushState.deviceToken' app/src/main/java/com/iumrah/beta/ui/notifications/NotificationsScreen.kt || { echo 'STOP: notifications sync must use the real FCM token'; exit 1; }
+if grep -q 'deviceToken = null' app/src/main/java/com/iumrah/beta/ui/notifications/NotificationsScreen.kt; then
+ echo 'STOP: notification sync must not hard-code a null device token'; exit 1
+fi
 grep -q 'POST_NOTIFICATIONS' app/src/main/AndroidManifest.xml
 if find . -iname 'google-services.json' -o -iname '*keystore*' | grep -q .; then
  echo 'STOP: credentials/signing material must not be shipped in update'; exit 1

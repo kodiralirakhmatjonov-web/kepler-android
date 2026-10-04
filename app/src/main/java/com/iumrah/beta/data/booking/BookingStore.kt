@@ -24,6 +24,8 @@ data class BookingStoreState(
     val esimProfilesByBooking: Map<String, List<ClientESIMProfile>> = emptyMap(),
     val isMutating: Boolean = false,
     val lastError: String? = null,
+    val pushRegistrationReady: Boolean? = null,
+    val pushRegistrationError: String? = null,
 )
 
 class BookingStore(
@@ -189,6 +191,53 @@ class BookingStore(
                 }
             }
             upsert(session)
+        }
+    }
+
+    suspend fun refreshAll() {
+        _state.value.sessions.map { it.id }.forEach { id -> runCatching { refresh(id) } }
+    }
+
+    suspend fun syncPushSubscriptions(deviceToken: String, locale: String) {
+        val token = deviceToken.trim()
+        if (token.isEmpty()) return
+
+        var registeredAny = false
+        var observedReady: Boolean? = null
+        var firstError: String? = null
+
+        for (session in _state.value.sessions) {
+            val candidates = buildList {
+                accountStore.bearerToken?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                    add(mapOf("Authorization" to "Bearer $it"))
+                }
+                session.accessToken.trim().takeIf { it.isNotEmpty() }?.let {
+                    add(mapOf("x-booking-token" to it))
+                }
+            }.distinct()
+            if (candidates.isEmpty()) continue
+
+            var registered = false
+            var lastError: Throwable? = null
+            for (headers in candidates) {
+                try {
+                    val response = service.registerPushDevice(session.id, headers, token, locale)
+                    registeredAny = true
+                    registered = true
+                    response.ready?.let { ready -> observedReady = (observedReady ?: true) && ready }
+                    break
+                } catch (error: Throwable) {
+                    lastError = error
+                }
+            }
+            if (!registered && firstError == null) firstError = lastError?.message
+        }
+
+        _state.update { current ->
+            current.copy(
+                pushRegistrationReady = if (registeredAny) observedReady else current.pushRegistrationReady,
+                pushRegistrationError = firstError,
+            )
         }
     }
 

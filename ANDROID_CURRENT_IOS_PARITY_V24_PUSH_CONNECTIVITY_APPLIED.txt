@@ -1,0 +1,16 @@
+ANDROID_CURRENT_IOS_PARITY_V24_PUSH_CONNECTIVITY_APPLIED
+
+Parity checkpoint based on iOS PushNotificationManager, RootView routing,
+ClientPushService, ClientNotificationCenter and IumrahConnectivityMonitor.
+
+Android implementation:
+- optional/manual Firebase Messaging initialization (no fake credentials)
+- FCM token lifecycle and Android 13 notification permission
+- booking + client notification device registration
+- push payload routing into Home/Hotels/Booking/Care/Account
+- foreground refresh and notification read handling
+- iumrah.app reachability-backed Online/Offline status
+- Account push delivery diagnostic state
+
+Remote FCM delivery requires the real Android Firebase project identifiers.
+See firebase.properties.example and docs/ANDROID_PUSH_FCM_SETUP.md.

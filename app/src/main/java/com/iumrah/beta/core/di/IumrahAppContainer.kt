@@ -2,7 +2,9 @@ package com.iumrah.beta.core.di
 
 import android.content.Context
 import com.iumrah.beta.core.navigation.AppChromeStore
+import com.iumrah.beta.core.push.IumrahPushManager
 import com.iumrah.beta.core.network.APIClient
+import com.iumrah.beta.core.network.IumrahConnectivityMonitor
 import com.iumrah.beta.core.security.IumrahAccountDeviceIdentity
 import com.iumrah.beta.core.security.SecureJsonStore
 import com.iumrah.beta.core.settings.AppSettingsStore
@@ -23,6 +25,7 @@ class IumrahAppContainer(context: Context) {
     private val secureStore = SecureJsonStore(appContext)
 
     val apiClient = APIClient()
+    val connectivityMonitor = IumrahConnectivityMonitor(appContext)
     val deviceIdentity = IumrahAccountDeviceIdentity(appContext, secureStore)
     val accountService = IumrahAccountService(apiClient, deviceIdentity)
     val accountStore = IumrahAccountStore(accountService, secureStore)
@@ -38,6 +41,7 @@ class IumrahAppContainer(context: Context) {
     val bookingStore = BookingStore(bookingService, accountStore, secureStore, packageEngine)
     val chatService = ChatService(apiClient)
     val notificationStore = ClientNotificationStore(appContext, apiClient)
+    val pushManager = IumrahPushManager(appContext)
     val settingsStore = AppSettingsStore(appContext)
     val chromeStore = AppChromeStore()
 }

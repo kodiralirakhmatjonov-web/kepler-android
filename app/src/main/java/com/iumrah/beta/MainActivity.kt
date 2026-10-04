@@ -19,6 +19,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         handleDeepLink(intent?.data)
+        appContainer.pushManager.receiveOpenedIntent(intent)
         setContent { IumrahApp() }
     }
 
@@ -26,6 +27,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleDeepLink(intent.data)
+        appContainer.pushManager.receiveOpenedIntent(intent)
     }
 
     private fun handleDeepLink(uri: Uri?) {

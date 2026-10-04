@@ -1,5 +1,6 @@
 package com.iumrah.beta.ui.notifications
 import com.iumrah.beta.ui.cupertino.Icon
+import com.iumrah.beta.IumrahApplication
 
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 
@@ -16,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.navigation.AppTab
@@ -39,12 +41,18 @@ fun NotificationsScreen(
 ) {
     val state by notifications.state.collectAsState()
     val scope = rememberCoroutineScope()
+    val app = LocalContext.current.applicationContext as IumrahApplication
+    val pushState by app.container.pushManager.state.collectAsState()
     var permissionRequested by remember { mutableStateOf(false) }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionRequested = true }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        permissionRequested = true
+        app.container.pushManager.markNotificationPermissionRequested()
+        app.container.pushManager.refreshToken()
+    }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(pushState.deviceToken) {
         notifications.sync(
-            deviceToken = null, // FCM token is intentionally not fabricated. Feed works now; real token bridge attaches when Firebase config is supplied.
+            deviceToken = pushState.deviceToken,
             accountToken = accountStore.bearerToken,
             hasTrip = bookingStore.state.value.sessions.isNotEmpty(),
             locale = language.code,

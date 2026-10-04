@@ -1,8 +1,6 @@
 package com.iumrah.beta.ui.components
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -33,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +49,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iumrah.beta.R
+import com.iumrah.beta.IumrahApplication
+import com.iumrah.beta.core.network.IumrahConnectivityStatus
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
@@ -272,15 +273,15 @@ private fun AnimatedConnectivityIndicator(
     lightStyle: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val online by produceState(initialValue = isOnline(context)) {
-        while (true) {
-            value = isOnline(context)
-            delay(30_000)
+    val app = LocalContext.current.applicationContext as IumrahApplication
+    val status by app.container.connectivityMonitor.status.collectAsState()
+    val online = status == IumrahConnectivityStatus.ONLINE
+    var expanded by remember(status) { mutableStateOf(false) }
+    LaunchedEffect(status) {
+        if (status == IumrahConnectivityStatus.CHECKING) {
+            expanded = false
+            return@LaunchedEffect
         }
-    }
-    var expanded by remember(online) { mutableStateOf(false) }
-    LaunchedEffect(online) {
         while (true) {
             delay(1_650)
             expanded = true
@@ -323,7 +324,7 @@ private fun AnimatedConnectivityIndicator(
         ) {
             if (expanded) {
                 Text(
-                    if (online) "Online" else "Offline",
+                    status.title,
                     color = Color.White,
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.Bold,
@@ -336,9 +337,3 @@ private fun AnimatedConnectivityIndicator(
     }
 }
 
-private fun isOnline(context: Context): Boolean {
-    val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-    val network = manager.activeNetwork ?: return false
-    val caps = manager.getNetworkCapabilities(network) ?: return false
-    return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-}

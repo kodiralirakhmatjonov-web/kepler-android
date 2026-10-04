@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iumrah.beta.R
+import com.iumrah.beta.IumrahApplication
 import com.iumrah.beta.core.auth.GoogleSignInSupport
 import com.iumrah.beta.core.design.IumrahBookingStatusVisual
 import com.iumrah.beta.core.navigation.AppChromeStore
@@ -86,6 +87,17 @@ fun AccountRootScreen(
     val signalState by notifications.state.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val app = context.applicationContext as IumrahApplication
+    val pushState by app.container.pushManager.state.collectAsState()
+    val pushPermissionGranted = app.container.pushManager.hasNotificationPermission()
+    val notificationDeliveryStatus = when {
+        !pushState.isConfigured -> tr(language, "FCM is not configured", "FCM не настроен", "FCM sozlanmagan", "FCM созланмаган")
+        !pushPermissionGranted -> tr(language, "Disabled in Android Settings", "Выключены в настройках Android", "Android sozlamalarida o‘chirilgan", "Android созламаларида ўчирилган")
+        pushState.deviceToken.isNullOrBlank() -> tr(language, "Registering with FCM…", "Регистрация FCM…", "FCM ro‘yxatdan o‘tmoqda…", "FCM рўйхатдан ўтмоқда…")
+        bookings.pushRegistrationError != null || signalState.lastError != null -> tr(language, "Delivery connection error", "Ошибка подключения доставки", "Yetkazish ulanishida xato", "Етказиш уланишида хато")
+        bookings.pushRegistrationReady == false || signalState.pushProviderReady == false -> tr(language, "Push service is not ready", "Push-сервис не готов", "Push xizmati tayyor emas", "Push хизмати тайёр эмас")
+        else -> tr(language, "Enabled · delivery connected", "Включены · доставка подключена", "Yoqilgan · yetkazish ulangan", "Ёқилган · етказиш уланган")
+    }
     val profile = accountState.account
     var signOutConfirm by remember { mutableStateOf(false) }
 
@@ -109,7 +121,7 @@ fun AccountRootScreen(
             item { WalletSection(profile, language) }
             item { TelegramIntegrationCard(language) { chrome.openAccountTelegramIntegration() } }
             item { PaymentSecuritySection(language, bookings.sessions.firstOrNull(), true, chrome) }
-            item { SettingsSection(language, settings.appearance, signalState.unreadCount, chrome, context) }
+            item { SettingsSection(language, settings.appearance, signalState.unreadCount, notificationDeliveryStatus, chrome, context) }
             item {
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Danger.copy(alpha = .075f)).clickable { signOutConfirm = true }.padding(horizontal = 18.dp).height(56.dp),
@@ -125,7 +137,7 @@ fun AccountRootScreen(
             item { GuestLoginCard(language, accountStore, bookingStore, chrome) }
             item { TelegramIntegrationCard(language) { chrome.openAccountTelegramIntegration() } }
             item { PaymentSecuritySection(language, bookings.sessions.firstOrNull(), false, chrome) }
-            item { GuestSettingsSection(language, settings.appearance, signalState.unreadCount, chrome, context) }
+            item { GuestSettingsSection(language, settings.appearance, signalState.unreadCount, notificationDeliveryStatus, chrome, context) }
         }
     }
 
@@ -419,7 +431,7 @@ private fun PaymentSecuritySection(language: AppLanguage, trip: StoredBookingSes
 }
 
 @Composable
-private fun SettingsSection(language: AppLanguage, appearance: AppAppearance, unread: Int, chrome: AppChromeStore, context: android.content.Context) {
+private fun SettingsSection(language: AppLanguage, appearance: AppAppearance, unread: Int, notificationStatus: String, chrome: AppChromeStore, context: android.content.Context) {
     SectionCard(tr(language,"Settings","Настройки","Sozlamalar","Созламалар"),tr(language,"Language, appearance and notifications","Язык, оформление и уведомления","Til, ko‘rinish va bildirishnomalar","Тил, кўриниш ва билдиришномалар"),CupertinoSymbol.Gear) {
         SettingsRow(CupertinoSymbol.Globe,tr(language,"Language","Язык","Til","Тил"),languageTitle(language)){chrome.openAccountLanguage()}
         HorizontalDivider(Modifier.padding(start=54.dp))
@@ -427,14 +439,14 @@ private fun SettingsSection(language: AppLanguage, appearance: AppAppearance, un
         HorizontalDivider(Modifier.padding(start=54.dp))
         SettingsRow(CupertinoSymbol.BellSignal,tr(language,"Umrah status signal","Umra статус сигнал","Umra holat signali","Умра ҳолат сигнали"),if(unread>0) tr(language,"$unread new","$unread новых","$unread yangi","$unread янги") else tr(language,"All caught up","Новых нет","Yangi yo‘q","Янги йўқ")){chrome.openAccountSignals()}
         HorizontalDivider(Modifier.padding(start=54.dp))
-        SettingsRow(CupertinoSymbol.BellBadge,tr(language,"Notifications","Уведомления","Bildirishnomalar","Билдиришномалар"),tr(language,"System notification settings","Системные настройки уведомлений","Tizim bildirishnoma sozlamalari","Тизим билдиришнома созламалари")){
+        SettingsRow(CupertinoSymbol.BellBadge,tr(language,"Notifications","Уведомления","Bildirishnomalar","Билдиришномалар"),notificationStatus){
             val intent=Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,context.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); runCatching{context.startActivity(intent)}
         }
     }
 }
 
 @Composable
-private fun GuestSettingsSection(language: AppLanguage, appearance: AppAppearance, unread: Int, chrome: AppChromeStore, context: android.content.Context) {
+private fun GuestSettingsSection(language: AppLanguage, appearance: AppAppearance, unread: Int, notificationStatus: String, chrome: AppChromeStore, context: android.content.Context) {
     CardBlock {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconBadge(CupertinoSymbol.Sliders, Care, 42.dp, 17.dp)
@@ -447,7 +459,7 @@ private fun GuestSettingsSection(language: AppLanguage, appearance: AppAppearanc
         HorizontalDivider(Modifier.padding(start=54.dp))
         SettingsRow(CupertinoSymbol.BellSignal,tr(language,"Umrah status signal","Umra статус сигнал","Umra holat signali","Умра ҳолат сигнали"),if(unread>0) tr(language,"$unread new","$unread новых","$unread yangi","$unread янги") else tr(language,"All caught up","Новых нет","Yangi yo‘q","Янги йўқ")){chrome.openAccountSignals()}
         HorizontalDivider(Modifier.padding(start=54.dp))
-        SettingsRow(CupertinoSymbol.BellBadge,tr(language,"Notifications","Уведомления","Bildirishnomalar","Билдиришномалар"),tr(language,"System notification settings","Системные настройки уведомлений","Tizim bildirishnoma sozlamalari","Тизим билдиришнома созламалари")){
+        SettingsRow(CupertinoSymbol.BellBadge,tr(language,"Notifications","Уведомления","Bildirishnomalar","Билдиришномалар"),notificationStatus){
             val intent=Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE,context.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); runCatching{context.startActivity(intent)}
         }
     }
