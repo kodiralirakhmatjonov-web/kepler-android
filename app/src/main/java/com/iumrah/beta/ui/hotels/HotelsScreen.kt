@@ -41,12 +41,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,6 +67,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -74,6 +77,7 @@ import coil3.compose.AsyncImage
 import com.iumrah.beta.R
 import com.iumrah.beta.core.config.AppConfig
 import com.iumrah.beta.core.localization.L10n
+import com.iumrah.beta.core.design.IumrahHaptics
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.share.IumrahPackageShare
 import com.iumrah.beta.core.settings.AppLanguage
@@ -135,6 +139,7 @@ fun HotelsScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var airportPicker by remember { mutableStateOf(false) }
     var carePresented by remember { mutableStateOf(false) }
+    var packageShareError by remember { mutableStateOf<String?>(null) }
     var locatingAirport by remember { mutableStateOf(false) }
     var flightOriginFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var flightDestinationFilter by rememberSaveable { mutableStateOf<String?>(null) }
@@ -272,7 +277,7 @@ fun HotelsScreen(
                                 favorites = if (hotel.id in favorites) favorites - hotel.id else favorites + hotel.id
                                 favoritePrefs.edit().putStringSet("hotel_ids", favorites).apply()
                             },
-                            onShare = { quote?.let { IumrahPackageShare.share(context, it, null, language) } ?: shareHotel(context, hotel) },
+                            onShare = { quote?.let { IumrahPackageShare.share(context, it, null, language) } ?: run { packageShareError = hotelText(language, "share_unavailable") } },
                             onOpen = { chrome.openHotel(hotel.id) },
                         )
                     }
@@ -299,7 +304,7 @@ fun HotelsScreen(
                                 favorites = if (hotel.id in favorites) favorites - hotel.id else favorites + hotel.id
                                 favoritePrefs.edit().putStringSet("hotel_ids", favorites).apply()
                             },
-                            onShare = { quote?.let { IumrahPackageShare.share(context, it, null, language) } ?: shareHotel(context, hotel) },
+                            onShare = { quote?.let { IumrahPackageShare.share(context, it, null, language) } ?: run { packageShareError = hotelText(language, "share_unavailable") } },
                             onOpen = { chrome.openHotel(hotel.id) },
                         )
                     }
@@ -308,7 +313,9 @@ fun HotelsScreen(
                 if (loading && makkah.isEmpty() && madinah.isEmpty()) {
                     item { LoadingStorefront(language) }
                 }
-                error?.let { message -> item { StorefrontInfoCard(message) } }
+                if (error != null && makkah.isEmpty() && madinah.isEmpty()) {
+                    item { StorefrontInfoCard(error!!) }
+                }
                 item { HotelCareShowcaseCard(language) { carePresented = true } }
             }
 
@@ -392,6 +399,14 @@ fun HotelsScreen(
     }
     if (carePresented) {
         HotelCareContactSheet(language = language, onDismiss = { carePresented = false })
+    }
+    packageShareError?.let { message ->
+        AlertDialog(
+            onDismissRequest = { packageShareError = null },
+            title = { Text(hotelText(language, "share_error_title"), fontWeight = FontWeight.Bold) },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = { packageShareError = null }) { Text(hotelText(language, "share_error_ok")) } },
+        )
     }
 }
 
@@ -556,6 +571,7 @@ private fun AirportPickerDialog(
 
 @Composable
 private fun StorefrontSegmentedControl(language: AppLanguage, selected: HotelsBoard, onSelect: (HotelsBoard) -> Unit) {
+    val view = LocalView.current
     val segments = listOf(
         HotelsBoard.HOTELS to L10n.text("tab_hotels", language),
         HotelsBoard.FLIGHTS to hotelText(language, "flights"),
@@ -569,7 +585,10 @@ private fun StorefrontSegmentedControl(language: AppLanguage, selected: HotelsBo
             val active = board == selected
             val fill by animateColorAsState(if (active) MaterialTheme.colorScheme.surface else Color.Transparent, label = "storefront-segment")
             Box(
-                Modifier.weight(1f).fillMaxSize().clip(RoundedCornerShape(8.dp)).background(fill).clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onSelect(board) },
+                Modifier.weight(1f).fillMaxSize().clip(RoundedCornerShape(8.dp)).background(fill).clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                    if (board != selected) IumrahHaptics.selection(view)
+                    onSelect(board)
+                },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(label, fontSize = 12.sp, lineHeight = 14.sp, fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -1249,7 +1268,7 @@ private fun hotelText(language: AppLanguage, key: String): String {
             "loading" to "Preparing hotels and package prices…", "published" to "Find us with iumrah Flights Scanner", "current" to "CURRENT", "per_pilgrim" to "per pilgrim",
             "package_total" to "%@ · package for two", "calculating" to "Preparing price…", "includes" to "Flight + hotel + iumrah Services",
             "from" to "From", "to" to "To", "all" to "All", "no_flights" to "iumrah Flights Scanner found no flights for this route", "change_filter" to "Change the departure or arrival airport.",
-            "airport_search_hint" to "Search by city or IATA code", "load_error" to "Could not load the current hotel catalogue.",
+            "airport_search_hint" to "Search by city or IATA code", "share_unavailable" to "The package could not be prepared for sharing. Refresh pricing and try again.", "share_error_title" to "Could not share", "share_error_ok" to "OK", "load_error" to "Could not load the current hotel catalogue.",
         )
         AppLanguage.RUSSIAN -> mapOf(
             "flights" to "Авиабилеты", "weekend" to "Weekend",
@@ -1262,7 +1281,7 @@ private fun hotelText(language: AppLanguage, key: String): String {
             "loading" to "Готовим отели и цены пакетов…", "published" to "Найдите нас с помощью iumrah Flights Scanner", "current" to "АКТУАЛЬНО", "per_pilgrim" to "на паломника",
             "package_total" to "%@ · пакет для двоих", "calculating" to "Готовим цену…", "includes" to "Перелёт + отель + iumrah Services",
             "from" to "Откуда", "to" to "Куда", "all" to "Все", "no_flights" to "iumrah Flights Scanner не нашёл рейсов по этому маршруту", "change_filter" to "Измените аэропорт отправления или прибытия.",
-            "airport_search_hint" to "Поиск по городу или IATA-коду", "load_error" to "Не удалось загрузить актуальный каталог отелей.",
+            "airport_search_hint" to "Поиск по городу или IATA-коду", "share_unavailable" to "Не удалось подготовить пакет для отправки. Обновите цены и попробуйте ещё раз.", "share_error_title" to "Не удалось поделиться", "share_error_ok" to "Понятно", "load_error" to "Не удалось загрузить актуальный каталог отелей.",
         )
         AppLanguage.UZBEK -> mapOf(
             "flights" to "Aviachiptalar", "weekend" to "Weekend",
@@ -1275,7 +1294,7 @@ private fun hotelText(language: AppLanguage, key: String): String {
             "loading" to "Mehmonxonalar va paket narxlari tayyorlanmoqda…", "published" to "iumrah Flights Scanner yordamida bizni toping", "current" to "DOLZARB", "per_pilgrim" to "bir ziyoratchiga",
             "package_total" to "%@ · ikki kishilik paket", "calculating" to "Narx tayyorlanmoqda…", "includes" to "Parvoz + mehmonxona + iumrah Services",
             "from" to "Qayerdan", "to" to "Qayerga", "all" to "Barchasi", "no_flights" to "iumrah Flights Scanner bu yo‘nalishda reys topmadi", "change_filter" to "Jo‘nash yoki yetib borish aeroportini o‘zgartiring.",
-            "airport_search_hint" to "Shahar yoki IATA kodi bo‘yicha qidiring", "load_error" to "Mehmonxonalar katalogini yuklab bo‘lmadi.",
+            "airport_search_hint" to "Shahar yoki IATA kodi bo‘yicha qidiring", "share_unavailable" to "Paketni ulashish uchun tayyorlab bo‘lmadi. Narxlarni yangilang va qayta urinib ko‘ring.", "share_error_title" to "Ulashib bo‘lmadi", "share_error_ok" to "Tushunarli", "load_error" to "Mehmonxonalar katalogini yuklab bo‘lmadi.",
         )
         AppLanguage.UZBEK_CYRILLIC -> mapOf(
             "flights" to "Авиачипталар", "weekend" to "Weekend",
@@ -1288,7 +1307,7 @@ private fun hotelText(language: AppLanguage, key: String): String {
             "loading" to "Меҳмонхоналар ва пакет нархлари тайёрланмоқда…", "published" to "iumrah Flights Scanner ёрдамида бизни топинг", "current" to "ДОЛЗАРБ", "per_pilgrim" to "бир зиёратчига",
             "package_total" to "%@ · икки кишилик пакет", "calculating" to "Нарх тайёрланмоқда…", "includes" to "Парвоз + меҳмонхона + iumrah Services",
             "from" to "Қаердан", "to" to "Қаерга", "all" to "Барчаси", "no_flights" to "iumrah Flights Scanner бу йўналишда рейс топмади", "change_filter" to "Жўнаш ёки етиб бориш аэропортини ўзгартиринг.",
-            "airport_search_hint" to "Шаҳар ёки IATA коди бўйича қидиринг", "load_error" to "Меҳмонхоналар каталогини юклаб бўлмади.",
+            "airport_search_hint" to "Шаҳар ёки IATA коди бўйича қидиринг", "share_unavailable" to "Пакетни улашиш учун тайёрлаб бўлмади. Нархларни янгиланг ва қайта уриниб кўринг.", "share_error_title" to "Улашиб бўлмади", "share_error_ok" to "Тушунарли", "load_error" to "Меҳмонхоналар каталогини юклаб бўлмади.",
         )
     }
     return values[key] ?: key

@@ -5,6 +5,9 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +30,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed as gridItemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
@@ -34,14 +41,17 @@ import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,12 +61,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -83,11 +95,18 @@ import com.iumrah.beta.models.hotel.IumrahRoomCategoryOption
 import com.iumrah.beta.models.hotel.StorefrontPackageSnapshot
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
+import com.iumrah.beta.ui.map.IumrahMapLibreView
+import com.iumrah.beta.ui.map.IumrahMapStyle
+import com.iumrah.beta.ui.map.rememberIumrahMapController
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import org.maplibre.android.annotations.MarkerOptions
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -107,6 +126,7 @@ fun HotelDetailScreen(
     sharedConfiguration: HotelConfiguratorDeepLink? = null,
     selectionRole: String? = null,
     onSelectionDone: () -> Unit = {},
+    onOpenRefundPolicy: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -123,6 +143,7 @@ fun HotelDetailScreen(
     var categoryError by remember(hotelId) { mutableStateOf<String?>(null) }
     var galleryOpen by remember { mutableStateOf(false) }
     var careOpen by remember { mutableStateOf(false) }
+    var packageShareError by remember { mutableStateOf<String?>(null) }
     var favorite by remember(hotelId) { mutableStateOf(hotelId in favoritePrefs.getStringSet("hotel_ids", emptySet()).orEmpty()) }
     var selectedPackage by remember(hotelId) { mutableIntStateOf(0) }
     var selectionSummary by remember(hotelId, selectionRole) { mutableStateOf<HotelSummary?>(null) }
@@ -212,8 +233,12 @@ fun HotelDetailScreen(
             favorite = favorite,
             onBack = onBack,
             onShare = {
-                packages.getOrNull(selectedPackage)?.let { IumrahPackageShare.share(context, it, null, language) }
-                    ?: hotel?.let { shareHotelDetail(context, it) }
+                val snapshot = packages.getOrNull(selectedPackage)
+                if (snapshot != null) {
+                    IumrahPackageShare.share(context, snapshot, null, language)
+                } else {
+                    packageShareError = detailText(language, "share_unavailable")
+                }
             },
             onFavorite = {
                 val values = favoritePrefs.getStringSet("hotel_ids", emptySet()).orEmpty().toMutableSet()
@@ -223,40 +248,57 @@ fun HotelDetailScreen(
             },
         )
 
-        when {
-            hotel != null -> {
-                HotelDetailBody(
-                    hotel = hotel,
-                    categories = categories,
-                    packages = packages,
-                    selectedPackage = selectedPackage,
-                    onPackageChange = { selectedPackage = it },
-                    categoryLoading = categoryLoading,
-                    categoryError = categoryError,
-                    language = language,
-                    onGallery = { galleryOpen = true },
-                    onCare = { careOpen = true },
-                    onOpenConfigurator = onOpenConfigurator,
-                    onRetryRooms = { scope.launch { loadAll() } },
-                    selectionMode = selectionRole != null,
-                    selectedRoomId = if (selectionRole.equals("madinah", true)) journeyState.madinahRoom?.id else journeyState.makkahRoom?.id,
-                    selectedCategoryId = if (selectionRole.equals("madinah", true)) journeyState.madinahRoomCategory?.id else journeyState.makkahRoomCategory?.id,
-                    onSelectRoom = { room ->
-                        val summary = selectionSummary
-                        if (summary != null) journey.selectHotel(summary)
-                        journey.selectRoom(room, selectionRole.equals("madinah", true))
-                        onSelectionDone()
-                    },
-                    onSelectCategory = { option ->
-                        val summary = selectionSummary
-                        if (summary != null) journey.selectHotel(summary)
-                        journey.selectRoomCategory(option, selectionRole.equals("madinah", true))
-                        onSelectionDone()
-                    },
-                )
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            when {
+                hotel != null -> {
+                    HotelDetailBody(
+                        hotel = hotel,
+                        categories = categories,
+                        packages = packages,
+                        selectedPackage = selectedPackage,
+                        onPackageChange = { selectedPackage = it },
+                        categoryLoading = categoryLoading,
+                        categoryError = categoryError,
+                        language = language,
+                        onGallery = { galleryOpen = true },
+                        onCare = { careOpen = true },
+                        onOpenConfigurator = onOpenConfigurator,
+                        onRetryRooms = { scope.launch { loadAll() } },
+                        selectionMode = selectionRole != null,
+                        selectedRoomId = if (selectionRole.equals("madinah", true)) journeyState.madinahRoom?.id else journeyState.makkahRoom?.id,
+                        selectedCategoryId = if (selectionRole.equals("madinah", true)) journeyState.madinahRoomCategory?.id else journeyState.makkahRoomCategory?.id,
+                        onSelectRoom = { room ->
+                            selectionSummary?.let(journey::selectHotel)
+                            journey.selectRoom(room, selectionRole.equals("madinah", true))
+                        },
+                        onSelectCategory = { option ->
+                            selectionSummary?.let(journey::selectHotel)
+                            journey.selectRoomCategory(option, selectionRole.equals("madinah", true))
+                        },
+                        onOpenRefundPolicy = onOpenRefundPolicy,
+                    )
+                }
+                loading -> LoadingDetail(language)
+                else -> ErrorDetail(error ?: detailText(language, "load_error")) { scope.launch { loadAll() } }
             }
-            loading -> LoadingDetail(language)
-            else -> ErrorDetail(error ?: detailText(language, "load_error")) { scope.launch { loadAll() } }
+
+            if (hotel != null && selectionRole != null) {
+                val forMadinah = selectionRole.equals("madinah", true)
+                val selectedHotelId = if (forMadinah) journeyState.madinahHotel?.id else journeyState.makkahHotel?.id
+                val selectedName = if (selectedHotelId == hotelId) {
+                    val room = if (forMadinah) journeyState.madinahRoom else journeyState.makkahRoom
+                    val category = if (forMadinah) journeyState.madinahRoomCategory else journeyState.makkahRoomCategory
+                    room?.name?.let { localizeRoomName(it, language) } ?: category?.let { roomCategoryName(it.category, language) }
+                } else null
+                if (!selectedName.isNullOrBlank()) {
+                    SelectionConfirmationBar(
+                        selectedName = selectedName,
+                        language = language,
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                        onDone = onSelectionDone,
+                    )
+                }
+            }
         }
     }
 
@@ -265,6 +307,16 @@ fun HotelDetailScreen(
     }
     if (careOpen) {
         HotelCareContactSheet(language = language, onDismiss = { careOpen = false })
+    }
+    packageShareError?.let { message ->
+        AlertDialog(
+            onDismissRequest = { packageShareError = null },
+            title = { Text(detailText(language, "share_error_title"), fontWeight = FontWeight.Bold) },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { packageShareError = null }) { Text(detailText(language, "share_error_ok")) }
+            },
+        )
     }
 }
 
@@ -337,11 +389,12 @@ private fun HotelDetailBody(
     selectedCategoryId: String?,
     onSelectRoom: (HotelRoom) -> Unit,
     onSelectCategory: (IumrahRoomCategoryOption) -> Unit,
+    onOpenRefundPolicy: () -> Unit,
 ) {
     val images = remember(hotel.images) { propertyImages(hotel.images) }
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 48.dp),
+        contentPadding = PaddingValues(bottom = if (selectionMode) 128.dp else 48.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         item { HeroCarousel(hotel, images, language, onGallery) }
@@ -351,7 +404,7 @@ private fun HotelDetailBody(
                 verticalArrangement = Arrangement.spacedBy(30.dp),
             ) {
                 IdentitySection(hotel, language)
-                if (selectionMode) HotelSelectionRefundPolicy(language)
+                if (selectionMode) HotelSelectionRefundPolicy(language, onOpenRefundPolicy)
                 else PackageSection(packages, selectedPackage, onPackageChange, language, onOpenConfigurator)
                 QualitySection(hotel, language)
                 ReceptionClocks(language)
@@ -398,8 +451,34 @@ private fun HeroCarousel(hotel: HotelDetail, images: List<HotelImage>, language:
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                CupertinoIcon(CupertinoSymbol.Copy, null, Modifier.size(16.dp), Color.White)
+                CupertinoIcon(CupertinoSymbol.Photo, null, Modifier.size(16.dp), Color.White)
                 Text("${pager.currentPage + 1}/${images.size}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        if (images.size > 1) {
+            val current = pager.currentPage.coerceIn(0, images.lastIndex)
+            val first = (current - 3).coerceAtLeast(0).coerceAtMost((images.size - 7).coerceAtLeast(0))
+            val last = (first + 6).coerceAtMost(images.lastIndex)
+            Row(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 12.dp)
+                    .height(20.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = .24f))
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                for (index in first..last) {
+                    val active = index == current
+                    Box(
+                        Modifier
+                            .size(if (active) 7.dp else 5.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = if (active) .98f else .56f)),
+                    )
+                }
             }
         }
     }
@@ -824,7 +903,7 @@ private fun RoomCategoryCard(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(46.dp).clip(RoundedCornerShape(16.dp)).background(raisedColor()), contentAlignment = Alignment.Center) {
-                CupertinoIcon(CupertinoSymbol.Bed, null, Modifier.size(22.dp), secondaryText())
+                CupertinoIcon(if (option.category == IumrahRoomCategory.DOUBLE) CupertinoSymbol.Bed else CupertinoSymbol.Persons, null, Modifier.size(22.dp), secondaryText())
             }
             Column(Modifier.weight(1f)) {
                 Text(roomCategoryName(option.category, language), fontSize = 21.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
@@ -884,7 +963,7 @@ private fun ActualRoomCard(room: HotelRoom, hotel: HotelDetail, language: AppLan
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(5.dp),
                             ) {
-                                CupertinoIcon(CupertinoSymbol.Copy, null, Modifier.size(11.dp), Color.White)
+                                CupertinoIcon(CupertinoSymbol.Photo, null, Modifier.size(11.dp), Color.White)
                                 Text("${images.size}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                             Row(
@@ -916,7 +995,7 @@ private fun ActualRoomCard(room: HotelRoom, hotel: HotelDetail, language: AppLan
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     room.maxGuests?.let { CompactFact(CupertinoSymbol.Persons, it.toString()) }
-                    room.beds?.takeIf { it.isNotBlank() }?.let { CompactFact(CupertinoSymbol.Bed, localizeBedText(it, language)) }
+                    cleanFact(room.beds)?.let { CompactFact(CupertinoSymbol.Bed, localizeBedText(it, language)) }
                 }
                 room.sizeM2?.let { CompactFact(CupertinoSymbol.NumberSquare, String.format(Locale.US, "%.0f m²", it)) }
                 room.description?.let { cleanRoomDescription(it) }?.takeIf { it.isNotBlank() }?.let {
@@ -943,17 +1022,29 @@ private fun RoomSelectionButton(title: String, selected: Boolean, onClick: () ->
 }
 
 @Composable
-private fun HotelSelectionRefundPolicy(language: AppLanguage) {
+private fun HotelSelectionRefundPolicy(language: AppLanguage, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(cardColor()).border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), RoundedCornerShape(24.dp)).padding(16.dp),
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(cardColor())
+            .border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), RoundedCornerShape(24.dp))
+            .clickable(onClick = onClick)
+            .padding(17.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(13.dp),
     ) {
-        Box(Modifier.size(38.dp).clip(RoundedCornerShape(13.dp)).background(raisedColor()), contentAlignment = Alignment.Center) { CupertinoIcon(CupertinoSymbol.ShieldCheck, null, Modifier.size(18.dp), secondaryText()) }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(selectionText(language, "refund_policy"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(selectionText(language, "refund_policy_body"), fontSize = 11.sp, lineHeight = 15.sp, color = secondaryText())
+        Box(
+            Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(raisedColor()),
+            contentAlignment = Alignment.Center,
+        ) {
+            CupertinoIcon(CupertinoSymbol.ShieldCheck, null, Modifier.size(20.dp), secondaryText())
         }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(selectionText(language, "refund_policy"), fontSize = 17.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold)
+            Text(selectionText(language, "refund_policy_body"), fontSize = 12.sp, lineHeight = 16.sp, color = secondaryText())
+        }
+        CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(14.dp), secondaryText())
     }
 }
 
@@ -984,26 +1075,12 @@ private fun MapSection(hotel: HotelDetail, language: AppLanguage) {
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         SectionTitle(detailText(language, "location"))
-        Box(
-            Modifier.fillMaxWidth().height(245.dp).clip(RoundedCornerShape(28.dp)).background(
-                Brush.linearGradient(listOf(Color(0xFFE7ECE8), Color(0xFFD8E3DE), Color(0xFFEDEAE2)))
-            ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Canvas(Modifier.fillMaxSize()) {
-                val grid = Color.White.copy(alpha = .55f)
-                for (i in 1 until 8) drawLine(grid, Offset(size.width * i / 8f, 0f), Offset(size.width * i / 8f, size.height), 1f)
-                for (i in 1 until 6) drawLine(grid, Offset(0f, size.height * i / 6f), Offset(size.width, size.height * i / 6f), 1f)
-                drawLine(Color(0xFFB7C9BE), Offset(0f, size.height * .68f), Offset(size.width, size.height * .31f), 8f, StrokeCap.Round)
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                Box(Modifier.size(46.dp).clip(CircleShape).background(Color.White.copy(alpha = .92f)), contentAlignment = Alignment.Center) {
-                    CupertinoIcon(CupertinoSymbol.Location, null, Modifier.size(24.dp), Color(0xFFD94343))
-                }
-                Text(hotel.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 24.dp))
-                Text(String.format(Locale.US, "%.5f, %.5f", lat, lon), fontSize = 10.sp, color = Color.Black.copy(alpha = .55f))
-            }
-        }
+        HotelLocationMap(
+            latitude = lat,
+            longitude = lon,
+            title = hotel.name,
+            modifier = Modifier.fillMaxWidth().height(245.dp).clip(RoundedCornerShape(28.dp)),
+        )
         if (!hotel.googleMapsURL.isNullOrBlank()) {
             SecondaryActionRow(detailText(language, "open_map"), CupertinoSymbol.Location) {
                 val uri = AppConfig.absoluteUrl(hotel.googleMapsURL)?.let(Uri::parse)
@@ -1011,6 +1088,37 @@ private fun MapSection(hotel: HotelDetail, language: AppLanguage) {
             }
         }
     }
+}
+
+@Composable
+private fun HotelLocationMap(
+    latitude: Double,
+    longitude: Double,
+    title: String,
+    modifier: Modifier = Modifier,
+) {
+    val controller = rememberIumrahMapController()
+    val map = controller.map
+
+    LaunchedEffect(map) {
+        controller.setStyle(IumrahMapStyle.STANDARD)
+    }
+    LaunchedEffect(map, controller.styleEpoch, latitude, longitude, title) {
+        val activeMap = map ?: return@LaunchedEffect
+        if (controller.styleEpoch <= 0) return@LaunchedEffect
+        val target = LatLng(latitude, longitude)
+        activeMap.clear()
+        activeMap.addMarker(MarkerOptions().position(target).title(title))
+        activeMap.uiSettings.apply {
+            isCompassEnabled = false
+            isLogoEnabled = false
+            isAttributionEnabled = true
+        }
+        val camera = CameraPosition.Builder().target(target).zoom(15.4).build()
+        controller.mapView.post { activeMap.moveCamera(CameraUpdateFactory.newCameraPosition(camera)) }
+    }
+
+    IumrahMapLibreView(controller = controller, modifier = modifier)
 }
 
 @Composable
@@ -1037,25 +1145,219 @@ private fun PracticalSection(hotel: HotelDetail, language: AppLanguage) {
 
 @Composable
 private fun HotelGalleryDialog(hotel: HotelDetail, language: AppLanguage, onDismiss: () -> Unit) {
-    val photos = hotel.images.sortedWith(compareByDescending<HotelImage> { it.isCover }.thenBy { it.position })
-    var page by remember { mutableIntStateOf(0) }
-    val pager = rememberPagerState(pageCount = { maxOf(1, photos.size) })
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
-            if (photos.isNotEmpty()) {
-                HorizontalPager(pager, Modifier.fillMaxSize()) { index ->
-                    AsyncImage(AppConfig.absoluteUrl(photos[index].url), hotel.name, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                }
-                LaunchedEffect(pager.currentPage) { page = pager.currentPage }
+    val photos = remember(hotel.images) { hotel.images.sortedWith(compareByDescending<HotelImage> { it.isCover }.thenBy { it.position }) }
+    val categories = remember(photos) {
+        buildList {
+            add("all")
+            photos.forEach { image ->
+                val category = image.category.trim().lowercase(Locale.US)
+                if (category.isNotBlank() && category !in this) add(category)
             }
+        }
+    }
+    var selectedCategory by remember { mutableStateOf("all") }
+    var viewerStart by remember { mutableStateOf<Int?>(null) }
+    val filtered = remember(photos, selectedCategory) {
+        if (selectedCategory == "all") photos else photos.filter { it.category.trim().lowercase(Locale.US) == selectedCategory }
+    }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
             Row(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp),
+                Modifier.fillMaxWidth().height(54.dp).padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GalleryCloseButton(detailText(language, "close"), onDismiss)
-                Spacer(Modifier.weight(1f))
-                Text("${page + 1}/${photos.size.coerceAtLeast(1)}", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(hotel.name, Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    detailText(language, "done"),
+                    modifier = Modifier.clip(CircleShape).clickable(onClick = onDismiss).padding(horizontal = 12.dp, vertical = 8.dp),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
+
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = DetailPagePadding),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(categories.size) { index ->
+                    val category = categories[index]
+                    val selected = selectedCategory == category
+                    val count = if (category == "all") photos.size else photos.count { it.category.trim().lowercase(Locale.US) == category }
+                    Column(
+                        Modifier
+                            .height(56.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(if (selected) raisedColor() else cardColor())
+                            .border(if (selected) 1.2.dp else .7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) .38f else .07f), RoundedCornerShape(18.dp))
+                            .clickable { selectedCategory = category }
+                            .padding(horizontal = 15.dp),
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(galleryCategoryTitle(category, language), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(count.toString(), fontSize = 11.sp, color = secondaryText())
+                    }
+                }
+            }
+
+            Text(
+                "${galleryCategoryTitle(selectedCategory, language)} (${filtered.size})",
+                modifier = Modifier.padding(start = DetailPagePadding, end = DetailPagePadding, top = 20.dp, bottom = 14.dp),
+                fontSize = 27.sp,
+                lineHeight = 31.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-.4).sp,
+            )
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentPadding = PaddingValues(start = DetailPagePadding, end = DetailPagePadding, bottom = 34.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                gridItemsIndexed(filtered, key = { _, image -> image.id }) { index, image ->
+                    AsyncImage(
+                        model = AppConfig.absoluteUrl(image.url),
+                        contentDescription = hotel.name,
+                        modifier = Modifier.aspectRatio(1f).clip(RoundedCornerShape(2.dp)).clickable { viewerStart = index },
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+            }
+        }
+    }
+
+    viewerStart?.let { startIndex ->
+        HotelImageViewerDialog(
+            images = filtered,
+            initialIndex = startIndex,
+            hotelName = hotel.name,
+            onDismiss = { viewerStart = null },
+        )
+    }
+}
+
+@Composable
+private fun HotelImageViewerDialog(
+    images: List<HotelImage>,
+    initialIndex: Int,
+    hotelName: String,
+    onDismiss: () -> Unit,
+) {
+    val pager = rememberPagerState(initialPage = initialIndex.coerceIn(0, (images.size - 1).coerceAtLeast(0)), pageCount = { maxOf(1, images.size) })
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            if (images.isNotEmpty()) {
+                HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { index ->
+                    ZoomableHotelImage(image = images[index], contentDescription = hotelName)
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier.size(46.dp).clip(CircleShape).background(Color.Black.copy(alpha = .34f)).clickable(onClick = onDismiss),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CupertinoIcon(CupertinoSymbol.Close, null, Modifier.size(17.dp), Color.White)
+                }
+                Spacer(Modifier.weight(1f))
+                if (images.isNotEmpty()) {
+                    Text(
+                        "${pager.currentPage + 1}/${images.size}",
+                        modifier = Modifier.height(36.dp).clip(CircleShape).background(Color.Black.copy(alpha = .34f)).padding(horizontal = 12.dp),
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ZoomableHotelImage(image: HotelImage, contentDescription: String) {
+    var scale by remember(image.id) { mutableFloatStateOf(1f) }
+    var offsetX by remember(image.id) { mutableFloatStateOf(0f) }
+    var offsetY by remember(image.id) { mutableFloatStateOf(0f) }
+    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+        val nextScale = (scale * zoomChange).coerceIn(1f, 4f)
+        scale = nextScale
+        if (nextScale <= 1.02f) {
+            offsetX = 0f
+            offsetY = 0f
+        } else {
+            offsetX += panChange.x
+            offsetY += panChange.y
+        }
+    }
+    AsyncImage(
+        model = AppConfig.absoluteUrl(image.url),
+        contentDescription = contentDescription,
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer { scaleX = scale; scaleY = scale; translationX = offsetX; translationY = offsetY }
+            .transformable(transformState)
+            .pointerInput(image.id) {
+                detectTapGestures(onDoubleTap = {
+                    if (scale > 1f) { scale = 1f; offsetX = 0f; offsetY = 0f } else scale = 2f
+                })
+            },
+        contentScale = ContentScale.Fit,
+    )
+}
+
+private fun galleryCategoryTitle(category: String, language: AppLanguage): String {
+    if (category == "all") return when (language) {
+        AppLanguage.RUSSIAN -> "Все фото"
+        AppLanguage.ENGLISH -> "All photos"
+        AppLanguage.UZBEK -> "Barcha rasmlar"
+        AppLanguage.UZBEK_CYRILLIC -> "Барча расмлар"
+    }
+    val normalized = category.lowercase(Locale.US)
+    fun tr(ru: String, en: String, uz: String, uzCy: String) = when (language) {
+        AppLanguage.RUSSIAN -> ru; AppLanguage.ENGLISH -> en; AppLanguage.UZBEK -> uz; AppLanguage.UZBEK_CYRILLIC -> uzCy
+    }
+    return when {
+        "room" in normalized -> tr("Номера", "Rooms", "Xonalar", "Хоналар")
+        "bath" in normalized -> tr("Ванная", "Bathroom", "Hammom", "Ҳаммом")
+        "restaurant" in normalized || "food" in normalized -> tr("Ресторан", "Restaurant", "Restoran", "Ресторан")
+        "lobby" in normalized || "reception" in normalized -> tr("Лобби", "Lobby", "Lobbi", "Лобби")
+        "view" in normalized || "exterior" in normalized -> tr("Вид", "View", "Manzara", "Манзара")
+        "facility" in normalized || "amenit" in normalized -> tr("Удобства", "Facilities", "Qulayliklar", "Қулайликлар")
+        else -> category.replace('_', ' ').replaceFirstChar { if (it.isLowerCase()) it.titlecase(language.locale) else it.toString() }
+    }
+}
+
+
+@Composable
+private fun SelectionConfirmationBar(
+    selectedName: String,
+    language: AppLanguage,
+    modifier: Modifier = Modifier,
+    onDone: () -> Unit,
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .border(.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .08f), RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(selectionText(language, "selected_room"), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = secondaryText())
+            Text(selectedName, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Box(
+            Modifier.height(48.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.onBackground).clickable(onClick = onDone).padding(horizontal = 20.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(selectionText(language, "done"), color = MaterialTheme.colorScheme.background, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -1201,7 +1503,15 @@ private fun localizedTier(raw: String?, language: AppLanguage): String = when (r
     else -> when(language){ AppLanguage.RUSSIAN->"Стандарт"; AppLanguage.ENGLISH->"Standard"; AppLanguage.UZBEK->"Standart"; AppLanguage.UZBEK_CYRILLIC->"Стандарт" }
 }
 
-private fun ratingTitle(rating: Double, language: AppLanguage): String = detailText(language, if (rating >= 9) "rating_exceptional" else if (rating >= 8) "rating_very_good" else "rating_good")
+private fun ratingTitle(rating: Double, language: AppLanguage): String = detailText(
+    language,
+    when {
+        rating >= 9 -> "rating_exceptional"
+        rating >= 8 -> "rating_very_good"
+        rating >= 7 -> "rating_good"
+        else -> "selected_quality"
+    },
+)
 
 private fun localizedCity(city: String, language: AppLanguage): String {
     val c = city.lowercase(Locale.US)
@@ -1230,8 +1540,27 @@ private fun localizedBeds(category: IumrahRoomCategory, language: AppLanguage): 
     IumrahRoomCategory.QUADRUPLE -> when(language){AppLanguage.RUSSIAN->"4 места";AppLanguage.ENGLISH->"4 beds";AppLanguage.UZBEK->"4 joy";AppLanguage.UZBEK_CYRILLIC->"4 жой"}
 }
 
-private fun localizeRoomName(raw: String, language: AppLanguage): String = raw
+private fun localizeRoomName(raw: String, language: AppLanguage): String {
+    val normalized = raw.lowercase(Locale.US).replace(Regex("\\s+"), " ").trim()
+    fun tr(ru: String, en: String, uz: String, uzCy: String) = when (language) {
+        AppLanguage.RUSSIAN -> ru; AppLanguage.ENGLISH -> en; AppLanguage.UZBEK -> uz; AppLanguage.UZBEK_CYRILLIC -> uzCy
+    }
+    return when {
+        "twin" in normalized && "city view" in normalized -> tr("Twin · Вид на город", "Twin Room · City View", "Twin xona · Shahar manzarasi", "Twin хона · Шаҳар манзараси")
+        "king" in normalized && "city view" in normalized -> tr("King · Вид на город", "King Room · City View", "King xona · Shahar manzarasi", "King хона · Шаҳар манзараси")
+        "double" in normalized && "city view" in normalized -> tr("Двухместный · Вид на город", "Double Room · City View", "Ikki kishilik xona · Shahar manzarasi", "Икки кишилик хона · Шаҳар манзараси")
+        else -> raw
+    }
+}
 private fun localizeBedText(raw: String, language: AppLanguage): String = raw
+
+private fun cleanFact(raw: String?): String? {
+    val value = raw?.replace(Regex("\\s+"), " ")?.trim().orEmpty()
+    if (value.isBlank() || value.length > 80) return null
+    val normalized = " ${value.lowercase(Locale.US)} "
+    val polluted = listOf(" sar ", "current price", "previous price", "select room", "% off", "taxes", "non-refundable")
+    return value.takeIf { polluted.none(normalized::contains) }
+}
 
 private fun cleanRoomDescription(raw: String): String? {
     val value = raw.replace(Regex("\\s+"), " ").trim()
@@ -1255,7 +1584,31 @@ private fun amenitySymbol(raw: String): CupertinoSymbol {
     }
 }
 
-private fun localizedAmenity(raw: String, language: AppLanguage): String = raw
+private fun localizedAmenity(raw: String, language: AppLanguage): String {
+    val normalized = raw.lowercase(Locale.US)
+    val key = when {
+        "breakfast" in normalized -> "amenity_breakfast"
+        "transfer" in normalized || "shuttle" in normalized -> "amenity_transfer"
+        "wifi" in normalized || "wi-fi" in normalized -> "amenity_wifi"
+        "parking" in normalized -> "amenity_parking"
+        "restaurant" in normalized -> "amenity_restaurant"
+        "air condition" in normalized -> "amenity_air_conditioning"
+        "family" in normalized -> "amenity_family_rooms"
+        "24" in normalized || "reception" in normalized -> "amenity_reception"
+        "lift" in normalized || "elevator" in normalized -> "amenity_elevator"
+        "laundry" in normalized -> "amenity_laundry"
+        "coffee" in normalized || "cafe" in normalized -> "amenity_coffee_shop"
+        "concierge" in normalized -> "amenity_concierge"
+        "spa" in normalized -> "amenity_spa"
+        "dry clean" in normalized -> "amenity_dry_cleaning"
+        "luggage" in normalized || "baggage" in normalized -> "amenity_luggage_storage"
+        "fitness" in normalized || "gym" in normalized -> "amenity_fitness_center"
+        "room service" in normalized -> "amenity_room_service"
+        "non-smoking" in normalized || "non smoking" in normalized -> "amenity_non_smoking"
+        else -> null
+    }
+    return key?.let { com.iumrah.beta.core.localization.L10n.text(it, language) } ?: raw
+}
 
 private fun shareHotelDetail(context: Context, hotel: HotelDetail) {
     val text = buildString {
@@ -1268,6 +1621,8 @@ private fun shareHotelDetail(context: Context, hotel: HotelDetail) {
 }
 
 private fun selectionText(language: AppLanguage, key: String): String = when (key) {
+    "selected_room" -> when(language){ AppLanguage.RUSSIAN->"Выбранный номер"; AppLanguage.ENGLISH->"Selected room"; AppLanguage.UZBEK->"Tanlangan xona"; AppLanguage.UZBEK_CYRILLIC->"Танланган хона" }
+    "done" -> when(language){ AppLanguage.RUSSIAN->"Готово"; AppLanguage.ENGLISH->"Done"; AppLanguage.UZBEK->"Tayyor"; AppLanguage.UZBEK_CYRILLIC->"Тайёр" }
     "room_chosen" -> when(language){ AppLanguage.RUSSIAN->"Номер выбран"; AppLanguage.ENGLISH->"Room chosen"; AppLanguage.UZBEK->"Xona tanlandi"; AppLanguage.UZBEK_CYRILLIC->"Хона танланди" }
     "choose_room" -> when(language){ AppLanguage.RUSSIAN->"Выбрать номер"; AppLanguage.ENGLISH->"Choose room"; AppLanguage.UZBEK->"Xonani tanlash"; AppLanguage.UZBEK_CYRILLIC->"Хонани танлаш" }
     "refund_policy" -> when(language){ AppLanguage.RUSSIAN->"Условия отеля"; AppLanguage.ENGLISH->"Hotel refund policy"; AppLanguage.UZBEK->"Mehmonxona qaytarish siyosati"; AppLanguage.UZBEK_CYRILLIC->"Меҳмонхона қайтариш сиёсати" }
@@ -1285,7 +1640,7 @@ private fun detailText(language: AppLanguage, key: String, vararg args: Any): St
             "time_title" to "Время на ресепшене", "time_body" to "Сверяйте местное время перед звонком в отель или Care.", "tashkent" to "Ташкент", "makkah" to "Мекка", "madinah" to "Медина", "moscow" to "Москва",
             "photos" to "Фотографии", "view_all_photos" to "Все фото · %d", "amenities" to "Что есть в отеле", "prepared_rooms" to "Номера iumrah", "prepared_rooms_body" to "Подготовленные категории размещения для паломников iumrah.", "rooms_loading" to "Загружаем номера…", "retry" to "Повторить",
             "hotel_rooms" to "Номера отеля", "hotel_rooms_body" to "Фактические варианты из каталога отеля.", "rooms_empty" to "В каталоге пока нет вариантов номеров.", "about" to "Об отеле", "location" to "Расположение", "open_map" to "Открыть карту", "practical" to "Полезная информация", "checkin" to "Заезд", "checkout" to "Выезд", "property_type" to "Тип размещения",
-            "care_title" to "Поддержка по этому отелю", "care_body" to "Если нужен совет по отелю до бронирования, iumrah Care поможет с выбором.", "care_dialog" to "Свяжитесь с iumrah Care по вопросу этого отеля.", "call" to "Позвонить", "close" to "Закрыть", "loading" to "Загружаем данные отеля…",
+            "care_title" to "Поддержка по этому отелю", "care_body" to "Если нужен совет по отелю до бронирования, iumrah Care поможет с выбором.", "care_dialog" to "Свяжитесь с iumrah Care по вопросу этого отеля.", "call" to "Позвонить", "close" to "Закрыть", "done" to "Готово", "share_unavailable" to "Не удалось подготовить пакет для отправки. Обновите цены и попробуйте ещё раз.", "share_error_title" to "Не удалось поделиться", "share_error_ok" to "Понятно", "loading" to "Загружаем данные отеля…",
         )[key]
         AppLanguage.ENGLISH -> mapOf(
             "load_error" to "Could not load hotel details.", "room_error" to "Could not load room categories.",
@@ -1296,7 +1651,7 @@ private fun detailText(language: AppLanguage, key: String, vararg args: Any): St
             "time_title" to "Reception time", "time_body" to "Check local time before calling the hotel or Care.", "tashkent" to "Tashkent", "makkah" to "Makkah", "madinah" to "Madinah", "moscow" to "Moscow",
             "photos" to "Photos", "view_all_photos" to "View all · %d", "amenities" to "What this hotel offers", "prepared_rooms" to "iumrah rooms", "prepared_rooms_body" to "Room categories prepared for iumrah pilgrims.", "rooms_loading" to "Loading rooms…", "retry" to "Retry",
             "hotel_rooms" to "Hotel rooms", "hotel_rooms_body" to "Actual room options from the hotel catalog.", "rooms_empty" to "Room options are not available in the catalog yet.", "about" to "About the hotel", "location" to "Location", "open_map" to "Open map", "practical" to "Good to know", "checkin" to "Check-in", "checkout" to "Check-out", "property_type" to "Property type",
-            "care_title" to "Support for this hotel", "care_body" to "If you need advice before booking, iumrah Care can help with the hotel choice.", "care_dialog" to "Contact iumrah Care about this hotel.", "call" to "Call", "close" to "Close", "loading" to "Loading hotel details…",
+            "care_title" to "Support for this hotel", "care_body" to "If you need advice before booking, iumrah Care can help with the hotel choice.", "care_dialog" to "Contact iumrah Care about this hotel.", "call" to "Call", "close" to "Close", "done" to "Done", "share_unavailable" to "The package could not be prepared for sharing. Refresh pricing and try again.", "share_error_title" to "Could not share", "share_error_ok" to "OK", "loading" to "Loading hotel details…",
         )[key]
         AppLanguage.UZBEK -> mapOf(
             "load_error" to "Mehmonxona ma’lumotlarini yuklab bo‘lmadi.", "room_error" to "Xona toifalarini yuklab bo‘lmadi.",
@@ -1307,7 +1662,7 @@ private fun detailText(language: AppLanguage, key: String, vararg args: Any): St
             "time_title" to "Resepsion vaqti", "time_body" to "Mehmonxona yoki Care’ga qo‘ng‘iroqdan oldin mahalliy vaqtni tekshiring.", "tashkent" to "Toshkent", "makkah" to "Makka", "madinah" to "Madina", "moscow" to "Moskva",
             "photos" to "Rasmlar", "view_all_photos" to "Barchasi · %d", "amenities" to "Mehmonxona imkoniyatlari", "prepared_rooms" to "iumrah xonalari", "prepared_rooms_body" to "iumrah ziyoratchilari uchun tayyorlangan joylashuv toifalari.", "rooms_loading" to "Xonalar yuklanmoqda…", "retry" to "Qayta urinish",
             "hotel_rooms" to "Mehmonxona xonalari", "hotel_rooms_body" to "Katalogdagi haqiqiy xona variantlari.", "rooms_empty" to "Katalogda hozircha xona variantlari yo‘q.", "about" to "Mehmonxona haqida", "location" to "Joylashuv", "open_map" to "Xaritani ochish", "practical" to "Muhim ma’lumot", "checkin" to "Kirish", "checkout" to "Chiqish", "property_type" to "Joylashuv turi",
-            "care_title" to "Shu mehmonxona bo‘yicha yordam", "care_body" to "Bron qilishdan oldin maslahat kerak bo‘lsa, iumrah Care yordam beradi.", "care_dialog" to "Shu mehmonxona bo‘yicha iumrah Care bilan bog‘laning.", "call" to "Qo‘ng‘iroq", "close" to "Yopish", "loading" to "Mehmonxona ma’lumotlari yuklanmoqda…",
+            "care_title" to "Shu mehmonxona bo‘yicha yordam", "care_body" to "Bron qilishdan oldin maslahat kerak bo‘lsa, iumrah Care yordam beradi.", "care_dialog" to "Shu mehmonxona bo‘yicha iumrah Care bilan bog‘laning.", "call" to "Qo‘ng‘iroq", "close" to "Yopish", "done" to "Tayyor", "share_unavailable" to "Paketni ulashish uchun tayyorlab bo‘lmadi. Narxlarni yangilang va qayta urinib ko‘ring.", "share_error_title" to "Ulashib bo‘lmadi", "share_error_ok" to "Tushunarli", "loading" to "Mehmonxona ma’lumotlari yuklanmoqda…",
         )[key]
         AppLanguage.UZBEK_CYRILLIC -> mapOf(
             "load_error" to "Меҳмонхона маълумотларини юклаб бўлмади.", "room_error" to "Хона тоифаларини юклаб бўлмади.",
@@ -1318,7 +1673,7 @@ private fun detailText(language: AppLanguage, key: String, vararg args: Any): St
             "time_title" to "Ресепсион вақти", "time_body" to "Меҳмонхона ёки Care’га қўнғироқдан олдин маҳаллий вақтни текширинг.", "tashkent" to "Тошкент", "makkah" to "Макка", "madinah" to "Мадина", "moscow" to "Москва",
             "photos" to "Расмлар", "view_all_photos" to "Барчаси · %d", "amenities" to "Меҳмонхона имкониятлари", "prepared_rooms" to "iumrah хоналари", "prepared_rooms_body" to "iumrah зиёратчилари учун тайёрланган жойлашув тоифалари.", "rooms_loading" to "Хоналар юкланмоқда…", "retry" to "Қайта уриниш",
             "hotel_rooms" to "Меҳмонхона хоналари", "hotel_rooms_body" to "Каталогдаги ҳақиқий хона вариантлари.", "rooms_empty" to "Каталогда ҳозирча хона вариантлари йўқ.", "about" to "Меҳмонхона ҳақида", "location" to "Жойлашув", "open_map" to "Харитани очиш", "practical" to "Муҳим маълумот", "checkin" to "Кириш", "checkout" to "Чиқиш", "property_type" to "Жойлашув тури",
-            "care_title" to "Шу меҳмонхона бўйича ёрдам", "care_body" to "Брон қилишдан олдин маслаҳат керак бўлса, iumrah Care ёрдам беради.", "care_dialog" to "Шу меҳмонхона бўйича iumrah Care билан боғланинг.", "call" to "Қўнғироқ", "close" to "Ёпиш", "loading" to "Меҳмонхона маълумотлари юкланмоқда…",
+            "care_title" to "Шу меҳмонхона бўйича ёрдам", "care_body" to "Брон қилишдан олдин маслаҳат керак бўлса, iumrah Care ёрдам беради.", "care_dialog" to "Шу меҳмонхона бўйича iumrah Care билан боғланинг.", "call" to "Қўнғироқ", "close" to "Ёпиш", "done" to "Тайёр", "share_unavailable" to "Пакетни улашиш учун тайёрлаб бўлмади. Нархларни янгиланг ва қайта уриниб кўринг.", "share_error_title" to "Улашиб бўлмади", "share_error_ok" to "Тушунарли", "loading" to "Меҳмонхона маълумотлари юкланмоқда…",
         )[key]
     } ?: key
     return if (args.isEmpty()) value else String.format(language.locale, value, *args)

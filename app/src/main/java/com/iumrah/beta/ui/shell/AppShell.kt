@@ -189,6 +189,7 @@ fun AppShell(
                     onOpenConfigurator = { packageId -> chrome.openFlightPackage(packageId, route.sharedConfiguration) },
                     autoOpenConfigurator = route.openConfigurator,
                     sharedConfiguration = route.sharedConfiguration,
+                    onOpenRefundPolicy = { chrome.openAccountPolicy("refund") },
                 )
 
                 is AppRoute.ConfiguratorHotelSelection -> ConfiguratorHotelSelectionScreen(
@@ -208,7 +209,12 @@ fun AppShell(
                     onBack = chrome::back,
                     onOpenConfigurator = {},
                     selectionRole = route.role,
-                    onSelectionDone = { chrome.back() },
+                    onSelectionDone = {
+                        val previous = chrome.state.value.backStack.lastOrNull()
+                        chrome.back()
+                        if (previous is AppRoute.ConfiguratorHotelSelection) chrome.back()
+                    },
+                    onOpenRefundPolicy = { chrome.openBookingPolicy("refund") },
                 )
 
                 is AppRoute.FlightPackageDetail -> FlightFirstPackageDetailScreen(

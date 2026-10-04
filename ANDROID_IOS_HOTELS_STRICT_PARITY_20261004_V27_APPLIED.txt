@@ -1,0 +1,13 @@
+v27 Hotels strict parity checkpoint
+Base: v26
+Scope: Hotels tab and hotel-selection/detail flows only. Umrah Flow and Flights-board content intentionally untouched.
+- Hotel Detail real MapLibre location map
+- iOS-style categorized gallery + grid + fullscreen zoom viewer
+- deferred room/category selection with Done confirmation bar
+- clickable Hotel Refund Policy cards
+- iOS-style HotelCard geometry/facts in selection lists
+- localized room names/amenities/rating labels
+- hero page indicator
+- share failure alert parity
+- Hotels segmented selection haptics
+- breakfast included copy parity

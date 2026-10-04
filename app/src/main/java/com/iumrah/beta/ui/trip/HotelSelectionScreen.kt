@@ -247,7 +247,7 @@ fun ConfiguratorHotelSelectionScreen(
                 Text(hotelTr(language, "Выберите отель и номер для вашего личного пакета.", "Choose the hotel and room for your personal package.", "Shaxsiy paketingiz uchun mehmonxona va xonani tanlang.", "Шахсий пакетингиз учун меҳмонхона ва хонани танланг."), fontSize = 16.sp, lineHeight = 22.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f))
             }
         }
-        item { HotelRefundPolicyCard(language) }
+        item { HotelRefundPolicyCard(language) { chrome.openBookingPolicy("refund") } }
 
         when {
             loading && filtered.isEmpty() -> item { LoadingHotelCard(language) }
@@ -376,7 +376,14 @@ private fun PrimaryStayCard(
             }
         }
         MealDivider()
-        MealParityRow(language, CupertinoSymbol.CupSaucerFill, hotelTr(language, "Завтрак", "Breakfast", "Nonushta", "Нонушта"), hotelTr(language, "Включено", "Included", "Kiritilgan", "Киритилган"), true, false) {}
+        MealParityRow(
+            language,
+            CupertinoSymbol.CupSaucerFill,
+            hotelTr(language, "Завтрак", "Breakfast", "Nonushta", "Нонушта"),
+            hotelTr(language, "Включено · без доплаты", "Included · no extra charge", "Kiritilgan · qo‘shimcha to‘lovsiz", "Киритилган · қўшимча тўловсиз"),
+            true,
+            false,
+        ) {}
         if (!isMadinah) {
             MealDivider(); MealParityRow(language, CupertinoSymbol.SunMaxFill, hotelTr(language, "Обед", "Lunch", "Tushlik", "Тушлик"), optionalMealText(language, price), meals.makkahLunch, true) { onChange(meals.copy(makkahLunch = it)) }
         }
@@ -404,12 +411,31 @@ private fun PrimaryStayCard(
     }
 }
 
-@Composable private fun HotelRefundPolicyCard(language: AppLanguage) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(generatorCardColor()).border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), RoundedCornerShape(24.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.size(38.dp).clip(RoundedCornerShape(13.dp)).background(generatorRaisedColor()), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ShieldCheck, null, Modifier.size(18.dp)) }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(hotelTr(language, "Условия отеля", "Hotel refund policy", "Mehmonxona qaytarish siyosati", "Меҳмонхона қайтариш сиёсати"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(hotelTr(language, "Условия возврата показываются до оплаты пакета.", "Refund terms are shown before package payment.", "Qaytarish shartlari paket to‘lovidan oldin ko‘rsatiladi.", "Қайтариш шартлари пакет тўловидан олдин кўрсатилади."), fontSize = 11.sp, lineHeight = 15.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .54f))
+@Composable private fun HotelRefundPolicyCard(language: AppLanguage, onClick: () -> Unit) {
+    IumrahPressable(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 20.dp,
+        background = Color.Transparent,
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(generatorCardColor())
+                .border(.6.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .055f), RoundedCornerShape(20.dp))
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(generatorRaisedColor()), contentAlignment = Alignment.Center) {
+                Icon(CupertinoSymbol.ShieldCheck, null, Modifier.size(18.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(hotelTr(language, "Условия отеля", "Hotel refund policy", "Mehmonxona qaytarish siyosati", "Меҳмонхона қайтариш сиёсати"), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(hotelTr(language, "Условия возврата показываются до оплаты пакета.", "Refund terms are shown before package payment.", "Qaytarish shartlari paket to‘lovidan oldin ko‘rsatiladi.", "Қайтариш шартлари пакет тўловидан олдин кўрсатилади."), fontSize = 11.sp, lineHeight = 15.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .54f))
+            }
+            Icon(CupertinoSymbol.ChevronRight, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = .4f))
         }
     }
 }
@@ -420,16 +446,64 @@ private fun PrimaryStayCard(
 
 @Composable private fun SelectorHotelCard(hotel: HotelSummary, selected: Boolean, language: AppLanguage, badge: String? = null, onClick: () -> Unit) {
     val fg = MaterialTheme.colorScheme.onSurface
-    IumrahPressable(onClick = onClick, modifier = Modifier.fillMaxWidth(), cornerRadius = 26.dp, background = Color.Transparent) {
-        Column(Modifier.fillMaxWidth().shadow(12.dp, RoundedCornerShape(26.dp)).clip(RoundedCornerShape(26.dp)).background(generatorCardColor()).border(if (selected) 1.2.dp else .6.dp, if (selected) Color(0xFF74A187).copy(alpha = .62f) else fg.copy(alpha = .055f), RoundedCornerShape(26.dp))) {
-            Box(Modifier.fillMaxWidth().height(174.dp).background(generatorRaisedColor())) {
-                AppConfig.absoluteUrl(hotel.coverImageURL)?.let { AsyncImage(it, hotel.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-                val label = if (selected) hotelTr(language, "Выбрано", "Selected", "Tanlangan", "Танланган") else badge
-                label?.let { Box(Modifier.align(Alignment.TopStart).padding(12.dp).height(28.dp).clip(CircleShape).background(Color.Black.copy(alpha = .66f)).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) { Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White) } }
+    val label = if (selected) hotelTr(language, "Выбрано", "Selected", "Tanlangan", "Танланган") else badge
+    IumrahPressable(onClick = onClick, modifier = Modifier.fillMaxWidth(), cornerRadius = 28.dp, background = Color.Transparent) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .shadow(18.dp, RoundedCornerShape(28.dp))
+                .clip(RoundedCornerShape(28.dp))
+                .background(generatorCardColor())
+                .border(.7.dp, fg.copy(alpha = .075f), RoundedCornerShape(28.dp))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(210.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(generatorRaisedColor()),
+            ) {
+                AppConfig.absoluteUrl(hotel.coverImageURL)?.let {
+                    AsyncImage(it, hotel.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                } ?: Icon(CupertinoSymbol.Hotel, null, Modifier.align(Alignment.Center).size(42.dp), tint = fg.copy(alpha = .38f))
+                label?.let {
+                    Box(
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(12.dp)
+                            .height(30.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = .42f))
+                            .padding(horizontal = 11.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(it, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    }
+                }
             }
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(hotel.name, fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text("${hotel.stars ?: 0}★ · ${hotel.city}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = fg.copy(alpha = .55f))
+
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text(hotel.name, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    hotel.stars?.let { stars ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(CupertinoSymbol.Star, null, Modifier.size(11.dp), tint = fg.copy(alpha = .55f))
+                            Text("$stars★", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = fg.copy(alpha = .55f))
+                        }
+                    }
+                    hotel.rating?.let { rating ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(CupertinoSymbol.HeartFill, null, Modifier.size(11.dp), tint = fg.copy(alpha = .55f))
+                            Text(String.format(java.util.Locale.US, "%.1f", rating), fontSize = 11.sp, fontWeight = FontWeight.Medium, color = fg.copy(alpha = .55f))
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(CupertinoSymbol.Location, null, Modifier.size(10.dp), tint = fg.copy(alpha = .55f))
+                        Text(com.iumrah.beta.core.localization.L10n.city(hotel.city, language), fontSize = 11.sp, fontWeight = FontWeight.Medium, color = fg.copy(alpha = .55f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
         }
     }
