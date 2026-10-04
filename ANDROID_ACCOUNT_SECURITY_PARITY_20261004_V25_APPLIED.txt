@@ -1,0 +1,10 @@
+Android Account / Security parity v25
+
+- Security screen Google linking is live through Credential Manager + existing backend link endpoint.
+- Secondary sessions can no longer change the verified login email or connect new sign-in providers.
+- Primary device can end all other active sessions with confirmation.
+- Ending the current session clears local auth and exits the security route; re-login remains allowed.
+- Remotely revoked sessions clear local auth on the next security refresh.
+- Session cards now match iOS grouping, primary crown, localized country, online/relative activity and normalized app version.
+- Android device identity prefers the OS device name, detects emulators, includes a stable hardware identifier and reports platform=android.
+- Apple Sign-In remains intentionally non-fake until Apple Web Services redirect configuration is provisioned.

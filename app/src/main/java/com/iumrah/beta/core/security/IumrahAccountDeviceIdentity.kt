@@ -2,6 +2,7 @@ package com.iumrah.beta.core.security
 
 import android.content.Context
 import android.os.Build
+import android.provider.Settings
 import android.util.Base64
 import com.iumrah.beta.models.account.IumrahClientDevice
 import java.security.SecureRandom
@@ -29,18 +30,37 @@ class IumrahAccountDeviceIdentity(
         val appVersion = if (buildNumber == "0") version else if (version.isBlank()) buildNumber else "$version ($buildNumber)"
         val manufacturer = Build.MANUFACTURER.orEmpty().trim()
         val model = Build.MODEL.orEmpty().trim().ifBlank { "Android" }
-        val deviceName = listOf(manufacturer, model)
+        val hardwareIdentifier = listOf(Build.BRAND, Build.DEVICE)
+            .map { it.orEmpty().trim() }
             .filter { it.isNotBlank() }
-            .distinctBy { it.lowercase(Locale.ROOT) }
+            .joinToString("/")
+            .ifBlank { model }
+        val systemDeviceName = runCatching {
+            Settings.Global.getString(context.contentResolver, "device_name")
+        }.getOrNull().orEmpty().trim()
+        val emulator = Build.FINGERPRINT.startsWith("generic", true) ||
+            Build.FINGERPRINT.contains("emulator", true) ||
+            Build.MODEL.contains("sdk", true) ||
+            Build.MODEL.contains("emulator", true) ||
+            Build.MODEL.contains("gphone", true)
+        val fallbackName = listOf(manufacturer.takeIf { !model.startsWith(it, true) }, model)
+            .filterNotNull()
+            .filter { it.isNotBlank() }
             .joinToString(" ")
             .ifBlank { "Android" }
+        val deviceName = when {
+            emulator -> if (model.isBlank()) "Android Emulator" else "$model Emulator"
+            systemDeviceName.isNotBlank() && !systemDeviceName.equals("Android", true) -> systemDeviceName
+            else -> fallbackName
+        }.take(120)
 
         return IumrahClientDevice(
             installationID = credentials.installationID,
             secret = credentials.secret,
             name = deviceName,
             model = model,
-            platform = "Android",
+            hardwareIdentifier = hardwareIdentifier,
+            platform = "android",
             osVersion = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
             appVersion = appVersion,
             locale = locale.take(24),

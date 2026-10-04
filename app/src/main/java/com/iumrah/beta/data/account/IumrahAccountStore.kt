@@ -121,8 +121,15 @@ class IumrahAccountStore(
 
     suspend fun securityOverview(locale: String): IumrahSecurityOverview {
         val current = requireToken()
-        service.registerCurrentSession(current, locale)
-        return service.securityOverview(current)
+        return try {
+            service.registerCurrentSession(current, locale)
+            service.securityOverview(current)
+        } catch (error: Throwable) {
+            val revoked = (error is APIException.Status && error.code == 401) ||
+                (error is APIException.Server && error.code == 401)
+            if (revoked) clearLocalSession()
+            throw error
+        }
     }
 
     suspend fun friendsDashboard(): IumrahFriendsDashboard {

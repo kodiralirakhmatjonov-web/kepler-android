@@ -21,4 +21,10 @@ grep -q '/api/package/client/account/login' app/src/main/java/com/iumrah/beta/da
 grep -q 'x-iumrah-device-secret' app/src/main/java/com/iumrah/beta/core/security/IumrahAccountDeviceIdentity.kt
 grep -q 'AndroidKeyStore' app/src/main/java/com/iumrah/beta/core/security/SecureJsonStore.kt
 
+grep -q 'hardwareIdentifier' app/src/main/java/com/iumrah/beta/models/account/IumrahAccountModels.kt
+grep -q 'Settings.Global.getString' app/src/main/java/com/iumrah/beta/core/security/IumrahAccountDeviceIdentity.kt
+grep -q 'GoogleSignInSupport.signIn' app/src/main/java/com/iumrah/beta/ui/account/AccountSecurityParity.kt
+grep -q 'End all other sessions' app/src/main/java/com/iumrah/beta/ui/account/AccountSecurityParity.kt
+grep -q 'clearLocalSession()' app/src/main/java/com/iumrah/beta/data/account/IumrahAccountStore.kt
+
 echo 'Stage 2 structural verification passed.'

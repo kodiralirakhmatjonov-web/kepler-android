@@ -1,5 +1,8 @@
 package com.iumrah.beta.ui.account
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -45,6 +48,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -56,17 +60,29 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.iumrah.beta.core.auth.GoogleSignInSupport
 import com.iumrah.beta.core.navigation.AppChromeStore
+import com.iumrah.beta.core.network.APIException
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.account.IumrahAccountStore
 import com.iumrah.beta.models.account.IumrahSecurityOverview
 import com.iumrah.beta.models.account.IumrahSecuritySession
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
+import java.time.Duration
+import java.time.Instant
+import java.util.Locale
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 private val SecurityCare = Color(0xFF30B0C7)
 private val SecurityBlue = Color(0xFF1677FF)
@@ -89,6 +105,7 @@ internal fun AccountSecurityParityContent(
     chrome: AppChromeStore,
 ) {
     val scope = rememberCoroutineScope()
+    val activity = LocalContext.current.findActivity()
     var overview by remember { mutableStateOf<IumrahSecurityOverview?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -101,14 +118,18 @@ internal fun AccountSecurityParityContent(
     var emailCode by remember { mutableStateOf("") }
     var emailBusy by remember { mutableStateOf(false) }
     var pendingTermination by remember { mutableStateOf<IumrahSecuritySession?>(null) }
+    var pendingTerminateOthers by remember { mutableStateOf(false) }
     var workingSessionID by remember { mutableStateOf<String?>(null) }
+    var terminatingOthers by remember { mutableStateOf(false) }
+    var linkingGoogle by remember { mutableStateOf(false) }
+    var linkingApple by remember { mutableStateOf(false) }
 
     fun reload() {
         loading = overview == null
         scope.launch {
             runCatching { accountStore.securityOverview(language.localeTag) }
                 .onSuccess { value -> overview = value; error = null }
-                .onFailure { throwable -> error = throwable.message ?: secTr(language, "Security information is unavailable.", "Информация безопасности временно недоступна.", "Xavfsizlik ma’lumotlari vaqtincha mavjud emas.", "Хавфсизлик маълумотлари вақтинча мавжуд эмас.") }
+                .onFailure { throwable -> error = securityErrorMessage(language, throwable) }
             loading = false
         }
     }
@@ -208,12 +229,17 @@ internal fun AccountSecurityParityContent(
                     SecuritySecondaryButton(
                         title = if (value.loginEmail == null) secTr(language, "Add verified email", "Добавить подтверждённую почту", "Tasdiqlangan email qo‘shish", "Тасдиқланган email қўшиш") else secTr(language, "Change email", "Изменить почту", "Emailni o‘zgartirish", "Emailни ўзгартириш"),
                         icon = CupertinoSymbol.Mail,
+                        enabled = value.currentDeviceIsPrimary,
                     ) {
                         email = value.loginEmail?.email.orEmpty()
                         emailChallenge = null
                         emailCode = ""
                         error = null
                         emailDialog = true
+                    }
+                    if (!value.currentDeviceIsPrimary) {
+                        Spacer(Modifier.height(10.dp))
+                        SecurityLockedNote(language, secTr(language, "Only the primary device can change the sign-in email.", "Почту для входа может изменить только основное устройство.", "Kirish emailini faqat asosiy qurilma o‘zgartira oladi.", "Кириш emailини фақат асосий қурилма ўзгартира олади."))
                     }
                 }
             }
@@ -227,6 +253,20 @@ internal fun AccountSecurityParityContent(
                     iumrahID = value.iumrahID,
                     provider = "Apple",
                     primaryDevice = value.currentDeviceIsPrimary,
+                    busy = linkingApple,
+                    onConnect = {
+                        if (value.currentDeviceIsPrimary && !linkingApple && !linkingGoogle) {
+                            linkingApple = true
+                            error = secTr(
+                            language,
+                            "Apple Sign-In on Android needs the Apple Web Services redirect configuration. The account security flow is ready; no fake Apple login is used.",
+                            "Для Apple Sign-In на Android требуется Web Services redirect Apple. Контур безопасности аккаунта готов; фиктивный вход Apple не используется.",
+                            "Android’da Apple Sign-In uchun Apple Web Services redirect sozlamasi kerak. Akkaunt xavfsizligi tayyor; soxta Apple kirishi ishlatilmaydi.",
+                                "Android’да Apple Sign-In учун Apple Web Services redirect созламаси керак. Аккаунт хавфсизлиги тайёр; сохта Apple кириши ишлатилмайди.",
+                            )
+                            linkingApple = false
+                        }
+                    },
                 )
             }
 
@@ -239,25 +279,65 @@ internal fun AccountSecurityParityContent(
                     iumrahID = value.iumrahID,
                     provider = "Google",
                     primaryDevice = value.currentDeviceIsPrimary,
+                    busy = linkingGoogle,
+                    onConnect = {
+                        if (value.currentDeviceIsPrimary && !linkingGoogle && !linkingApple) {
+                            val host = activity
+                            if (host == null) {
+                            error = secTr(language, "Google Sign-In is unavailable in this window.", "Google Sign-In недоступен в этом окне.", "Bu oynada Google Sign-In mavjud emas.", "Бу ойнада Google Sign-In мавжуд эмас.")
+                        } else {
+                            linkingGoogle = true
+                            scope.launch {
+                                runCatching { GoogleSignInSupport.signIn(host) }
+                                    .mapCatching { accountStore.linkGoogle(it) }
+                                    .onSuccess { reload() }
+                                    .onFailure { throwable ->
+                                        if (!throwable::class.simpleName.orEmpty().contains("Cancel", ignoreCase = true)) {
+                                            error = securityErrorMessage(language, throwable)
+                                        }
+                                    }
+                                linkingGoogle = false
+                            }
+                        }
+                        }
+                    },
                 )
             }
 
             item {
+                val current = value.sessions.firstOrNull { it.isCurrent }
+                val others = value.sessions.filterNot { it.isCurrent }
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text(secTr(language, "Active sessions", "Активные сеансы", "Faol seanslar", "Фаол сеанслар"), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Text(secTr(language, "Devices and sessions", "Устройства и сеансы", "Qurilmalar va seanslar", "Қурилмалар ва сеанслар"), fontSize = 24.sp, fontWeight = FontWeight.Bold)
                             Text(secTr(language, "Devices signed in to this iumrah ID", "Устройства, вошедшие в этот iumrah ID", "Ushbu iumrah ID ga kirgan qurilmalar", "Ушбу iumrah ID га кирган қурилмалар"), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Text("${value.sessions.size}", fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, color = SecurityGray)
                     }
-                    value.sessions.sortedWith(compareByDescending<IumrahSecuritySession> { it.isCurrent }.thenByDescending { it.isPrimary }).forEach { session ->
-                        SecuritySessionCard(
-                            language = language,
-                            session = session,
-                            working = workingSessionID == session.id,
-                            onTerminate = { pendingTermination = session },
-                        )
+                    current?.let { session ->
+                        SecuritySessionGroupLabel(secTr(language, "THIS DEVICE", "ЭТО УСТРОЙСТВО", "BU QURILMA", "БУ ҚУРИЛМА"))
+                        SecuritySessionCard(language, session, workingSessionID == session.id, onTerminate = { pendingTermination = session })
+                    }
+                    if (others.isNotEmpty()) {
+                        SecuritySessionGroupLabel(secTr(language, "ACTIVE SESSIONS", "АКТИВНЫЕ СЕАНСЫ", "FAOL SEANSLAR", "ФАОЛ СЕАНСЛАР"))
+                        others.forEach { session ->
+                            SecuritySessionCard(language, session, workingSessionID == session.id, onTerminate = { pendingTermination = session })
+                        }
+                        if (value.currentDeviceIsPrimary) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().clickable(enabled = workingSessionID == null && !terminatingOthers) { pendingTerminateOthers = true },
+                                shape = RoundedCornerShape(18.dp),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = .045f),
+                            ) {
+                                Row(Modifier.fillMaxWidth().height(54.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    CupertinoIcon(CupertinoSymbol.HandRaised, null, Modifier.size(18.dp), SecurityRed)
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(secTr(language, "End all other sessions", "Завершить все другие сеансы", "Boshqa barcha seanslarni tugatish", "Бошқа барча сеансларни тугатиш"), Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = SecurityRed)
+                                    if (terminatingOthers) CircularProgressIndicator(Modifier.size(17.dp), strokeWidth = 2.dp, color = SecurityRed)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -309,7 +389,7 @@ internal fun AccountSecurityParityContent(
                         scope.launch {
                             runCatching { accountStore.claimPrimaryDevice(primaryPassword) }
                                 .onSuccess { value -> overview = value; error = null; showPrimaryDialog = false }
-                                .onFailure { throwable -> error = throwable.message ?: "Error" }
+                                .onFailure { throwable -> error = securityErrorMessage(language, throwable) }
                             primaryBusy = false
                         }
                     },
@@ -347,11 +427,11 @@ internal fun AccountSecurityParityContent(
                             if (emailChallenge == null) {
                                 runCatching { accountStore.startEmailVerification(email.trim(), language.localeTag) }
                                     .onSuccess { emailChallenge = it.challengeID; error = null }
-                                    .onFailure { error = it.message ?: "Error" }
+                                    .onFailure { error = securityErrorMessage(language, it) }
                             } else {
                                 runCatching { accountStore.confirmEmailVerification(emailChallenge!!, emailCode.trim()) }
                                     .onSuccess { error = null; emailDialog = false; reload() }
-                                    .onFailure { error = it.message ?: "Error" }
+                                    .onFailure { error = securityErrorMessage(language, it) }
                             }
                             emailBusy = false
                         }
@@ -374,14 +454,53 @@ internal fun AccountSecurityParityContent(
                     workingSessionID = session.id
                     scope.launch {
                         runCatching { accountStore.terminateSecuritySession(session.id) }
-                            .onSuccess { signedOut -> if (!signedOut) reload() }
-                            .onFailure { error = it.message ?: "Error" }
+                            .onSuccess { signedOut ->
+                                if (signedOut) chrome.back() else reload()
+                            }
+                            .onFailure { error = securityErrorMessage(language, it) }
                         pendingTermination = null
                         workingSessionID = null
                     }
                 }) { Text(if (session.isCurrent) secTr(language, "Sign out this device", "Выйти на этом устройстве", "Bu qurilmadan chiqish", "Бу қурилмадан чиқиш") else secTr(language, "End session", "Завершить сеанс", "Seansni tugatish", "Сеансни тугатиш"), color = SecurityRed) }
             },
             dismissButton = { TextButton(onClick = { pendingTermination = null }) { Text(secTr(language, "Cancel", "Отмена", "Bekor qilish", "Бекор қилиш")) } },
+        )
+    }
+
+    if (pendingTerminateOthers) {
+        AlertDialog(
+            onDismissRequest = { if (!terminatingOthers) pendingTerminateOthers = false },
+            icon = { CupertinoIcon(CupertinoSymbol.HandRaised, null, Modifier.size(30.dp), SecurityRed) },
+            title = { Text(secTr(language, "End all other sessions?", "Завершить все другие сеансы?", "Boshqa barcha seanslar tugatilsinmi?", "Бошқа барча сеанслар тугатилсинми?"), fontWeight = FontWeight.Bold) },
+            text = { Text(secTr(language, "All other devices will lose access. This device will stay signed in.", "Все другие устройства потеряют доступ. На этом устройстве вход сохранится.", "Boshqa barcha qurilmalar kirish huquqini yo‘qotadi. Bu qurilmada kirish saqlanadi.", "Бошқа барча қурилмалар кириш ҳуқуқини йўқотади. Бу қурилмада кириш сақланади."), color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            confirmButton = {
+                TextButton(
+                    enabled = !terminatingOthers,
+                    onClick = {
+                        val targets = overview?.sessions.orEmpty().filter { !it.isCurrent && it.canTerminate }
+                        if (targets.isEmpty()) {
+                            pendingTerminateOthers = false
+                        } else {
+                            terminatingOthers = true
+                            scope.launch {
+                                var failure: Throwable? = null
+                                for (target in targets) {
+                                    runCatching { accountStore.terminateSecuritySession(target.id) }
+                                        .onFailure { if (failure == null) failure = it }
+                                }
+                                pendingTerminateOthers = false
+                                terminatingOthers = false
+                                reload()
+                                failure?.let { error = securityErrorMessage(language, it) }
+                            }
+                        }
+                    },
+                ) {
+                    if (terminatingOthers) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = SecurityRed)
+                    else Text(secTr(language, "End other sessions", "Завершить другие сеансы", "Boshqa seanslarni tugatish", "Бошқа сеансларни тугатиш"), color = SecurityRed)
+                }
+            },
+            dismissButton = { TextButton(onClick = { pendingTerminateOthers = false }, enabled = !terminatingOthers) { Text(secTr(language, "Cancel", "Отмена", "Bekor qilish", "Бекор қилиш")) } },
         )
     }
 }
@@ -477,7 +596,17 @@ private fun SecurityStatusRow(icon: CupertinoSymbol, title: String, detail: Stri
 }
 
 @Composable
-private fun SecurityProviderCard(language: AppLanguage, title: String, icon: CupertinoSymbol, linked: Boolean, iumrahID: String, provider: String, primaryDevice: Boolean) {
+private fun SecurityProviderCard(
+    language: AppLanguage,
+    title: String,
+    icon: CupertinoSymbol,
+    linked: Boolean,
+    iumrahID: String,
+    provider: String,
+    primaryDevice: Boolean,
+    busy: Boolean,
+    onConnect: () -> Unit,
+) {
     SecurityCard {
         SecuritySectionTitle(icon, title, if (provider == "Google") SecurityBlue else MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(14.dp))
@@ -486,18 +615,21 @@ private fun SecurityProviderCard(language: AppLanguage, title: String, icon: Cup
         } else {
             Text(secTr(language, "Connect $provider to ID $iumrahID. After that you can sign in without typing the eight-digit ID or password.", "Подключите $provider к ID $iumrahID. После этого можно входить без ввода восьмизначного ID и пароля.", "$provider’ni $iumrahID ID’ga ulang. Shundan keyin sakkiz xonali ID va parolsiz kirishingiz mumkin.", "$provider’ни $iumrahID ID’га уланг. Шундан кейин саккиз хонали ID ва паролсиз киришингиз мумкин."), fontSize = 14.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
-            Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = .055f)) {
-                Row(Modifier.fillMaxWidth().height(50.dp).padding(horizontal = 15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CupertinoIcon(icon, null, Modifier.size(19.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .55f))
-                    Text(secTr(language, "Continue with $provider", "Продолжить с $provider", "$provider orqali davom etish", "$provider орқали давом этиш"), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f))
+            val enabled = primaryDevice && !busy
+            Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) .055f else .035f)) {
+                Row(
+                    Modifier.fillMaxWidth().height(50.dp).clickable(enabled = enabled, onClick = onConnect).padding(horizontal = 15.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    CupertinoIcon(icon, null, Modifier.size(19.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) .90f else .42f))
+                    Text(secTr(language, "Continue with $provider", "Продолжить с $provider", "$provider orqali davom etish", "$provider орқали давом этиш"), Modifier.weight(1f), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) .90f else .42f))
+                    if (busy) CircularProgressIndicator(Modifier.size(17.dp), strokeWidth = 2.dp)
                 }
             }
             if (!primaryDevice) {
                 Spacer(Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    CupertinoIcon(CupertinoSymbol.Lock, null, Modifier.size(13.dp), SecurityGray)
-                    Text(secTr(language, "Only the primary device can connect a new sign-in method.", "Новый способ входа может подключить только основное устройство.", "Yangi kirish usulini faqat asosiy qurilma ulashi mumkin.", "Янги кириш усулини фақат асосий қурилма улаши мумкин."), fontSize = 11.sp, color = SecurityGray)
-                }
+                SecurityLockedNote(language, secTr(language, "Only the primary device can connect a new sign-in method.", "Новый способ входа может подключить только основное устройство.", "Yangi kirish usulini faqat asosiy qurilma ulashi mumkin.", "Янги кириш усулини фақат асосий қурилма улаши мумкин."))
             }
         }
     }
@@ -510,15 +642,14 @@ private fun SecuritySessionCard(language: AppLanguage, session: IumrahSecuritySe
             SecurityIconBadge(CupertinoSymbol.Device, if (session.platform.contains("android", true)) SecurityGreen else SecurityBlue, 48.dp, 21.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text(session.deviceName.ifBlank { session.model.ifBlank { session.platform } }, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Text(securitySessionDisplayName(language, session), fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                     if (session.isCurrent) Text(secTr(language, "THIS DEVICE", "ЭТО УСТРОЙСТВО", "BU QURILMA", "БУ ҚУРИЛМА"), Modifier.clip(CircleShape).background(SecurityBlue.copy(alpha = .10f)).padding(horizontal = 6.dp, vertical = 4.dp), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = SecurityBlue)
                 }
-                val software = listOf(session.platform, session.osVersion, session.appVersion.takeIf { it.isNotBlank() }?.let { "iumrah $it" }).filterNotNull().filter { it.isNotBlank() }.joinToString(" · ")
+                val software = securitySessionSoftwareLine(session)
                 if (software.isNotBlank()) Text(software, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-                val location = listOf(session.city, session.country).filter { it.isNotBlank() }.joinToString(", ")
-                Text(listOf(location, if (session.isCurrent) secTr(language, "Current session", "Текущий сеанс", "Joriy seans", "Жорий сеанс") else session.lastActiveAt).filter { it.isNotBlank() }.joinToString(" · "), fontSize = 12.sp, color = if (session.isCurrent) SecurityGreen else SecurityGray, maxLines = 2)
+                Text(securitySessionLocationAndActivity(language, session), fontSize = 12.sp, color = if (session.isCurrent) SecurityGreen else SecurityGray, maxLines = 2)
             }
-            if (session.isPrimary) CupertinoIcon(CupertinoSymbol.Star, null, Modifier.size(18.dp), SecurityOrange)
+            if (session.isPrimary) CupertinoIcon(CupertinoSymbol.CrownFill, null, Modifier.size(18.dp), SecurityOrange)
         }
         Spacer(Modifier.height(14.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = .07f))
@@ -556,11 +687,150 @@ private fun SecurityPrimaryButton(title: String, icon: CupertinoSymbol, onClick:
 }
 
 @Composable
-private fun SecuritySecondaryButton(title: String, icon: CupertinoSymbol, onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = .055f)) {
-        Row(Modifier.fillMaxWidth().height(50.dp).padding(horizontal = 15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CupertinoIcon(icon, null, Modifier.size(18.dp), MaterialTheme.colorScheme.onSurface)
-            Text(title, fontWeight = FontWeight.SemiBold)
+private fun SecuritySecondaryButton(title: String, icon: CupertinoSymbol, enabled: Boolean = true, onClick: () -> Unit) {
+    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) .055f else .03f)) {
+        Row(Modifier.fillMaxWidth().height(50.dp).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CupertinoIcon(icon, null, Modifier.size(18.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else .42f))
+            Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else .42f))
         }
     }
 }
+
+@Composable
+private fun SecurityLockedNote(language: AppLanguage, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        CupertinoIcon(CupertinoSymbol.Lock, null, Modifier.size(13.dp), SecurityGray)
+        Text(text, fontSize = 11.sp, lineHeight = 15.sp, color = SecurityGray)
+    }
+}
+
+@Composable
+private fun SecuritySessionGroupLabel(text: String) {
+    Text(text, Modifier.padding(horizontal = 4.dp, vertical = 2.dp), fontSize = 10.sp, letterSpacing = .8.sp, fontWeight = FontWeight.SemiBold, color = SecurityGray)
+}
+
+private fun securitySessionDisplayName(language: AppLanguage, session: IumrahSecuritySession): String {
+    val name = session.deviceName.trim()
+    val model = session.model.trim()
+    val generic = setOf("", "iPhone", "iPad", "Unknown device", "Apple device", "Android")
+    if (name !in generic) return name
+    if (session.platform.contains("ios", true) && model.startsWith("iPhone")) {
+        friendlyAppleModelName(model)?.let { return it }
+    }
+    if (session.platform.contains("android", true) && model.isNotBlank() && !model.equals("android", true)) return model
+    if (model.isNotBlank()) return model
+    if (session.platform.contains("android", true)) return "Android"
+    if (session.platform.contains("ios", true)) return if (name == "iPad") "iPad" else "iPhone"
+    return secTr(language, "Unknown device", "Неизвестное устройство", "Noma’lum qurilma", "Номаълум қурилма")
+}
+
+
+private fun friendlyAppleModelName(identifier: String): String? = mapOf(
+    "iPhone12,1" to "iPhone 11",
+    "iPhone12,3" to "iPhone 11 Pro",
+    "iPhone12,5" to "iPhone 11 Pro Max",
+    "iPhone12,8" to "iPhone SE (2nd generation)",
+    "iPhone13,1" to "iPhone 12 mini",
+    "iPhone13,2" to "iPhone 12",
+    "iPhone13,3" to "iPhone 12 Pro",
+    "iPhone13,4" to "iPhone 12 Pro Max",
+    "iPhone14,4" to "iPhone 13 mini",
+    "iPhone14,5" to "iPhone 13",
+    "iPhone14,2" to "iPhone 13 Pro",
+    "iPhone14,3" to "iPhone 13 Pro Max",
+    "iPhone14,6" to "iPhone SE (3rd generation)",
+    "iPhone14,7" to "iPhone 14",
+    "iPhone14,8" to "iPhone 14 Plus",
+    "iPhone15,2" to "iPhone 14 Pro",
+    "iPhone15,3" to "iPhone 14 Pro Max",
+    "iPhone15,4" to "iPhone 15",
+    "iPhone15,5" to "iPhone 15 Plus",
+    "iPhone16,1" to "iPhone 15 Pro",
+    "iPhone16,2" to "iPhone 15 Pro Max",
+    "iPhone17,3" to "iPhone 16",
+    "iPhone17,4" to "iPhone 16 Plus",
+    "iPhone17,1" to "iPhone 16 Pro",
+    "iPhone17,2" to "iPhone 16 Pro Max",
+    "iPhone17,5" to "iPhone 16e",
+    "iPhone18,3" to "iPhone 17",
+    "iPhone18,1" to "iPhone 17 Pro",
+    "iPhone18,2" to "iPhone 17 Pro Max",
+    "iPhone18,4" to "iPhone Air",
+    "iPhone18,5" to "iPhone 17e",
+)[identifier]
+
+private fun securitySessionSoftwareLine(session: IumrahSecuritySession): String {
+    val platform = when {
+        session.platform.contains("android", true) -> "Android"
+        session.platform.contains("ios", true) -> "iOS"
+        else -> session.platform.trim()
+    }
+    val os = listOf(platform, session.osVersion.trim()).filter { it.isNotBlank() }.joinToString(" ")
+    val appVersion = session.appVersion.trim().substringBefore(" (").trim()
+    val app = appVersion.takeIf { it.isNotBlank() }?.let { "iumrah $it" }.orEmpty()
+    return listOf(os, app).filter { it.isNotBlank() }.joinToString(" · ")
+}
+
+private fun securitySessionLocationAndActivity(language: AppLanguage, session: IumrahSecuritySession): String {
+    val country = localizedCountry(language, session.country)
+    val location = listOf(session.city.trim(), country).filter { it.isNotBlank() }.joinToString(", ")
+    val activity = if (session.isCurrent) {
+        secTr(language, "online", "в сети", "onlayn", "онлайн")
+    } else {
+        relativeSecurityDate(language, session.lastActiveAt)
+    }
+    return listOf(location, activity).filter { it.isNotBlank() }.joinToString(" · ")
+}
+
+private fun localizedCountry(language: AppLanguage, raw: String): String {
+    val value = raw.trim()
+    if (value.length != 2) return value
+    val locale = Locale.forLanguageTag(language.localeTag)
+    return Locale("", value.uppercase(Locale.ROOT)).getDisplayCountry(locale).ifBlank { value }
+}
+
+private fun relativeSecurityDate(language: AppLanguage, raw: String): String {
+    val instant = runCatching { Instant.parse(raw) }.getOrNull() ?: return raw
+    val seconds = Duration.between(instant, Instant.now()).seconds.coerceAtLeast(0)
+    return when {
+        seconds < 60 -> secTr(language, "just now", "только что", "hozirgina", "ҳозиргина")
+        seconds < 3600 -> {
+            val n = seconds / 60
+            secTr(language, "$n min ago", "$n мин назад", "$n daqiqa oldin", "$n дақиқа олдин")
+        }
+        seconds < 86400 -> {
+            val n = seconds / 3600
+            secTr(language, "$n h ago", "$n ч назад", "$n soat oldin", "$n соат олдин")
+        }
+        seconds < 604800 -> {
+            val n = seconds / 86400
+            secTr(language, "$n d ago", "$n дн назад", "$n kun oldin", "$n кун олдин")
+        }
+        else -> raw.substringBefore('T')
+    }
+}
+
+private fun securityErrorMessage(language: AppLanguage, throwable: Throwable): String {
+    val code = when (throwable) {
+        is APIException.Server -> throwable.serverMessage
+        is APIException.Status -> if (throwable.code == 401) "SESSION_REVOKED" else "HTTP_${throwable.code}"
+        else -> throwable.message.orEmpty()
+    }
+    return when (code) {
+        "PRIMARY_DEVICE_REQUIRED" -> secTr(language, "Only the protected primary device can do this.", "Это действие доступно только на защищённом основном устройстве.", "Bu amal faqat himoyalangan asosiy qurilmada mavjud.", "Бу амал фақат ҳимояланган асосий қурилмада мавжуд.")
+        "PRIMARY_DEVICE_ALREADY_PROTECTED" -> secTr(language, "Another primary device is already protecting this account.", "Этот аккаунт уже защищён другим основным устройством.", "Bu akkaunt boshqa asosiy qurilma bilan himoyalangan.", "Бу аккаунт бошқа асосий қурилма билан ҳимояланган.")
+        "GOOGLE_ID_CONNECTED_TO_ANOTHER_ACCOUNT" -> secTr(language, "This Google account is already connected to another iumrah ID.", "Этот Google-аккаунт уже подключён к другому iumrah ID.", "Bu Google akkaunti boshqa iumrah ID’ga ulangan.", "Бу Google аккаунти бошқа iumrah ID’га уланган.")
+        "GOOGLE_ID_ALREADY_CONNECTED" -> secTr(language, "A different Google account is already connected to this iumrah account.", "К этому аккаунту iumrah уже подключён другой Google-аккаунт.", "Bu iumrah akkauntiga boshqa Google akkaunti ulangan.", "Бу iumrah аккаунтига бошқа Google аккаунти уланган.")
+        "GOOGLE_EMAIL_CONNECTED_TO_ANOTHER_ACCOUNT" -> secTr(language, "The email verified by Google already belongs to another iumrah account.", "Подтверждённая Google почта уже принадлежит другому аккаунту iumrah.", "Google tasdiqlagan email boshqa iumrah akkauntiga tegishli.", "Google тасдиқлаган email бошқа iumrah аккаунтига тегишли.")
+        "GOOGLE_TOKEN_INVALID", "GOOGLE_TOKEN_REPLAYED" -> secTr(language, "Google authorization expired. Please try again.", "Подтверждение Google устарело. Попробуйте ещё раз.", "Google tasdig‘i eskirgan. Qayta urinib ko‘ring.", "Google тасдиғи эскирган. Қайта уриниб кўринг.")
+        "EMAIL_INVALID" -> secTr(language, "Enter a valid email address.", "Введите корректный адрес электронной почты.", "To‘g‘ri email manzilini kiriting.", "Тўғри email манзилини киритинг.")
+        "EMAIL_ALREADY_CONNECTED" -> secTr(language, "This email is already connected to another iumrah account.", "Эта почта уже подключена к другому аккаунту iumrah.", "Bu email boshqa iumrah akkauntiga ulangan.", "Бу email бошқа iumrah аккаунтига уланган.")
+        "EMAIL_RATE_LIMITED" -> secTr(language, "Too many email requests. Please try again later.", "Слишком много запросов. Повторите отправку позже.", "Email so‘rovlari ko‘p. Keyinroq qayta urinib ko‘ring.", "Email сўровлари кўп. Кейинроқ қайта уриниб кўринг.")
+        "VERIFICATION_CODE_INVALID" -> secTr(language, "The code is incorrect or expired. Request a new code.", "Код неверный или устарел. Запросите новый код.", "Kod noto‘g‘ri yoki muddati tugagan. Yangi kod so‘rang.", "Код нотўғри ёки муддати тугаган. Янги код сўранг.")
+        "INVALID_CREDENTIALS" -> secTr(language, "The iumrah ID or password is incorrect.", "Неверный iumrah ID или пароль.", "iumrah ID yoki parol noto‘g‘ri.", "iumrah ID ёки парол нотўғри.")
+        "ACCOUNT_TEMPORARILY_LOCKED" -> secTr(language, "Too many attempts. Try again in 15 minutes.", "Слишком много попыток. Повторите через 15 минут.", "Urinishlar ko‘p. 15 daqiqadan keyin qayta urinib ko‘ring.", "Уринишлар кўп. 15 дақиқадан кейин қайта уриниб кўринг.")
+        "SESSION_REVOKED" -> secTr(language, "This session has ended. Sign in again to continue.", "Этот сеанс завершён. Войдите снова, чтобы продолжить.", "Bu seans tugagan. Davom etish uchun qayta kiring.", "Бу сеанс тугаган. Давом этиш учун қайта киринг.")
+        else -> throwable.message?.takeIf { it.isNotBlank() } ?: secTr(language, "Security information is temporarily unavailable.", "Информация безопасности временно недоступна.", "Xavfsizlik ma’lumotlari vaqtincha mavjud emas.", "Хавфсизлик маълумотлари вақтинча мавжуд эмас.")
+    }
+}
+
