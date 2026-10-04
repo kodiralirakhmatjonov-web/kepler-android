@@ -5,15 +5,15 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
-        android:name=".IumrahApplication"
+        android:name="com.iumrah.beta.IumrahApplication"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="iumrah Beta"
+        android:label="iumrah"
         android:supportsRtl="true"
         android:theme="@style/Theme.Iumrah">
         <activity
-            android:name=".MainActivity"
+            android:name="com.iumrah.beta.MainActivity"
             android:exported="true">
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
@@ -31,27 +31,27 @@
             </intent-filter>
         </activity>
 
-        <activity-alias android:name=".LauncherStandard" android:enabled="true" android:exported="true" android:icon="@mipmap/ic_launcher" android:label="iumrah" android:targetActivity=".MainActivity">
+        <activity-alias android:name="com.iumrah.beta.LauncherStandard" android:enabled="true" android:exported="true" android:icon="@mipmap/ic_launcher" android:label="iumrah" android:targetActivity="com.iumrah.beta.MainActivity">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity-alias>
-        <activity-alias android:name=".LauncherBlue" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_blue_preview" android:label="iumrah" android:targetActivity=".MainActivity">
+        <activity-alias android:name="com.iumrah.beta.LauncherBlue" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_blue_preview" android:label="iumrah" android:targetActivity="com.iumrah.beta.MainActivity">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity-alias>
-        <activity-alias android:name=".LauncherCyan" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_cyan_preview" android:label="iumrah" android:targetActivity=".MainActivity">
+        <activity-alias android:name="com.iumrah.beta.LauncherCyan" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_cyan_preview" android:label="iumrah" android:targetActivity="com.iumrah.beta.MainActivity">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity-alias>
-        <activity-alias android:name=".LauncherDeep" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_deep_preview" android:label="iumrah" android:targetActivity=".MainActivity">
+        <activity-alias android:name="com.iumrah.beta.LauncherDeep" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_deep_preview" android:label="iumrah" android:targetActivity="com.iumrah.beta.MainActivity">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity-alias>
-        <activity-alias android:name=".LauncherWorld" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_world_preview" android:label="iumrah" android:targetActivity=".MainActivity">
+        <activity-alias android:name="com.iumrah.beta.LauncherWorld" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_world_preview" android:label="iumrah" android:targetActivity="com.iumrah.beta.MainActivity">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity-alias>
-        <activity-alias android:name=".LauncherMakkah" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_makkah_preview" android:label="iumrah" android:targetActivity=".MainActivity">
+        <activity-alias android:name="com.iumrah.beta.LauncherMakkah" android:enabled="false" android:exported="true" android:icon="@drawable/iumrah_icon_makkah_preview" android:label="iumrah" android:targetActivity="com.iumrah.beta.MainActivity">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity-alias>
 
         <service
-            android:name=".core.push.IumrahFirebaseMessagingService"
+            android:name="com.iumrah.beta.core.push.IumrahFirebaseMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
@@ -71,7 +71,7 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <receiver
-            android:name=".ui.planning.UmrahPlanReminderReceiver"
+            android:name="com.iumrah.beta.ui.planning.UmrahPlanReminderReceiver"
             android:exported="false" />
     </application>
 </manifest>

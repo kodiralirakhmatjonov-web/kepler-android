@@ -1,0 +1,1 @@
+Obsolete: Plus and in-app purchases removed. See ../README-RU.md.

@@ -100,7 +100,7 @@ class AppSettingsStore(private val context: Context) {
         val normalized = value.lowercase().takeIf { it in LAUNCHER_ALIASES.keys } ?: "standard"
         val packageManager = context.packageManager
         LAUNCHER_ALIASES.forEach { (key, suffix) ->
-            val component = ComponentName(context.packageName, "${context.packageName}.$suffix")
+            val component = ComponentName(context.packageName, "com.iumrah.beta.$suffix")
             val state = if (key == normalized) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
             runCatching { packageManager.setComponentEnabledSetting(component, state, PackageManager.DONT_KILL_APP) }
         }

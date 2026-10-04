@@ -21,11 +21,11 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.iumrah.beta"
+        applicationId = "com.iumrah.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "0.8.2-stage8-stable36"
+        versionCode = 15
+        versionName = providers.gradleProperty("PLAY_VERSION_NAME").orElse("2.0.3").get()
 
         // FCM credentials are supplied as Gradle properties or environment variables.
         // Keeping them optional lets the repository build before Firebase provisioning,
@@ -38,8 +38,19 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("playRelease") {
+            val path = System.getenv("PLAY_KEYSTORE_PATH")
+            if (!path.isNullOrBlank()) storeFile = file(path)
+            storePassword = System.getenv("PLAY_STORE_PASSWORD")
+            keyAlias = System.getenv("PLAY_KEY_ALIAS")
+            keyPassword = System.getenv("PLAY_KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("playRelease")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -108,4 +119,30 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.outputs.forEach { output ->
+            output.versionCode.set(providers.gradleProperty("PLAY_VERSION_CODE").map { it.toInt() }.orElse(15))
+        }
+    }
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.applicationId.set("com.iumrah.beta")
+    }
+}
+
+val validatePlayRelease by tasks.registering {
+    doLast {
+        listOf("PLAY_KEYSTORE_PATH", "PLAY_STORE_PASSWORD", "PLAY_KEY_ALIAS", "PLAY_KEY_PASSWORD").forEach {
+            check(!System.getenv(it).isNullOrBlank()) { "Missing release signing environment: $it" }
+        }
+        check(file(System.getenv("PLAY_KEYSTORE_PATH")).isFile) { "Upload keystore not found" }
+        check(providers.gradleProperty("PLAY_VERSION_CODE").orNull?.toIntOrNull()?.let { it in 15..2100000000 } == true) {
+            "Pass -PPLAY_VERSION_CODE explicitly: greater than ALL Console versions (legacy archive: 14)"
+        }
+    }
+}
+tasks.configureEach {
+    if (name == "preReleaseBuild") dependsOn(validatePlayRelease)
 }
