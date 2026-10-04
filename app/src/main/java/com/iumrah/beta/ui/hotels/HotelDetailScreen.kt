@@ -69,6 +69,8 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.iumrah.beta.core.config.AppConfig
 import com.iumrah.beta.core.settings.AppLanguage
+import com.iumrah.beta.core.navigation.HotelConfiguratorDeepLink
+import com.iumrah.beta.core.share.IumrahPackageShare
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.data.hotel.RemotePackageEngineClient
 import com.iumrah.beta.domain.journey.JourneyStore
@@ -101,6 +103,8 @@ fun HotelDetailScreen(
     journey: JourneyStore,
     onBack: () -> Unit,
     onOpenConfigurator: (String) -> Unit = {},
+    autoOpenConfigurator: Boolean = false,
+    sharedConfiguration: HotelConfiguratorDeepLink? = null,
     selectionRole: String? = null,
     onSelectionDone: () -> Unit = {},
 ) {
@@ -122,6 +126,7 @@ fun HotelDetailScreen(
     var favorite by remember(hotelId) { mutableStateOf(hotelId in favoritePrefs.getStringSet("hotel_ids", emptySet()).orEmpty()) }
     var selectedPackage by remember(hotelId) { mutableIntStateOf(0) }
     var selectionSummary by remember(hotelId, selectionRole) { mutableStateOf<HotelSummary?>(null) }
+    var didAutoOpenConfigurator by remember(hotelId, autoOpenConfigurator) { mutableStateOf(false) }
 
     suspend fun loadAll() {
         loading = true
@@ -191,13 +196,25 @@ fun HotelDetailScreen(
 
     LaunchedEffect(hotelId, origin) { loadAll() }
 
+    LaunchedEffect(autoOpenConfigurator, loading, packages, selectedPackage, sharedConfiguration) {
+        if (autoOpenConfigurator && !loading && !didAutoOpenConfigurator) {
+            packages.getOrNull(selectedPackage)?.let { packageSnapshot ->
+                didAutoOpenConfigurator = true
+                onOpenConfigurator(packageSnapshot.id)
+            }
+        }
+    }
+
     val hotel = detail
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         HotelNativeBar(
             title = hotel?.name.orEmpty(),
             favorite = favorite,
             onBack = onBack,
-            onShare = { hotel?.let { shareHotelDetail(context, it) } },
+            onShare = {
+                packages.getOrNull(selectedPackage)?.let { IumrahPackageShare.share(context, it, null, language) }
+                    ?: hotel?.let { shareHotelDetail(context, it) }
+            },
             onFavorite = {
                 val values = favoritePrefs.getStringSet("hotel_ids", emptySet()).orEmpty().toMutableSet()
                 favorite = !favorite

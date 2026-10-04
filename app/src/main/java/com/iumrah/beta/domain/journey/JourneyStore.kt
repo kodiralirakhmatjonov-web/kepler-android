@@ -321,6 +321,47 @@ class JourneyStore {
         }
     }
 
+    /** iOS FlightSearchProgressCard parity: refresh inventory without discarding
+     * already discovered/selected rows. This is used by both outbound and return
+     * "Continue search" actions. */
+    suspend fun continueSearchFlights(provider: IgnavFlightInventoryProvider) {
+        val snapshot = _state.value
+        val trip = snapshot.trip
+        if (!trip.canContinue || !snapshot.hasRequiredHotels || snapshot.isSearchingFlights) return
+        _state.update { it.copy(isSearchingFlights = true, flightError = null) }
+        val filters = trip.effectiveFlightFilters
+        val request = FlightJourneySearchRequest(
+            outboundOrigin = trip.originCode,
+            outboundDestination = trip.outboundDestinationCode,
+            inboundOrigin = if (trip.isRoundTripFlight) trip.returnOriginCode else null,
+            inboundDestination = if (trip.isRoundTripFlight) trip.originCode else null,
+            adults = trip.adults,
+            children = trip.children,
+            infants = trip.infants,
+            cabin = filters.cabinClass.wireValue,
+            filters = filters,
+        )
+        val pairs = listOf(FlightJourneyDatePair(trip.departureDate, if (trip.isRoundTripFlight) trip.returnDate else null))
+        fun merge(current: List<LiveFlightJourneyCandidate>, incoming: List<LiveFlightJourneyCandidate>): List<LiveFlightJourneyCandidate> =
+            (current + incoming).associateBy { it.id }.values.sortedBy { it.outbound.departureAt }
+        runCatching {
+            provider.searchJourney(request, pairs) { partial ->
+                _state.update { current -> current.copy(flightResults = merge(current.flightResults, partial)) }
+            }
+        }.onSuccess { values ->
+            _state.update { current ->
+                val merged = merge(current.flightResults, values)
+                current.copy(
+                    flightResults = merged,
+                    isSearchingFlights = false,
+                    flightError = if (merged.isEmpty()) "NO_RESULTS" else null,
+                )
+            }
+        }.onFailure { error ->
+            _state.update { current -> current.copy(isSearchingFlights = false, flightError = error.message ?: "SEARCH_FAILED") }
+        }
+    }
+
     /** Server-authoritative package-price previews used by the iOS flight cards.
      * Each row is quoted as a complete itinerary; raw component airfare never becomes UI.
      */

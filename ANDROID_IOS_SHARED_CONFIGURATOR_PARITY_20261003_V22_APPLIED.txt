@@ -1,0 +1,15 @@
+ANDROID / iOS parity checkpoint v22
+Date: 2026-10-03
+Base: v21 Cupertino/global-font checkpoint
+
+Included:
+- iOS-compatible Hotel Configurator deep-link payload restore (travelers, rooms, scope, first city, meals, flights)
+- base64url /h hotel token decoding parity
+- Hotel/package share parity and public package artifacts
+- Hotel First route configurator: Makkah-only vs Makkah+Madinah, first Saudi city, dynamic Madinah hotel, route-aware flight reselection and quote payload
+- dynamic package quote hotel IDs/stay nights/include-Madinah overrides
+- Return Flight progressive continue-search action
+- iumrah Wallet copy action
+- Gift Cards selected-card compile regression repair
+
+Verification: repository structural Stage 2-10 scripts pass in this environment. Full Gradle/Android SDK compilation is not available locally.

@@ -3,17 +3,33 @@ package com.iumrah.beta.core.navigation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import com.iumrah.beta.domain.trip.JourneyScope
+import com.iumrah.beta.domain.trip.PackageMealSelection
+import com.iumrah.beta.domain.trip.SaudiArrivalAirport
 
 enum class AppTab { HOME, HOTELS, BOOKING, CARE, ACCOUNT }
+
+data class HotelConfiguratorDeepLink(
+    val hotelId: String,
+    val adults: Int? = null,
+    val children: Int? = null,
+    val infants: Int? = null,
+    val rooms: Int? = null,
+    val scope: JourneyScope? = null,
+    val firstSaudiCity: SaudiArrivalAirport? = null,
+    val mealSelection: PackageMealSelection? = null,
+    val outboundOptionId: String? = null,
+    val inboundOptionId: String? = null,
+)
 
 sealed interface AppRoute {
     data object Root : AppRoute
     data object TripBuilder : AppRoute
     data object HotelSelection : AppRoute
-    data class HotelDetail(val hotelId: String) : AppRoute
+    data class HotelDetail(val hotelId: String, val openConfigurator: Boolean = false, val sharedConfiguration: HotelConfiguratorDeepLink? = null) : AppRoute
     data class ConfiguratorHotelSelection(val role: String) : AppRoute
     data class ConfiguratorHotelDetail(val hotelId: String, val role: String) : AppRoute
-    data class FlightPackageDetail(val packageId: String) : AppRoute
+    data class FlightPackageDetail(val packageId: String, val sharedConfiguration: HotelConfiguratorDeepLink? = null) : AppRoute
     data object Flights : AppRoute
     data object StorefrontFlights : AppRoute
     data object StorefrontSunday : AppRoute
@@ -69,10 +85,10 @@ class AppChromeStore {
     }
     fun startNewTrip() = push(AppRoute.TripBuilder, tab = AppTab.BOOKING)
     fun openHotelSelection() = push(AppRoute.HotelSelection, tab = AppTab.BOOKING)
-    fun openHotel(id: String) = push(AppRoute.HotelDetail(id), tab = AppTab.HOTELS)
+    fun openHotel(id: String, openConfigurator: Boolean = false, sharedConfiguration: HotelConfiguratorDeepLink? = null) = push(AppRoute.HotelDetail(id, openConfigurator, sharedConfiguration), tab = AppTab.HOTELS)
     fun openConfiguratorHotelSelection(role: String) = push(AppRoute.ConfiguratorHotelSelection(role), tab = AppTab.BOOKING)
     fun openConfiguratorHotelDetail(id: String, role: String) = push(AppRoute.ConfiguratorHotelDetail(id, role), tab = AppTab.BOOKING)
-    fun openFlightPackage(id: String) = push(AppRoute.FlightPackageDetail(id), tab = AppTab.HOTELS)
+    fun openFlightPackage(id: String, sharedConfiguration: HotelConfiguratorDeepLink? = null) = push(AppRoute.FlightPackageDetail(id, sharedConfiguration), tab = AppTab.HOTELS)
     fun openFlights() = push(AppRoute.Flights, tab = AppTab.BOOKING)
     fun openStorefrontFlights() = push(AppRoute.StorefrontFlights, tab = AppTab.HOTELS)
     fun openSundayClub() = push(AppRoute.StorefrontSunday, tab = AppTab.HOTELS)

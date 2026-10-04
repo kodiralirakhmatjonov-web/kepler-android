@@ -13,6 +13,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.net.Uri
 import android.os.Looper
+import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
@@ -74,6 +75,7 @@ import com.iumrah.beta.R
 import com.iumrah.beta.core.config.AppConfig
 import com.iumrah.beta.core.localization.L10n
 import com.iumrah.beta.core.navigation.AppChromeStore
+import com.iumrah.beta.core.share.IumrahPackageShare
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.flight.AirportSearchService
 import com.iumrah.beta.data.hotel.HotelCatalogService
@@ -269,7 +271,7 @@ fun HotelsScreen(
                                 favorites = if (hotel.id in favorites) favorites - hotel.id else favorites + hotel.id
                                 favoritePrefs.edit().putStringSet("hotel_ids", favorites).apply()
                             },
-                            onShare = { shareHotel(context, hotel) },
+                            onShare = { quote?.let { IumrahPackageShare.share(context, it, null, language) } ?: shareHotel(context, hotel) },
                             onOpen = { chrome.openHotel(hotel.id) },
                         )
                     }
@@ -296,7 +298,7 @@ fun HotelsScreen(
                                 favorites = if (hotel.id in favorites) favorites - hotel.id else favorites + hotel.id
                                 favoritePrefs.edit().putStringSet("hotel_ids", favorites).apply()
                             },
-                            onShare = { shareHotel(context, hotel) },
+                            onShare = { quote?.let { IumrahPackageShare.share(context, it, null, language) } ?: shareHotel(context, hotel) },
                             onOpen = { chrome.openHotel(hotel.id) },
                         )
                     }
@@ -1107,7 +1109,8 @@ private fun dayText(raw: String, language: AppLanguage): String = runCatching {
 }.getOrElse { raw.take(10) }
 
 private fun shareHotel(context: Context, hotel: HotelSummary) {
-    val text = "${hotel.name}\nhttps://iumrah.app/h/${hotel.id}"
+    val token = Base64.encodeToString(hotel.id.toByteArray(Charsets.UTF_8), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+    val text = "${hotel.name}\nhttps://iumrah.app/h/$token"
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)

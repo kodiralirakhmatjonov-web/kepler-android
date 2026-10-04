@@ -186,7 +186,9 @@ fun AppShell(
                     packageEngine = packageEngine,
                     journey = journey,
                     onBack = chrome::back,
-                    onOpenConfigurator = { packageId -> chrome.openFlightPackage(packageId) },
+                    onOpenConfigurator = { packageId -> chrome.openFlightPackage(packageId, route.sharedConfiguration) },
+                    autoOpenConfigurator = route.openConfigurator,
+                    sharedConfiguration = route.sharedConfiguration,
                 )
 
                 is AppRoute.ConfiguratorHotelSelection -> ConfiguratorHotelSelectionScreen(
@@ -215,6 +217,7 @@ fun AppShell(
                     service = hotelCatalog,
                     journey = journey,
                     chrome = chrome,
+                    sharedConfiguration = route.sharedConfiguration,
                 )
 
                 AppRoute.StorefrontFlights -> HotelsScreen(
@@ -244,7 +247,7 @@ fun AppShell(
                     packageEngine = packageEngine,
                     chrome = chrome,
                 )
-                AppRoute.ReturnFlights -> ReturnFlightScreen(language, journey, packageEngine, chrome)
+                AppRoute.ReturnFlights -> ReturnFlightScreen(language, journey, flightInventory, packageEngine, chrome)
                 is AppRoute.FlightDetails -> FlightDetailsScreen(route.journeyId, route.direction, language, journey, chrome)
                 AppRoute.TransferSelection -> TransferSelectionScreen(language, journey, packageGenerator, chrome)
 

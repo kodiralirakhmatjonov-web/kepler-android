@@ -509,6 +509,7 @@ private fun IumrahTripWalletDialog(
     language: AppLanguage,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
     val pages = remember(session, profile) {
         buildList {
             add(WalletPage.Identity)
@@ -553,7 +554,10 @@ private fun IumrahTripWalletDialog(
                                         language = language,
                                         flipped = flip,
                                         onFlip = { flip = !flip },
-                                        onCopy = {},
+                                        onCopy = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                            clipboard.setPrimaryClip(ClipData.newPlainText("iumrah ID", normalizedIdentity(p.iumrahID)))
+                                        },
                                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                                     )
                                 }

@@ -97,9 +97,17 @@ class HotelCatalogService(private val api: APIClient) {
         haramainEnabled: Boolean,
         haramainFareClass: String,
         haramainTicketCount: Int,
+        makkahHotelIdOverride: String? = null,
+        madinahHotelIdOverride: String? = null,
+        makkahNightsOverride: Int? = null,
+        madinahNightsOverride: Int? = null,
+        includeMadinahOverride: Boolean? = null,
     ): PackageQuote {
-        val makkahHotelId = requireNotNull(snapshot.makkahHotelId ?: snapshot.hotelFirstAnchorHotelId) { "Makkah hotel is missing from package snapshot." }
-        val includeMadinah = (snapshot.madinahNights ?: 0) > 0 && !snapshot.madinahHotelId.isNullOrBlank()
+        val makkahHotelId = makkahHotelIdOverride ?: requireNotNull(snapshot.makkahHotelId ?: snapshot.hotelFirstAnchorHotelId) { "Makkah hotel is missing from package snapshot." }
+        val includeMadinah = includeMadinahOverride ?: ((snapshot.madinahNights ?: 0) > 0 && !snapshot.madinahHotelId.isNullOrBlank())
+        val resolvedMadinahHotelId = if (includeMadinah) {
+            madinahHotelIdOverride ?: requireNotNull(snapshot.madinahHotelId) { "Madinah hotel is missing from package configuration." }
+        } else null
         val provider = snapshot.providerItineraryId?.takeIf { it.isNotBlank() && outboundOfferId == snapshot.outboundOfferId && inboundOfferId == snapshot.inboundOfferId }
             ?: if (outboundOfferId == inboundOfferId) "curated:$outboundOfferId" else "curated:$outboundOfferId+$inboundOfferId"
         val onLap = minOf(maxOf(0, infants), maxOf(1, adults))
@@ -122,11 +130,15 @@ class HotelCatalogService(private val api: APIClient) {
                 ),
             ),
             hotels = StorefrontQuoteRequest.Hotels(
-                makkah = StorefrontQuoteRequest.Hotel(makkahHotelId, snapshot.configuration?.makkahRoomId, maxOf(1, snapshot.makkahNights ?: 1)),
+                makkah = StorefrontQuoteRequest.Hotel(
+                    makkahHotelId,
+                    snapshot.configuration?.makkahRoomId,
+                    maxOf(1, makkahNightsOverride ?: snapshot.makkahNights ?: 1),
+                ),
                 madinah = if (includeMadinah) StorefrontQuoteRequest.Hotel(
-                    hotelId = requireNotNull(snapshot.madinahHotelId),
+                    hotelId = requireNotNull(resolvedMadinahHotelId),
                     roomId = snapshot.configuration?.madinahRoomId,
-                    nights = maxOf(1, snapshot.madinahNights ?: 1),
+                    nights = maxOf(1, madinahNightsOverride ?: snapshot.madinahNights ?: 1),
                 ) else null,
             ),
         )

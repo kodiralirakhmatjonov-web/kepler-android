@@ -55,6 +55,7 @@ import com.iumrah.beta.R
 import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.share.IumrahPackageShare
 import com.iumrah.beta.core.settings.AppLanguage
+import com.iumrah.beta.core.navigation.HotelConfiguratorDeepLink
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.domain.journey.JourneyStore
 import com.iumrah.beta.domain.pricing.PackageQuote
@@ -62,6 +63,7 @@ import com.iumrah.beta.domain.trip.FlightFareScope
 import com.iumrah.beta.domain.trip.FlightTripType
 import com.iumrah.beta.domain.trip.JourneyScope
 import com.iumrah.beta.domain.trip.PackageTier
+import com.iumrah.beta.domain.trip.PackageMealSelection
 import com.iumrah.beta.domain.trip.SaudiArrivalAirport
 import com.iumrah.beta.domain.trip.TripDraft
 import com.iumrah.beta.models.flight.FlightDirection
@@ -82,6 +84,7 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.delay
+import kotlin.math.ceil
 
 private enum class PackageLegKind { OUTBOUND, INBOUND }
 private enum class PackageInfoSheet { VISA, GUIDE, CARE, TRUST }
@@ -94,12 +97,16 @@ fun FlightFirstPackageDetailScreen(
     service: HotelCatalogService,
     journey: JourneyStore,
     chrome: AppChromeStore,
+    sharedConfiguration: HotelConfiguratorDeepLink? = null,
 ) {
     val context = LocalContext.current
     var snapshot by remember(packageId) { mutableStateOf<StorefrontPackageSnapshot?>(null) }
     var board by remember(packageId) { mutableStateOf<List<StorefrontFlightOption>>(emptyList()) }
     var makkahHotel by remember(packageId) { mutableStateOf<HotelSummary?>(null) }
     var madinahHotel by remember(packageId) { mutableStateOf<HotelSummary?>(null) }
+    var madinahCandidates by remember(packageId) { mutableStateOf<List<HotelSummary>>(emptyList()) }
+    var routeScope by remember(packageId) { mutableStateOf(JourneyScope.MAKKAH_ONLY) }
+    var firstSaudiCity by remember(packageId) { mutableStateOf(SaudiArrivalAirport.JEDDAH) }
     var loading by remember(packageId) { mutableStateOf(true) }
     var error by remember(packageId) { mutableStateOf<String?>(null) }
     var quote by remember(packageId) { mutableStateOf<PackageQuote?>(null) }
@@ -118,32 +125,56 @@ fun FlightFirstPackageDetailScreen(
     var makkahDinner by rememberSaveable(packageId) { mutableStateOf(false) }
     var madinahDinner by rememberSaveable(packageId) { mutableStateOf(false) }
 
-    LaunchedEffect(packageId) {
+    LaunchedEffect(packageId, sharedConfiguration) {
         loading = true
         error = null
         runCatching {
             val loaded = service.storefrontPackage(packageId)
             val flightBoard = service.storefrontFlightBoard(loaded.originCode)
-            val hotels = service.listHotels("Makkah") + service.listHotels("Madinah")
+            val hotels = service.listHotels(listOf("Makkah", "Mecca", "Mekka")) + service.listHotels(listOf("Madinah", "Medina", "Madina"))
             Triple(loaded, flightBoard.options, hotels)
         }.onSuccess { (loaded, options, hotels) ->
             snapshot = loaded
             board = options
             makkahHotel = hotels.firstOrNull { it.id == loaded.makkahHotelId || it.id == loaded.hotelFirstAnchorHotelId }
-            madinahHotel = hotels.firstOrNull { it.id == loaded.madinahHotelId }
+            madinahCandidates = hotels.filter { isMadinahCity(it.city) }
+            val restoredScope = sharedConfiguration?.scope
+                ?: if ((loaded.madinahNights ?: 0) > 0) JourneyScope.MAKKAH_AND_MADINAH else JourneyScope.MAKKAH_ONLY
+            routeScope = restoredScope
+            firstSaudiCity = sharedConfiguration?.firstSaudiCity
+                ?: if (loaded.outbound?.destination.equals("MED", true)) SaudiArrivalAirport.MADINAH else SaudiArrivalAirport.JEDDAH
+            val tier = PackageTier.entries.firstOrNull { it.wireValue.equals(loaded.tier, true) } ?: PackageTier.STANDARD
+            madinahHotel = if (restoredScope == JourneyScope.MAKKAH_AND_MADINAH) {
+                hotels.firstOrNull { it.id == loaded.madinahHotelId } ?: defaultMadinahHotel(madinahCandidates, tier)
+            } else null
             val config = loaded.configuration
-            adults = config?.adults?.coerceIn(1, 9) ?: 2
-            children = config?.children?.coerceIn(0, 8) ?: 0
-            infants = config?.infants?.coerceIn(0, 4) ?: 0
-            rooms = config?.rooms?.coerceIn(1, 9) ?: 1
-            makkahLunch = config?.makkahLunch ?: false
-            makkahDinner = config?.makkahDinner ?: false
-            madinahDinner = config?.madinahDinner ?: false
-            val originalOutbound = loaded.outbound ?: resolvePackageLeg(options, loaded.outboundOfferId, true)
-            val originalInbound = loaded.inbound ?: resolvePackageLeg(options, loaded.inboundOfferId, false)
+            var restoredAdults = (sharedConfiguration?.adults ?: config?.adults ?: 2).coerceIn(1, 9)
+            var restoredChildren = (sharedConfiguration?.children ?: config?.children ?: 0).coerceIn(0, 8)
+            var restoredInfants = (sharedConfiguration?.infants ?: config?.infants ?: 0).coerceIn(0, 4)
+            val overflow = (restoredAdults + restoredChildren + restoredInfants - 9).coerceAtLeast(0)
+            if (overflow > 0) {
+                val infantReduction = minOf(restoredInfants, overflow)
+                restoredInfants -= infantReduction
+                restoredChildren = (restoredChildren - (overflow - infantReduction)).coerceAtLeast(0)
+            }
+            adults = restoredAdults
+            children = restoredChildren
+            infants = restoredInfants
+            rooms = (sharedConfiguration?.rooms ?: config?.rooms ?: 1).coerceIn(1, 9)
+            val restoredMeals = sharedConfiguration?.mealSelection
+            makkahLunch = restoredMeals?.makkahLunch ?: config?.makkahLunch ?: false
+            makkahDinner = restoredMeals?.makkahDinner ?: config?.makkahDinner ?: false
+            madinahDinner = restoredMeals?.madinahDinner ?: config?.madinahDinner ?: false
+
+            val restoredOutboundID = sharedConfiguration?.outboundOptionId ?: loaded.outboundOfferId
+            val restoredInboundID = sharedConfiguration?.inboundOptionId ?: loaded.inboundOfferId
+            val originalOutbound = restoredOutboundID?.let { resolvePackageLeg(options, it, true) }
+                ?: loaded.outbound ?: resolvePackageLeg(options, loaded.outboundOfferId, true)
+            val originalInbound = restoredInboundID?.let { resolvePackageLeg(options, it, false) }
+                ?: loaded.inbound ?: resolvePackageLeg(options, loaded.inboundOfferId, false)
             if (originalOutbound != null && originalInbound != null) {
-                outboundChoice = PackageFlightChoice(loaded.outboundOfferId ?: packageId, originalOutbound)
-                inboundChoice = PackageFlightChoice(loaded.inboundOfferId ?: packageId, originalInbound)
+                outboundChoice = PackageFlightChoice(restoredOutboundID ?: loaded.outboundOfferId ?: packageId, originalOutbound)
+                inboundChoice = PackageFlightChoice(restoredInboundID ?: loaded.inboundOfferId ?: packageId, originalInbound)
             }
             quote = loaded.packageQuoteFallback()
             loading = false
@@ -170,6 +201,9 @@ fun FlightFirstPackageDetailScreen(
         makkahLunch,
         makkahDinner,
         madinahDinner,
+        routeScope,
+        firstSaudiCity,
+        madinahHotel?.id,
     ) {
         val value = loaded ?: return@LaunchedEffect
         val out = currentOutbound ?: return@LaunchedEffect
@@ -178,6 +212,7 @@ fun FlightFirstPackageDetailScreen(
         val inID = inboundId ?: return@LaunchedEffect
         delay(240)
         repricing = true
+        val stay = packageStayNights(out, inbound, routeScope == JourneyScope.MAKKAH_AND_MADINAH)
         runCatching {
             service.storefrontPackageQuote(
                 snapshot = value,
@@ -196,6 +231,11 @@ fun FlightFirstPackageDetailScreen(
                 haramainEnabled = value.configuration?.haramainEnabled ?: false,
                 haramainFareClass = value.configuration?.haramainFareClass ?: "economy",
                 haramainTicketCount = value.configuration?.haramainTicketCount ?: (adults + children),
+                makkahHotelIdOverride = makkahHotel?.id,
+                madinahHotelIdOverride = madinahHotel?.id,
+                makkahNightsOverride = stay.first,
+                madinahNightsOverride = stay.second,
+                includeMadinahOverride = routeScope == JourneyScope.MAKKAH_AND_MADINAH,
             )
         }.onSuccess { quote = it }.onFailure { if (quote == null) error = it.message }
         repricing = false
@@ -220,7 +260,7 @@ fun FlightFirstPackageDetailScreen(
         }
     }
     val currentQuote = quote ?: loaded.packageQuoteFallback()
-    val canBook = quote != null && currentOutbound != null && currentInbound != null && makkahHotel != null && ((loaded.madinahNights ?: 0) <= 0 || madinahHotel != null)
+    val canBook = quote != null && currentOutbound != null && currentInbound != null && makkahHotel != null && (routeScope != JourneyScope.MAKKAH_AND_MADINAH || madinahHotel != null)
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         PackageTopBar(
@@ -234,7 +274,58 @@ fun FlightFirstPackageDetailScreen(
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
         item { PackageHero(loaded, currentOutbound, currentInbound, currentQuote, images, language) }
-        item { PackageOverviewCard(loaded, currentOutbound, currentInbound, language) }
+        if (loaded.entryMode.equals("hotel-first", true)) {
+            item {
+                HotelFirstRouteCard(
+                    language = language,
+                    scope = routeScope,
+                    firstSaudiCity = firstSaudiCity,
+                    onFirstCity = { city ->
+                        val routeFlights = selectBestFlightsForRoute(board, loaded.originCode, routeScope, city)
+                        if (routeFlights == null) {
+                            error = detailText(language, "no_alternatives")
+                        } else {
+                            firstSaudiCity = city
+                            outboundChoice = routeFlights.first
+                            inboundChoice = routeFlights.second
+                            error = null
+                        }
+                    },
+                    onAddMadinah = { city ->
+                        val tier = PackageTier.entries.firstOrNull { it.wireValue.equals(loaded.tier, true) } ?: PackageTier.STANDARD
+                        val selected = defaultMadinahHotel(madinahCandidates, tier)
+                        val routeFlights = selectBestFlightsForRoute(board, loaded.originCode, JourneyScope.MAKKAH_AND_MADINAH, city)
+                        if (selected == null) {
+                            error = routeText(language, "madinah_unavailable")
+                        } else if (routeFlights == null) {
+                            error = detailText(language, "no_alternatives")
+                        } else {
+                            routeScope = JourneyScope.MAKKAH_AND_MADINAH
+                            firstSaudiCity = city
+                            madinahHotel = selected
+                            outboundChoice = routeFlights.first
+                            inboundChoice = routeFlights.second
+                            error = null
+                        }
+                    },
+                    onRemoveMadinah = {
+                        val routeFlights = selectBestFlightsForRoute(board, loaded.originCode, JourneyScope.MAKKAH_ONLY, SaudiArrivalAirport.JEDDAH)
+                        if (routeFlights == null) {
+                            error = detailText(language, "no_alternatives")
+                        } else {
+                            routeScope = JourneyScope.MAKKAH_ONLY
+                            firstSaudiCity = SaudiArrivalAirport.JEDDAH
+                            madinahHotel = null
+                            madinahDinner = false
+                            outboundChoice = routeFlights.first
+                            inboundChoice = routeFlights.second
+                            error = null
+                        }
+                    },
+                )
+            }
+        }
+        item { PackageOverviewCard(loaded, currentOutbound, currentInbound, language, routeScope) }
 
         item { DetailSectionHeader(detailText(language, "flights"), "iumrah Flights Scanner") }
         currentOutbound?.let { leg ->
@@ -261,18 +352,20 @@ fun FlightFirstPackageDetailScreen(
         item { DetailSectionHeader(detailText(language, "hotels"), "iumrah Hotels") }
         makkahHotel?.let { hotel ->
             item {
-                PackageHotelCard(hotel, loaded.makkahNights ?: 1, language) { chrome.openHotel(hotel.id) }
+                val nights = if (currentOutbound != null && currentInbound != null) packageStayNights(currentOutbound, currentInbound, routeScope == JourneyScope.MAKKAH_AND_MADINAH).first else (loaded.makkahNights ?: 1)
+                PackageHotelCard(hotel, nights, language) { chrome.openHotel(hotel.id) }
             }
         } ?: item {
             PackageHotelFallbackCard(loaded.hotelName ?: "iumrah Hotel", "Makkah", loaded.hotelStars, loaded.makkahNights ?: 1, loaded.hotelImages.firstOrNull(), language)
         }
-        if ((loaded.madinahNights ?: 0) > 0) {
+        if (routeScope == JourneyScope.MAKKAH_AND_MADINAH) {
+            val stay = if (currentOutbound != null && currentInbound != null) packageStayNights(currentOutbound, currentInbound, true) else Pair(maxOf(1, loaded.makkahNights ?: 1), maxOf(1, loaded.madinahNights ?: 1))
             madinahHotel?.let { hotel ->
                 item {
-                    PackageHotelCard(hotel, loaded.madinahNights ?: 1, language) { chrome.openHotel(hotel.id) }
+                    PackageHotelCard(hotel, stay.second, language) { chrome.openHotel(hotel.id) }
                 }
             } ?: item {
-                PackageHotelFallbackCard(loaded.hotelSecondaryName ?: detailText(language, "madinah_hotel"), "Madinah", loaded.hotelStars, loaded.madinahNights ?: 1, loaded.hotelImages.drop(1).firstOrNull(), language)
+                PackageHotelFallbackCard(loaded.hotelSecondaryName ?: detailText(language, "madinah_hotel"), "Madinah", loaded.hotelStars, stay.second, loaded.hotelImages.drop(1).firstOrNull(), language)
             }
         }
 
@@ -280,7 +373,7 @@ fun FlightFirstPackageDetailScreen(
         item {
             IncludedServicesCard(
                 language = language,
-                includeMadinah = (loaded.madinahNights ?: 0) > 0,
+                includeMadinah = routeScope == JourneyScope.MAKKAH_AND_MADINAH,
                 makkahLunch = makkahLunch,
                 makkahDinner = makkahDinner,
                 madinahDinner = madinahDinner,
@@ -323,7 +416,18 @@ fun FlightFirstPackageDetailScreen(
                     val inbound = currentInbound ?: return@IumrahPrimaryButton
                     val valueQuote = currentQuote ?: return@IumrahPrimaryButton
                     val mHotel = makkahHotel ?: return@IumrahPrimaryButton
-                    val trip = buildTrip(loaded, out, inbound, adults, children, infants, rooms)
+                    val trip = buildTrip(
+                        snapshot = loaded,
+                        outbound = out,
+                        inbound = inbound,
+                        adults = adults,
+                        children = children,
+                        infants = infants,
+                        rooms = rooms,
+                        mealSelection = PackageMealSelection(makkahLunch, makkahDinner, madinahDinner),
+                        scopeOverride = routeScope,
+                        firstSaudiCityOverride = firstSaudiCity,
+                    )
                     val flight = buildJourneyCandidate(loaded, out, inbound, outboundId ?: packageId, inboundId ?: packageId)
                     journey.applyStorefrontPackage(trip, mHotel, madinahHotel, flight, valueQuote)
                     chrome.openBookingCheckout()
@@ -437,11 +541,104 @@ private fun PackageHero(
 }
 
 @Composable
-private fun PackageOverviewCard(snapshot: StorefrontPackageSnapshot, outbound: StorefrontFlightLeg?, inbound: StorefrontFlightLeg?, language: AppLanguage) {
-    val days = snapshot.totalDays ?: runCatching {
-        val start = LocalDate.parse(outbound?.departureAt?.take(10)); val end = LocalDate.parse(inbound?.departureAt?.take(10)); java.time.temporal.ChronoUnit.DAYS.between(start, end).toInt().coerceAtLeast(1)
-    }.getOrDefault(1)
-    val scope = if ((snapshot.madinahNights ?: 0) > 0) detailText(language, "makkah_madinah") else detailText(language, "makkah_only")
+private fun HotelFirstRouteCard(
+    language: AppLanguage,
+    scope: JourneyScope,
+    firstSaudiCity: SaudiArrivalAirport,
+    onFirstCity: (SaudiArrivalAirport) -> Unit,
+    onAddMadinah: (SaudiArrivalAirport) -> Unit,
+    onRemoveMadinah: () -> Unit,
+) {
+    var choosingFirstCity by rememberSaveable { mutableStateOf(false) }
+    IumrahCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            IconBadge(CupertinoSymbol.Route, Color(0xFF30B0C7), 44)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(routeText(language, "title"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (scope == JourneyScope.MAKKAH_AND_MADINAH) routeText(language, "both_subtitle") else routeText(language, "makkah_subtitle"),
+                    fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f),
+                )
+            }
+        }
+        if (scope == JourneyScope.MAKKAH_AND_MADINAH) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = .08f))
+            Text(routeText(language, "first_city").uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = .7.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f))
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(3.dp)) {
+                RouteSegment(
+                    title = routeText(language, "jeddah"),
+                    selected = firstSaudiCity == SaudiArrivalAirport.JEDDAH,
+                    modifier = Modifier.weight(1f),
+                ) { onFirstCity(SaudiArrivalAirport.JEDDAH) }
+                RouteSegment(
+                    title = routeText(language, "madinah"),
+                    selected = firstSaudiCity == SaudiArrivalAirport.MADINAH,
+                    modifier = Modifier.weight(1f),
+                ) { onFirstCity(SaudiArrivalAirport.MADINAH) }
+            }
+            IumrahPressable(
+                onClick = onRemoveMadinah,
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = 14.dp,
+                background = Color.Transparent,
+            ) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                    Text(routeText(language, "remove"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f))
+                }
+            }
+        } else {
+            IumrahPressable(
+                onClick = { choosingFirstCity = !choosingFirstCity },
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = 16.dp,
+                background = Color(0xFF30B0C7),
+            ) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    CupertinoIcon(CupertinoSymbol.Plus, null, Modifier.size(16.dp), Color.White)
+                    Text(routeText(language, "add"), Modifier.weight(1f), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    CupertinoIcon(if (choosingFirstCity) CupertinoSymbol.ChevronDown else CupertinoSymbol.ChevronRight, null, Modifier.size(13.dp), Color.White.copy(alpha = .9f))
+                }
+            }
+        }
+    }
+    if (choosingFirstCity) {
+        ModalBottomSheet(onDismissRequest = { choosingFirstCity = false }, containerColor = MaterialTheme.colorScheme.background) {
+            Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 34.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(routeText(language, "choose_first"), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                RouteChoice(routeText(language, "jeddah"), Modifier.fillMaxWidth()) { choosingFirstCity = false; onAddMadinah(SaudiArrivalAirport.JEDDAH) }
+                RouteChoice(routeText(language, "madinah"), Modifier.fillMaxWidth()) { choosingFirstCity = false; onAddMadinah(SaudiArrivalAirport.MADINAH) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RouteSegment(title: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier.clip(RoundedCornerShape(11.dp)).background(if (selected) MaterialTheme.colorScheme.surface else Color.Transparent).clickable(onClick = onClick).padding(vertical = 9.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(title, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) .92f else .55f))
+    }
+}
+
+@Composable
+private fun RouteChoice(title: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    IumrahPressable(onClick = onClick, modifier = modifier, cornerRadius = 14.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
+        Text(title, Modifier.fillMaxWidth().padding(vertical = 11.dp), textAlign = TextAlign.Center, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun PackageOverviewCard(snapshot: StorefrontPackageSnapshot, outbound: StorefrontFlightLeg?, inbound: StorefrontFlightLeg?, language: AppLanguage, scopeValue: JourneyScope) {
+    val days = if (outbound != null && inbound != null) {
+        runCatching {
+            val start = LocalDate.parse(outbound.departureAt.take(10))
+            val end = LocalDate.parse(inbound.departureAt.take(10))
+            java.time.temporal.ChronoUnit.DAYS.between(start, end).toInt().coerceAtLeast(1)
+        }.getOrDefault(snapshot.totalDays ?: 1)
+    } else snapshot.totalDays ?: 1
+    val scope = if (scopeValue == JourneyScope.MAKKAH_AND_MADINAH) detailText(language, "makkah_madinah") else detailText(language, "makkah_only")
     IumrahCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconBadge(CupertinoSymbol.AirplaneTakeoff, Color(0xFF2679FF))
@@ -822,6 +1019,78 @@ private fun PackageLoadFailure(language: AppLanguage, error: String?, onBack: ()
     }
 }
 
+private fun isMadinahCity(city: String): Boolean {
+    val value = city.lowercase(Locale.US)
+    return value.contains("madin") || value.contains("medin")
+}
+
+private fun defaultMadinahHotel(hotels: List<HotelSummary>, tier: PackageTier): HotelSummary? {
+    val exact = hotels.filter { (it.stars ?: 0) == tier.primaryHotelStars && it.hasFreshCatalogPrice }
+    return exact.firstOrNull() ?: hotels.firstOrNull { it.hasFreshCatalogPrice } ?: hotels.firstOrNull { (it.stars ?: 0) == tier.primaryHotelStars } ?: hotels.firstOrNull()
+}
+
+private fun selectBestFlightsForRoute(
+    options: List<StorefrontFlightOption>,
+    originCode: String,
+    scope: JourneyScope,
+    firstSaudiCity: SaudiArrivalAirport,
+): Pair<PackageFlightChoice, PackageFlightChoice>? {
+    val origin = originCode.uppercase()
+    val outboundDestination = if (scope == JourneyScope.MAKKAH_ONLY) "JED" else firstSaudiCity.iata
+    val returnOrigin = when {
+        scope == JourneyScope.MAKKAH_ONLY -> "JED"
+        firstSaudiCity == SaudiArrivalAirport.MADINAH -> "JED"
+        else -> "MED"
+    }
+    fun candidates(from: String, to: String): List<PackageFlightChoice> = buildList {
+        options.forEach { option ->
+            val legs = buildList { add(option.outbound); option.inbound?.let(::add) }
+            legs.filter { it.origin.equals(from, true) && it.destination.equals(to, true) }
+                .forEach { add(PackageFlightChoice(option.id, it)) }
+        }
+    }.distinctBy { "${it.id}:${it.leg.flightNumber}:${it.leg.departureAt}" }.sortedBy { it.leg.departureAt }
+    val out = candidates(origin, outboundDestination).firstOrNull() ?: return null
+    val inbound = candidates(returnOrigin, origin).firstOrNull()
+        ?: if (origin != "TAS") candidates(returnOrigin, "TAS").firstOrNull() else null
+        ?: return null
+    return out to inbound
+}
+
+private fun packageStayNights(outbound: StorefrontFlightLeg, inbound: StorefrontFlightLeg, includeMadinah: Boolean): Pair<Int, Int> {
+    val start = parseDay(outbound.arrivalAt)
+    val end = parseDay(inbound.departureAt)
+    val total = java.time.temporal.ChronoUnit.DAYS.between(start, end).toInt().coerceAtLeast(1)
+    if (!includeMadinah || total <= 1) return total to 0
+    val makkah = ceil(total * .6).toInt().coerceIn(1, total - 1)
+    return makkah to (total - makkah).coerceAtLeast(1)
+}
+
+private fun routeText(language: AppLanguage, key: String): String {
+    val values = when (language) {
+        AppLanguage.RUSSIAN -> mapOf(
+            "title" to "Маршрут поездки", "makkah_subtitle" to "Сейчас пакет собран только для Мекки", "both_subtitle" to "Мекка и Медина включены в один маршрут",
+            "first_city" to "Первый город", "jeddah" to "Сначала Мекка", "madinah" to "Сначала Медина", "add" to "Добавить Медину",
+            "remove" to "Убрать Медину из пакета", "choose_first" to "С какого города начать поездку?", "madinah_unavailable" to "Сейчас не удалось подобрать отель iumrah в Медине."
+        )
+        AppLanguage.ENGLISH -> mapOf(
+            "title" to "Trip route", "makkah_subtitle" to "The package currently covers Makkah only", "both_subtitle" to "Makkah and Madinah are included in one route",
+            "first_city" to "First city", "jeddah" to "Makkah first", "madinah" to "Madinah first", "add" to "Add Madinah",
+            "remove" to "Remove Madinah from package", "choose_first" to "Which city should come first?", "madinah_unavailable" to "An iumrah hotel in Madinah is not available right now."
+        )
+        AppLanguage.UZBEK -> mapOf(
+            "title" to "Safar yo‘nalishi", "makkah_subtitle" to "Hozir paket faqat Makka uchun", "both_subtitle" to "Makka va Madina bitta yo‘nalishga qo‘shilgan",
+            "first_city" to "Birinchi shahar", "jeddah" to "Avval Makka", "madinah" to "Avval Madina", "add" to "Madinani qo‘shish",
+            "remove" to "Madinani paketdan olib tashlash", "choose_first" to "Safarni qaysi shahardan boshlaysiz?", "madinah_unavailable" to "Hozir Madinada iumrah mehmonxonasini tanlab bo‘lmadi."
+        )
+        AppLanguage.UZBEK_CYRILLIC -> mapOf(
+            "title" to "Сафар йўналиши", "makkah_subtitle" to "Ҳозир пакет фақат Макка учун", "both_subtitle" to "Макка ва Мадина битта йўналишга қўшилган",
+            "first_city" to "Биринчи шаҳар", "jeddah" to "Аввал Макка", "madinah" to "Аввал Мадина", "add" to "Мадинани қўшиш",
+            "remove" to "Мадинани пакетдан олиб ташлаш", "choose_first" to "Сафарни қайси шаҳардан бошлайсиз?", "madinah_unavailable" to "Ҳозир Мадинада iumrah меҳмонхонасини танлаб бўлмади."
+        )
+    }
+    return values[key] ?: key
+}
+
 private fun resolvePackageLeg(options: List<StorefrontFlightOption>, id: String?, outbound: Boolean): StorefrontFlightLeg? {
     val option = options.firstOrNull { it.id == id } ?: return null
     return if (outbound) option.outbound else option.inbound ?: option.outbound
@@ -852,12 +1121,15 @@ private fun buildTrip(
     children: Int,
     infants: Int,
     rooms: Int,
+    mealSelection: PackageMealSelection,
+    scopeOverride: JourneyScope? = null,
+    firstSaudiCityOverride: SaudiArrivalAirport? = null,
 ): TripDraft {
     val tier = PackageTier.entries.firstOrNull { it.wireValue.equals(snapshot.tier, true) } ?: PackageTier.STANDARD
     val includeMadinah = (snapshot.madinahNights ?: 0) > 0
     return TripDraft(
         origin = outbound.origin.uppercase(),
-        arrivalAirport = if (outbound.destination.equals("MED", true)) SaudiArrivalAirport.MADINAH else SaudiArrivalAirport.JEDDAH,
+        arrivalAirport = firstSaudiCityOverride ?: if (outbound.destination.equals("MED", true)) SaudiArrivalAirport.MADINAH else SaudiArrivalAirport.JEDDAH,
         departureDate = parseDay(outbound.departureAt),
         saudiArrivalDate = parseDay(outbound.arrivalAt),
         returnDate = parseDay(inbound.departureAt),
@@ -867,14 +1139,8 @@ private fun buildTrip(
         rooms = rooms,
         hotelStars = when (tier) { PackageTier.ECONOMY -> 2; PackageTier.STANDARD -> 3; PackageTier.COMFORT -> 4; PackageTier.LUXURY -> 5 },
         packageTier = tier,
-        mealSelection = snapshot.configuration?.let { config ->
-            com.iumrah.beta.domain.trip.PackageMealSelection(
-                makkahLunch = config.makkahLunch,
-                makkahDinner = config.makkahDinner,
-                madinahDinner = config.madinahDinner,
-            )
-        },
-        scope = if (includeMadinah) JourneyScope.MAKKAH_AND_MADINAH else JourneyScope.MAKKAH_ONLY,
+        mealSelection = mealSelection,
+        scope = scopeOverride ?: if (includeMadinah) JourneyScope.MAKKAH_AND_MADINAH else JourneyScope.MAKKAH_ONLY,
         hotelFirstStayPolicy = if (snapshot.entryMode.equals("hotel-first", true)) true else null,
         flightTripType = FlightTripType.ROUND_TRIP,
     )

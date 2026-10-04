@@ -235,10 +235,12 @@ fun FlightSearchScreen(
 fun ReturnFlightScreen(
     language: AppLanguage,
     journey: JourneyStore,
+    provider: IgnavFlightInventoryProvider,
     packageEngine: RemotePackageEngineClient,
     chrome: AppChromeStore,
 ) {
     val state by journey.state.collectAsState()
+    val scope = rememberCoroutineScope()
     val outbound = state.selectedOutboundJourney
     val candidates = remember(state.flightResults, outbound?.id) {
         if (outbound == null) emptyList() else state.flightResults.filter { sameFlight(it.outbound, outbound.outbound) && it.inbound != null }
@@ -267,7 +269,7 @@ fun ReturnFlightScreen(
             dateText = formatDate(state.trip.returnDate.toString(), language),
             message = searchGateFallback(language),
             chrome = chrome,
-            onRetry = chrome::back,
+            onRetry = { scope.launch { journey.continueSearchFlights(provider) } },
         )
         return
     }
@@ -287,9 +289,9 @@ fun ReturnFlightScreen(
             "Return tickets found: ${candidates.size}",
             "Qaytish chiptalari topildi: ${candidates.size}",
             "Қайтиш чипталари топилди: ${candidates.size}"),
-        isSearching = false,
+        isSearching = state.isSearchingFlights,
         hasResults = true,
-        onContinueSearch = {},
+        onContinueSearch = { scope.launch { journey.continueSearchFlights(provider) } },
         continueVisible = selectedId != null,
         continueTitle = tr(language, "Выбрать билет и продолжить к трансферу", "Select ticket and continue to transfer", "Chiptani tanlash va transferga o‘tish", "Чиптани танлаш ва трансферга ўтиш"),
         onContinue = chrome::openTransferSelection,
