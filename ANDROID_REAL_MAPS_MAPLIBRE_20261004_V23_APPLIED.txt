@@ -1,0 +1,23 @@
+ANDROID_REAL_MAPS_MAPLIBRE_20261004_V23_APPLIED
+
+Baseline: Android current iOS parity v22.
+
+Implemented:
+- Replaced the fake Canvas Ziyarats map with a real interactive MapLibre Native map.
+- Added OpenFreeMap Positron vector basemap for an Apple-like muted standard style.
+- Added open VersaTiles satellite raster mode with source attribution.
+- Ziyarats route is now drawn against geographic coordinates and stays attached during pan/zoom.
+- Ziyarats pins are geographic, selectable, camera-aware, and support fit-route / standard / satellite states.
+- Replaced the Configurator fake airport globe with a real interactive map.
+- Airport map supports pan/zoom/rotate, geographic airport pins, map-tap airport resolution, camera focus, and reset-to-world/current-airport.
+- Reused the same airport map from the Hotels airport picker.
+- Added MapLibre Native Android OpenGL dependency for broad device compatibility.
+
+Map stack:
+- org.maplibre.gl:android-sdk-opengl:13.6.1
+- Standard: https://tiles.openfreemap.org/styles/positron
+- Satellite: https://tiles.versatiles.org/tiles/satellite/{z}/{x}/{y}
+
+Verification:
+- Repository structural verification stages 2 through 10 pass.
+- Kotlin parser pass showed no syntax errors in modified Kotlin sources (Android/Compose symbols remain unresolved without Android SDK classpath, as expected in the local container).

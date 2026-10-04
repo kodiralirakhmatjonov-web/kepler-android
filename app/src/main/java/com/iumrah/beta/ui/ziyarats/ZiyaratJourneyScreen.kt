@@ -5,14 +5,12 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -47,14 +45,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.runtime.mutableStateMapOf
+import com.iumrah.beta.ui.map.IumrahMapLibreView
+import com.iumrah.beta.ui.map.IumrahMapStyle
+import com.iumrah.beta.ui.map.rememberIumrahMapController
+import org.maplibre.android.annotations.PolylineOptions
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.maps.MapLibreMap
+import kotlin.math.roundToInt
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -63,7 +69,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -106,6 +111,7 @@ fun ZiyaratJourneyScreen(
     var welcomeVisible by remember { mutableStateOf(true) }
     var welcomeCopyVisible by remember { mutableStateOf(false) }
     var revealedStops by remember { mutableIntStateOf(0) }
+    var fitRouteNonce by remember { mutableIntStateOf(0) }
 
     DisposableEffect(Unit) {
         chrome.setImmersive(true)
@@ -142,6 +148,7 @@ fun ZiyaratJourneyScreen(
             showPins = showPins,
             mode = mapMode,
             revealedStops = if (welcomeVisible) revealedStops else route.places.size,
+            fitRouteNonce = fitRouteNonce,
             onSelect = {
                 selectedPlace = it
                 tab = ZiyaratTab.PLACES
@@ -165,6 +172,7 @@ fun ZiyaratJourneyScreen(
                 selectedPlace = null
                 tab = ZiyaratTab.ROUTE
                 panelLevel = PanelLevel.CARD
+                fitRouteNonce += 1
             },
         )
 
@@ -203,6 +211,7 @@ fun ZiyaratJourneyScreen(
                 selectedPlace = null
                 showRoute = true
                 panelLevel = PanelLevel.COMPACT
+                fitRouteNonce += 1
             },
         )
 
@@ -291,100 +300,156 @@ private fun ZiyaratMapSurface(
     showPins: Boolean,
     mode: ZiyaratMapMode,
     revealedStops: Int,
+    fitRouteNonce: Int,
     onSelect: (ZiyaratPlace) -> Unit,
 ) {
     val ordered = route.places.sortedBy { it.routeOrder }
-    val bounds = remember(route) { mapBounds(ordered, route.city) }
-    BoxWithConstraints(
-        Modifier.fillMaxSize().background(if (mode == ZiyaratMapMode.STANDARD) Color(0xFFF2F0EA) else Color(0xFF17211D)),
-    ) {
-        val mapWidth = maxWidth
-        val mapHeight = maxHeight
-        Canvas(Modifier.fillMaxSize()) {
-            if (mode == ZiyaratMapMode.STANDARD) {
-                drawRect(Color(0xFFECEAE4))
-                val minor = Color(0xFFDAD6CD)
-                val major = Color.White.copy(alpha = .95f)
-                repeat(10) { index ->
-                    val y = size.height * (index + 1) / 11f
-                    drawLine(minor, Offset(0f, y), Offset(size.width, y - size.height * .11f), 2f)
-                }
-                repeat(8) { index ->
-                    val x = size.width * (index + 1) / 9f
-                    drawLine(minor, Offset(x, 0f), Offset(x + size.width * .08f, size.height), 2f)
-                }
-                drawLine(major, Offset(-20f, size.height * .38f), Offset(size.width + 30f, size.height * .56f), 13f, StrokeCap.Round)
-                drawLine(Color(0xFFD0CCC1), Offset(-20f, size.height * .38f), Offset(size.width + 30f, size.height * .56f), 2f, StrokeCap.Round)
-                drawLine(major, Offset(size.width * .28f, -20f), Offset(size.width * .52f, size.height + 20f), 10f, StrokeCap.Round)
-            } else {
-                drawRect(Color(0xFF18241F))
-                repeat(13) { index ->
-                    drawCircle(Color(0xFF33463B).copy(alpha = .5f), radius = 30f + (index % 4) * 12f, center = Offset(size.width * ((index * 37) % 100) / 100f, size.height * ((index * 61) % 100) / 100f))
-                }
-            }
-            if (showRoute && ordered.size > 1) {
-                val path = Path()
-                ordered.forEachIndexed { index, place ->
-                    val p = normalizedPoint(place, bounds, size.width, size.height)
-                    if (index == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y)
-                }
-                drawPath(path, Color.White.copy(alpha = .94f), style = Stroke(8f, cap = StrokeCap.Round))
-                drawPath(path, IumrahColors.SystemBlue, style = Stroke(4.5f, cap = StrokeCap.Round))
-            }
-        }
+    val controller = rememberIumrahMapController()
+    val map = controller.map
+    val pinPositions = remember { mutableStateMapOf<String, IntOffset>() }
 
-        if (showPins) ordered.take(revealedStops.coerceAtLeast(0)).forEach { place ->
-            val fraction = normalizedFraction(place, bounds)
-            val selected = selectedPlace?.id == place.id
-            Column(
-                Modifier.offset(x = mapWidth * fraction.first - 24.dp, y = mapHeight * fraction.second - if (selected) 70.dp else 22.dp)
-                    .clickable { onSelect(place) },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                AnimatedVisibility(selected) {
-                    Text(
-                        place.localized(language).title,
-                        modifier = Modifier.shadow(6.dp, CircleShape).clip(CircleShape).background(MaterialTheme.colorScheme.surface).border(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .08f), CircleShape).padding(horizontal = 11.dp, vertical = 7.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-                Box(
-                    Modifier.size(if (selected) 40.dp else 33.dp).clip(CircleShape)
-                        .background(if (selected) IumrahColors.SystemBlue else Color.Black.copy(alpha = .84f))
-                        .border(if (selected) 3.dp else 2.5.dp, Color.White.copy(alpha = .96f), CircleShape)
-                        .shadow(5.dp, CircleShape),
-                    contentAlignment = Alignment.Center,
+    fun updatePinPositions(activeMap: MapLibreMap = map ?: return) {
+        ordered.forEach { place ->
+            val point = activeMap.projection.toScreenLocation(LatLng(place.latitude, place.longitude))
+            pinPositions[place.id] = IntOffset(point.x.roundToInt(), point.y.roundToInt())
+        }
+    }
+
+    fun fitRoute(activeMap: MapLibreMap = map ?: return, animate: Boolean = true) {
+        if (ordered.isEmpty()) return
+        val points = ordered.map { LatLng(it.latitude, it.longitude) }
+        val update = if (points.size == 1) {
+            CameraUpdateFactory.newLatLngZoom(points.first(), 14.8)
+        } else {
+            CameraUpdateFactory.newLatLngBounds(
+                LatLngBounds.fromLatLngs(points),
+                58,
+                170,
+                58,
+                330,
+            )
+        }
+        controller.mapView.post {
+            if (animate) activeMap.animateCamera(update, 650) else activeMap.moveCamera(update)
+        }
+    }
+
+    fun redrawRoute(activeMap: MapLibreMap = map ?: return) {
+        activeMap.clear()
+        if (!showRoute || ordered.size < 2) return
+        val points = ordered.map { LatLng(it.latitude, it.longitude) }
+        activeMap.addPolyline(
+            PolylineOptions()
+                .addAll(points)
+                .color(android.graphics.Color.argb(235, 255, 255, 255))
+                .width(8f),
+        )
+        activeMap.addPolyline(
+            PolylineOptions()
+                .addAll(points)
+                .color(android.graphics.Color.rgb(0, 122, 255))
+                .width(4.5f),
+        )
+    }
+
+    LaunchedEffect(map, mode) {
+        controller.setStyle(
+            if (mode == ZiyaratMapMode.STANDARD) IumrahMapStyle.STANDARD else IumrahMapStyle.SATELLITE,
+        )
+    }
+
+    LaunchedEffect(map, controller.styleEpoch, route.id, showRoute) {
+        val activeMap = map ?: return@LaunchedEffect
+        if (controller.styleEpoch <= 0) return@LaunchedEffect
+        redrawRoute(activeMap)
+        updatePinPositions(activeMap)
+        if (selectedPlace == null) fitRoute(activeMap, animate = false)
+    }
+
+    LaunchedEffect(map, route.id, fitRouteNonce) {
+        val activeMap = map ?: return@LaunchedEffect
+        if (controller.styleEpoch <= 0) return@LaunchedEffect
+        fitRoute(activeMap, animate = fitRouteNonce > 0)
+    }
+
+    LaunchedEffect(map, selectedPlace?.id) {
+        val activeMap = map ?: return@LaunchedEffect
+        val place = selectedPlace ?: return@LaunchedEffect
+        val camera = CameraPosition.Builder()
+            .target(LatLng(place.latitude, place.longitude))
+            .zoom(maxOf(activeMap.cameraPosition.zoom, 14.7))
+            .build()
+        activeMap.animateCamera(CameraUpdateFactory.newCameraPosition(camera), 520)
+    }
+
+    DisposableEffect(map, route.id) {
+        val activeMap = map
+        if (activeMap == null) return@DisposableEffect onDispose { }
+        val moveListener = MapLibreMap.OnCameraMoveListener { updatePinPositions(activeMap) }
+        val idleListener = MapLibreMap.OnCameraIdleListener { updatePinPositions(activeMap) }
+        activeMap.addOnCameraMoveListener(moveListener)
+        activeMap.addOnCameraIdleListener(idleListener)
+        updatePinPositions(activeMap)
+        onDispose {
+            activeMap.removeOnCameraMoveListener(moveListener)
+            activeMap.removeOnCameraIdleListener(idleListener)
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        IumrahMapLibreView(controller = controller, modifier = Modifier.fillMaxSize())
+
+        if (showPins) {
+            ordered.take(revealedStops.coerceAtLeast(0)).forEach { place ->
+                val point = pinPositions[place.id] ?: return@forEach
+                val selected = selectedPlace?.id == place.id
+                Column(
+                    Modifier
+                        .offset {
+                            IntOffset(
+                                point.x - if (selected) 20.dp.roundToPx() else 17.dp.roundToPx(),
+                                point.y - if (selected) 65.dp.roundToPx() else 31.dp.roundToPx(),
+                            )
+                        }
+                        .clickable { onSelect(place) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
-                    Text(place.routeOrder.toString(), color = Color.White, fontSize = if (selected) 15.sp else 13.sp, fontWeight = FontWeight.Bold)
+                    AnimatedVisibility(selected) {
+                        Text(
+                            place.localized(language).title,
+                            modifier = Modifier
+                                .shadow(6.dp, CircleShape)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .08f), CircleShape)
+                                .padding(horizontal = 11.dp, vertical = 7.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    Box(
+                        Modifier
+                            .size(if (selected) 40.dp else 33.dp)
+                            .clip(CircleShape)
+                            .background(if (selected) IumrahColors.SystemBlue else Color.Black.copy(alpha = .84f))
+                            .border(if (selected) 3.dp else 2.5.dp, Color.White.copy(alpha = .96f), CircleShape)
+                            .shadow(5.dp, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            place.routeOrder.toString(),
+                            color = Color.White,
+                            fontSize = if (selected) 15.sp else 13.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
         }
     }
-}
-
-private data class MapBounds(val minLat: Double, val maxLat: Double, val minLon: Double, val maxLon: Double)
-private fun mapBounds(places: List<ZiyaratPlace>, city: String): MapBounds {
-    if (places.isEmpty()) return if (city.lowercase().contains("makk")) MapBounds(21.32, 21.49, 39.78, 40.00) else MapBounds(24.37, 24.56, 39.52, 39.70)
-    val minLat = places.minOf { it.latitude }
-    val maxLat = places.maxOf { it.latitude }
-    val minLon = places.minOf { it.longitude }
-    val maxLon = places.maxOf { it.longitude }
-    val latPad = max(.03, (maxLat - minLat) * .42)
-    val lonPad = max(.03, (maxLon - minLon) * .42)
-    return MapBounds(minLat - latPad, maxLat + latPad, minLon - lonPad, maxLon + lonPad)
-}
-private fun normalizedFraction(place: ZiyaratPlace, b: MapBounds): Pair<Float, Float> {
-    val x = ((place.longitude - b.minLon) / (b.maxLon - b.minLon)).toFloat().coerceIn(.06f, .94f)
-    val y = (1.0 - (place.latitude - b.minLat) / (b.maxLat - b.minLat)).toFloat().coerceIn(.08f, .83f)
-    return x to y
-}
-private fun normalizedPoint(place: ZiyaratPlace, b: MapBounds, width: Float, height: Float): Offset {
-    val f = normalizedFraction(place, b)
-    return Offset(width * f.first, height * f.second)
 }
 
 @Composable

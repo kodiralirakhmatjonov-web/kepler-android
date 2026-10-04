@@ -91,6 +91,7 @@ import com.iumrah.beta.ui.components.IumrahPrimaryButton
 import com.iumrah.beta.ui.components.IumrahRootPageHeader
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
+import com.iumrah.beta.ui.trip.IumrahAirportMapDialog
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -476,6 +477,7 @@ private fun AirportPickerDialog(
     var query by rememberSaveable { mutableStateOf(current?.iata ?: fallbackCode) }
     var results by remember { mutableStateOf<List<Airport>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
+    var showMap by remember { mutableStateOf(false) }
     LaunchedEffect(query) {
         if (query.trim().length >= 2) {
             loading = true
@@ -493,8 +495,13 @@ private fun AirportPickerDialog(
                     Text(L10n.text("airport_title", language), fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Text(hotelText(language, "airport_search_hint"), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f))
                 }
-                IumrahPressable(onClick = onDismiss, modifier = Modifier.size(42.dp), cornerRadius = 21.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CupertinoIcon(CupertinoSymbol.Close, null, Modifier.size(18.dp)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    IumrahPressable(onClick = { showMap = true }, modifier = Modifier.size(42.dp), cornerRadius = 21.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CupertinoIcon(CupertinoSymbol.Globe, null, Modifier.size(18.dp)) }
+                    }
+                    IumrahPressable(onClick = onDismiss, modifier = Modifier.size(42.dp), cornerRadius = 21.dp, background = MaterialTheme.colorScheme.surfaceVariant) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CupertinoIcon(CupertinoSymbol.Close, null, Modifier.size(18.dp)) }
+                    }
                 }
             }
             Row(
@@ -531,6 +538,19 @@ private fun AirportPickerDialog(
                 }
             }
         }
+    }
+    if (showMap) {
+        IumrahAirportMapDialog(
+            language = language,
+            service = service,
+            current = current,
+            fallbackCode = fallbackCode,
+            onDismiss = { showMap = false },
+            onSelect = { airport ->
+                showMap = false
+                onSelect(airport)
+            },
+        )
     }
 }
 
