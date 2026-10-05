@@ -606,7 +606,7 @@ private fun PrayerTimesCard(
                     }
                     Text(
                         "%02d:%02d:%02d".format(Locale.US, hours, minutes, secs),
-                        fontSize = 23.sp,
+                        fontSize = 25.sp,
                         fontWeight = FontWeight.Bold,
                     )
                 }

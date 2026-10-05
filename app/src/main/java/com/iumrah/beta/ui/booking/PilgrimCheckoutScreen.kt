@@ -31,6 +31,7 @@ import com.iumrah.beta.models.account.IumrahTravelerForm
 import com.iumrah.beta.models.account.IumrahTravelDocument
 import com.iumrah.beta.models.booking.StoredBookingSession
 import com.iumrah.beta.ui.components.IumrahPressable
+import com.iumrah.beta.ui.components.IumrahPaymentMethodsMarquee
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 import kotlinx.coroutines.Dispatchers
@@ -783,7 +784,9 @@ private fun PaymentCard(
         BookingInvoiceCompact(session, language)
         Spacer(Modifier.height(10.dp))
         FriendsBenefitUnavailableCard(language)
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
+        IumrahPaymentMethodsMarquee(modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(12.dp))
 
         BookingRaisedCard(padding = 15.dp, radius = 20.dp) {
             Text("Visa", fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .50f))

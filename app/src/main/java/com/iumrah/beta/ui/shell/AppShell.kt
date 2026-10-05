@@ -82,6 +82,7 @@ import com.iumrah.beta.ui.booking.BookingsHomeScreen
 import com.iumrah.beta.ui.booking.PilgrimCheckoutScreen
 import com.iumrah.beta.ui.care.CareHomeScreen
 import com.iumrah.beta.ui.ziyarats.ZiyaratJourneyScreen
+import com.iumrah.beta.ui.ziyarats.BookingZiyaratCatalogScreen
 import com.iumrah.beta.ui.esim.ESIMScreen
 import com.iumrah.beta.ui.liveflights.IumrahFlightsScreen
 import com.iumrah.beta.ui.planning.UmrahPlanScreen
@@ -275,6 +276,7 @@ fun AppShell(
                 is AppRoute.BookingHotelChange -> BookingHotelChangeScreen(route.bookingID, route.role, language, bookingStore, hotelCatalog, packageEngine, chrome)
                 is AppRoute.PilgrimCheckout -> PilgrimCheckoutScreen(route.bookingID, language, bookingStore, accountStore, accountService, chrome)
                 is AppRoute.BookingChat -> BookingChatScreen(route.bookingID, language, bookingStore, chatService, chrome)
+                AppRoute.BookingZiyarats -> BookingZiyaratCatalogScreen(language, chrome)
                 AppRoute.Ziyarats -> ZiyaratJourneyScreen(language, chrome)
                 AppRoute.ESIM -> ESIMScreen(language, bookingStore, chrome)
                 AppRoute.LiveFlights -> IumrahFlightsScreen(language, bookingStore, chrome)

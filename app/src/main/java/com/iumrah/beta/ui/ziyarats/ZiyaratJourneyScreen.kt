@@ -897,3 +897,227 @@ private fun zt(language: AppLanguage, ru: String, en: String, uz: String, cy: St
     AppLanguage.UZBEK -> uz
     AppLanguage.UZBEK_CYRILLIC -> cy
 }
+
+/**
+ * Booking-facing Ziyarats catalog, mirroring the focused iOS swipe carousel.
+ * The immersive map remains available as the standalone Ziyarats product.
+ */
+@Composable
+fun BookingZiyaratCatalogScreen(
+    language: AppLanguage,
+    chrome: AppChromeStore,
+    service: ZiyaratService = remember { ZiyaratService() },
+) {
+    var city by remember { mutableStateOf(JourneyCity.MAKKAH) }
+    var route by remember(city) { mutableStateOf(ZiyaratSeedData.fallback(if (city == JourneyCity.MAKKAH) "Makkah" else "Madinah")) }
+    var loading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(city) {
+        loading = true
+        route = service.route(if (city == JourneyCity.MAKKAH) "Makkah" else "Madinah")
+        loading = false
+    }
+
+    val places = remember(route) { route.places.sortedBy { it.routeOrder } }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding(),
+    ) {
+        Box(Modifier.fillMaxWidth().height(54.dp)) {
+            IumrahPressable(
+                onClick = chrome::back,
+                modifier = Modifier.align(Alignment.CenterStart).padding(start = 14.dp).size(38.dp),
+                cornerRadius = 19.dp,
+                background = MaterialTheme.colorScheme.surfaceVariant,
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Icon(CupertinoSymbol.ChevronLeft, null, Modifier.size(15.dp))
+                }
+            }
+            Text(
+                "iumrah Ziyarats",
+                modifier = Modifier.align(Alignment.Center),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp)
+                .height(38.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = .055f))
+                .padding(3.dp),
+        ) {
+            listOf(JourneyCity.MAKKAH, JourneyCity.MADINAH).forEach { item ->
+                val active = item == city
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (active) MaterialTheme.colorScheme.surface else Color.Transparent)
+                        .clickable { city = item },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        if (item == JourneyCity.MAKKAH) zt(language, "Мекка", "Makkah", "Makka", "Макка")
+                        else zt(language, "Медина", "Madinah", "Madina", "Мадина"),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+        }
+
+        Column(
+            Modifier.padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Text(
+                zt(language, "Места Вашей программы", "Places in your program", "Dasturingizdagi joylar", "Дастурингиздаги жойлар"),
+                fontSize = 28.sp,
+                lineHeight = 32.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-.5).sp,
+            )
+            Text(
+                zt(
+                    language,
+                    "Листайте карточки — фото и подробности каждого места уже собраны здесь.",
+                    "Swipe through the cards — photos and details for every stop are already here.",
+                    "Kartalarni suring — har bir joyning fotosi va tafsilotlari shu yerda.",
+                    "Карталарни суринг — ҳар бир жойнинг фотоси ва тафсилотлари шу ерда.",
+                ),
+                fontSize = 14.sp,
+                lineHeight = 19.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f),
+            )
+        }
+
+        when {
+            loading && places.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+            }
+            places.isEmpty() -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(CupertinoSymbol.Map, null, Modifier.size(30.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .45f))
+                    Text(
+                        zt(language, "Места пока не опубликованы", "No places published yet", "Joylar hali e’lon qilinmagan", "Жойлар ҳали эълон қилинмаган"),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = .58f),
+                    )
+                }
+            }
+            else -> {
+                val pager = rememberPagerState(pageCount = { places.size })
+                LaunchedEffect(city, places.size) {
+                    if (places.isNotEmpty() && pager.currentPage != 0) pager.scrollToPage(0)
+                }
+                HorizontalPager(
+                    state = pager,
+                    modifier = Modifier.fillMaxSize(),
+                    pageSpacing = 12.dp,
+                    contentPadding = PaddingValues(horizontal = 18.dp),
+                ) { page ->
+                    BookingZiyaratCarouselCard(language, places[page])
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookingZiyaratCarouselCard(language: AppLanguage, place: ZiyaratPlace) {
+    val content = place.localized(language)
+    val primary = place.images.sortedBy { it.position }.firstOrNull()
+    val shape = RoundedCornerShape(30.dp)
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = 18.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .075f), shape),
+        contentPadding = PaddingValues(bottom = 22.dp),
+    ) {
+        item {
+            Box(Modifier.fillMaxWidth().height(270.dp)) {
+                ZiyaratImageThumb(primary, Modifier.fillMaxSize())
+                if (place.images.size > 1) {
+                    Row(
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(12.dp)
+                            .height(30.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = .52f))
+                            .padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Icon(CupertinoSymbol.Photo, null, Modifier.size(13.dp), Color.White)
+                        Text(place.images.size.toString(), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+        item {
+            Column(
+                Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(Modifier.size(30.dp).clip(CircleShape).background(Color.Black), contentAlignment = Alignment.Center) {
+                        Text(place.routeOrder.toString(), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text(
+                        content.title,
+                        modifier = Modifier.weight(1f),
+                        fontSize = 24.sp,
+                        lineHeight = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-.35).sp,
+                    )
+                }
+
+                if (place.titleArabic.isNotBlank()) {
+                    Text(place.titleArabic, fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .62f))
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MetaCapsule(CupertinoSymbol.Clock, zt(language, "${place.durationMinutes} мин", "${place.durationMinutes} min", "${place.durationMinutes} daq", "${place.durationMinutes} дақ"))
+                    MetaCapsule(categoryIcon(place.category), categoryTitle(language, place.category))
+                }
+
+                Text(content.shortDescription, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold)
+
+                if (content.longDescription.isNotBlank()) {
+                    InfoSection(zt(language, "О месте", "About", "Joy haqida", "Жой ҳақида"), content.longDescription)
+                }
+
+                if (content.interestingFacts.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(zt(language, "Интересные факты", "Interesting facts", "Qiziqarli faktlar", "Қизиқарли фактлар"), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        content.interestingFacts.forEach { fact ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.Top) {
+                                Box(Modifier.padding(top = 7.dp).size(6.dp).clip(CircleShape).background(IumrahColors.SystemBlue))
+                                Text(fact, modifier = Modifier.weight(1f), fontSize = 14.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .82f))
+                            }
+                        }
+                    }
+                }
+
+                if (content.visitNotes.isNotBlank()) {
+                    InfoSection(zt(language, "Во время посещения", "During the visit", "Tashrif paytida", "Ташриф пайтида"), content.visitNotes)
+                }
+            }
+        }
+    }
+}

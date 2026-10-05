@@ -1717,9 +1717,9 @@ private fun TripManagement(
             DividerLine(65.dp)
             ManagementRow(
                 CupertinoSymbol.Route,
-                t(language, "Зияраты", "Ziyarat", "Ziyorat", "Зиёрат"),
-                t(language, "Маршрут и места посещения", "Route and places to visit", "Yo‘nalish va tashrif joylari", "Йўналиш ва ташриф жойлари"),
-            ) { chrome.openBookingDetail(session.id) }
+                t(language, "Зияраты", "Ziyarats", "Ziyoratlar", "Зиёратлар"),
+                t(language, "Фото, подробности и места Вашей программы", "Photos, details and places in your program", "Dasturingizdagi fotosuratlar, tafsilotlar va joylar", "Дастурингиздаги фотосуратлар, тафсилотлар ва жойлар"),
+            ) { chrome.openBookingZiyarats() }
             DividerLine(65.dp)
             ManagementRow(
                 CupertinoSymbol.Plus,

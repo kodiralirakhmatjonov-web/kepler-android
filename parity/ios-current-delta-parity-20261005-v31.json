@@ -1,0 +1,20 @@
+{
+  "version": 31,
+  "date": "2026-10-05",
+  "source": "kepler-ios-main 3(7)",
+  "target": "kepler-android-main 2(1) + cumulative v28-v30",
+  "parity_target": "IUMRAH_ZIYARATS_WIDGETS_PAYMENTS_ACCOUNT_V4_20261004_APPLIED.txt",
+  "implemented": [
+    "account services block",
+    "wallet placement after travelers",
+    "payment methods marquee on account/policies/checkout",
+    "booking ziyarat swipe catalog",
+    "standalone map-first ziyarat preserved",
+    "prayer HH:MM:SS sizing alignment"
+  ],
+  "deferred_to_next_packet": [
+    "verified lead guide + founder contact surface",
+    "guide/transfer airport meeting details",
+    "passport/status/guide redesign delta"
+  ]
+}

@@ -51,6 +51,7 @@ import com.iumrah.beta.models.account.IumrahTravelerForm
 import com.iumrah.beta.models.booking.StoredBookingSession
 import com.iumrah.beta.models.notification.ClientSystemNotification
 import com.iumrah.beta.ui.booking.IumrahSecurityConfirmationPanel
+import com.iumrah.beta.ui.components.IumrahPaymentMethodsMarquee
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
 import kotlinx.coroutines.launch
@@ -111,6 +112,7 @@ fun AccountRootScreen(
             item { IumrahIdentityHeroAndroid(profile, language) }
             item { IumrahUserDataEntryCardAndroid(language, profile.displayName) { chrome.openAccountUserData() } }
             item { TravelCompanionsParityCard(language) { chrome.openAccountTravelers() } }
+            item { WalletSection(profile, language) }
             bookings.sessions.firstOrNull { !it.isPastAccountTrip() }?.let { active ->
                 item { IumrahTripWalletEntryAndroid(active, profile, language) }
             }
@@ -118,9 +120,9 @@ fun AccountRootScreen(
                 item { ActiveTripCard(active, language) { chrome.openBookingDetail(active.id) } }
             }
             item { TripsSection(bookings.sessions, language, chrome) }
-            item { WalletSection(profile, language) }
             item { TelegramIntegrationCard(language) { chrome.openAccountTelegramIntegration() } }
             item { PaymentSecuritySection(language, bookings.sessions.firstOrNull(), true, chrome) }
+            item { ServicesSection(language, chrome) }
             item { SettingsSection(language, settings.appearance, signalState.unreadCount, notificationDeliveryStatus, chrome, context) }
             item {
                 Row(
@@ -417,7 +419,9 @@ private fun ProfileSection(profile: IumrahAccountProfile, language: AppLanguage,
 
 @Composable
 private fun PaymentSecuritySection(language: AppLanguage, trip: StoredBookingSession?, authenticated: Boolean, chrome: AppChromeStore) {
-    SectionCard(tr(language,"Payment & security","Оплата и безопасность","To‘lov va xavfsizlik","Тўлов ва хавфсизлик"),tr(language,"Payment, policies, KYC and account protection","Оплата, правила, KYC и защита аккаунта","To‘lov, qoidalar, KYC va akkaunt himoyasi","Тўлов, қоидалар, KYC ва аккаунт ҳимояси"),CupertinoSymbol.LockShield) {
+    SectionCard(tr(language,"Payment & security","Оплата и безопасность","To‘lov va xavfsizlik","Тўлов ва хавфсизлик"),tr(language,"Payment, policies, KYC and account protection","Оплата, правила, KYC и защита аккаунта","Тўлов, қоидалар, KYC ва аккаунт ҳимояси"),CupertinoSymbol.LockShield) {
+        IumrahPaymentMethodsMarquee(compact = true, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
         SettingsRow(CupertinoSymbol.CreditCard,tr(language,"Payment","Оплата","To‘lov","Тўлов"),tr(language,"Method, confirmation and payment security","Способ, подтверждение и безопасность платежа","Usul, tasdiqlash va to‘lov xavfsizligi","Усул, тасдиқлаш ва тўлов хавфсизлиги")){chrome.openAccountPolicy("payment")}
         HorizontalDivider(Modifier.padding(start=54.dp))
         SettingsRow(CupertinoSymbol.UndoCircle,tr(language,"Refund policy","Правила возврата","Qaytarish qoidalari","Қайтариш қоидалари"),tr(language,"Flights, hotels, transfer and services","Авиабилеты, отели, трансфер и сервисы","Aviachipta, mehmonxona, transfer va xizmatlar","Авиачипта, меҳмонхона, трансфер ва хизматлар")){chrome.openAccountPolicy("refund")}
@@ -427,6 +431,45 @@ private fun PaymentSecuritySection(language: AppLanguage, trip: StoredBookingSes
         if(trip!=null) SettingsRow(CupertinoSymbol.IdentityCard,"KYC · iumrah Security",tr(language,"Identity confirmation for booking ${trip.displayBookingNumber}","Подтверждение личности для брони ${trip.displayBookingNumber}","${trip.displayBookingNumber} broni uchun shaxsni tasdiqlash","${trip.displayBookingNumber} брони учун шахсни тасдиқлаш")){chrome.openAccountKyc(trip.id)}
         else SettingsRow(CupertinoSymbol.IdentityCard,"KYC · iumrah Security",tr(language,"Available when you have a booking","Доступно после создания бронирования","Bron yaratilgandan keyin mavjud","Брон яратилгандан кейин мавжуд"),enabled=false){}
         if(authenticated){HorizontalDivider(Modifier.padding(start=54.dp));SettingsRow(CupertinoSymbol.LockShield,tr(language,"Account security","Безопасность аккаунта","Akkaunt xavfsizligi","Аккаунт хавфсизлиги"),tr(language,"Apple, Google and active sessions","Apple, Google и активные сеансы","Apple, Google va faol seanslar","Apple, Google ва фаол сеанслар")){chrome.openAccountSecurity()}}
+    }
+}
+
+@Composable
+private fun ServicesSection(language: AppLanguage, chrome: AppChromeStore) {
+    SectionCard(
+        tr(language, "Services", "Сервисы", "Xizmatlar", "Хизматлар"),
+        tr(language, "All key iumrah tools in one place", "Все основные функции iumrah в одном месте", "iumrah asosiy funksiyalari bir joyda", "iumrah асосий функциялари бир жойда"),
+        CupertinoSymbol.Grid,
+    ) {
+        SettingsRow(
+            CupertinoSymbol.Airplane,
+            "Airmora Flights Status",
+            tr(language, "Live flight status, route and travel updates", "Статус рейса, маршрут и обновления поездки", "Reys holati, yo‘nalish va safar yangiliklari", "Рейс ҳолати, йўналиш ва сафар янгиликлари"),
+        ) { chrome.openLiveFlights() }
+        HorizontalDivider(Modifier.padding(start = 54.dp))
+        SettingsRow(
+            CupertinoSymbol.Map,
+            "iumrah Ziyarats",
+            tr(language, "Makkah and Madinah places, route and navigation", "Места Мекки и Медины, маршрут и навигация", "Makka va Madina joylari, yo‘nalish va navigatsiya", "Макка ва Мадина жойлари, йўналиш ва навигация"),
+        ) { chrome.openZiyarats() }
+        HorizontalDivider(Modifier.padding(start = 54.dp))
+        SettingsRow(
+            CupertinoSymbol.SimCard,
+            "iumrah eSIM",
+            tr(language, "Saudi connectivity and eSIM status", "Связь в Саудии и статус eSIM", "Saudiya aloqasi va eSIM holati", "Саудия алоқаси ва eSIM ҳолати"),
+        ) { chrome.openESIM() }
+        HorizontalDivider(Modifier.padding(start = 54.dp))
+        SettingsRow(
+            CupertinoSymbol.HeartFill,
+            "iumrah Care",
+            tr(language, "Booking help and trip support", "Помощь по бронированию и сопровождению поездки", "Bron va safar bo‘yicha yordam", "Брон ва сафар бўйича ёрдам"),
+        ) { chrome.navigate(AppTab.CARE) }
+        HorizontalDivider(Modifier.padding(start = 54.dp))
+        SettingsRow(
+            CupertinoSymbol.Gift,
+            tr(language, "Gift Cards & Balance", "Gift Cards и баланс", "Gift Cards va balans", "Gift Cards ва баланс"),
+            tr(language, "Gifts, referrals and iumrah Balance", "Подарки, приглашения и iumrah Balance", "Sovg‘alar, takliflar va iumrah Balance", "Совғалар, таклифлар ва iumrah Balance"),
+        ) { chrome.openGiftCards() }
     }
 }
 
@@ -599,7 +642,12 @@ fun AccountPolicyScreen(kind:String,language:AppLanguage,chrome:AppChromeStore){
             tr(language,"Cancellation","Отмена поездки","Safarni bekor qilish","Сафарни бекор қилиш") to tr(language,"If a trip is cancelled, each component is refunded according to its own fare and cancellation terms.","При отмене поездки каждый компонент возвращается по своим тарифным и отменным условиям.","Safar bekor qilinsa, har bir komponent o‘z tarifi va bekor qilish shartlari bo‘yicha qaytariladi.","Сафар бекор қилинса, ҳар бир компонент ўз тарифи ва бекор қилиш шартлари бўйича қайтарилади.")
         )
     }
-    AccountPage(title,chrome){sections.forEach{(h,b)->CardBlock{Text(h,fontSize=17.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.height(7.dp));Text(b,color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=20.sp)}}}
+    AccountPage(title,chrome){
+        CardBlock {
+            IumrahPaymentMethodsMarquee(compact = true, modifier = Modifier.fillMaxWidth())
+        }
+        sections.forEach{(h,b)->CardBlock{Text(h,fontSize=17.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.height(7.dp));Text(b,color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,lineHeight=20.sp)}}
+    }
 }
 
 @Composable

@@ -1,0 +1,19 @@
+Android iOS parity update v31 — 2026-10-05
+
+Source parity target:
+- IUMRAH_ZIYARATS_WIDGETS_PAYMENTS_ACCOUNT_V4_20261004_APPLIED.txt
+
+Applied to Android:
+- Account: Google Wallet / iumrah ID block moved directly after "Who is traveling with you".
+- Account: added Services section with Airmora Flights Status, iumrah Ziyarats, eSIM, Care and Gift Cards & Balance.
+- Payments: added continuously moving Visa / PayMe / Humo / Uzcard / Click marquee using the same artwork as iOS.
+- Payment marquee is shown in Account payment/security, policy pages and booking payment flow.
+- Booking Ziyarats: added focused Makkah/Madinah swipe catalog with photo-first cards, localized descriptions, metadata, facts and visit notes.
+- Booking trip-management Ziyarats action now opens the dedicated booking catalog instead of reopening generic booking detail.
+- Standalone Ziyarats remains the map-first route.
+- Travel Info prayer countdown aligned to the iOS 25sp HH:MM:SS treatment; weather glyph colors were already present from v29.
+- Existing AppConfig.absoluteUrl handling and Coil memory/disk caching remain active for remote Ziyarats images.
+
+Notes:
+- Founder/lead-guide transfer surface belongs to the next booking/team parity packet and is intentionally not duplicated here.
+- Google Wallet remains marked Coming soon on Android; position/UI parity was updated without claiming unsupported Wallet issuance.
