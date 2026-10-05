@@ -1,0 +1,29 @@
+{
+  "version": 33,
+  "date": "2026-10-05",
+  "source": "kepler-ios-main 3(7)",
+  "target": "kepler-android-main 2(1) + cumulative v28-v32",
+  "parity_targets": [
+    "IUMRAH_ACCOUNT_BOOKING_ZIYARATS_POLISH_V3_20261004_APPLIED.txt",
+    "IUMRAH_ZIYARATS_WIDGETS_PAYMENTS_ACCOUNT_V4_20261004_APPLIED.txt",
+    "IUMRAH_APP_ICON_PROJECT_LOGO_20261004_APPLIED.txt"
+  ],
+  "implemented": [
+    "iumrah ID back: larger name and QR, redundant website/scan copy removed",
+    "passport-first Account travelers page and passport-centric traveler cards",
+    "duplicate active trip Account card removed",
+    "Payment & privacy Account information architecture with legacy KYC entry removed",
+    "Account Security moved into Settings",
+    "production Booking Care card placed immediately before Telegram with Call/Telegram/in-app chat actions",
+    "current iOS world-map iumrah PROJECT artwork ported to Android launcher icon densities"
+  ],
+  "platform_equivalents": [
+    "Coil provides Android memory/disk caching for absolute Ziyarats image URLs",
+    "iOS WidgetExtension/signing and Mac Catalyst changes are platform-specific and intentionally excluded"
+  ],
+  "remaining_after_v33": [
+    "full iOS-Android parity audit",
+    "device QA and crash/edge-case pass",
+    "Google Play production release preparation and AAB"
+  ]
+}

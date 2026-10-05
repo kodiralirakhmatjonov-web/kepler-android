@@ -116,9 +116,6 @@ fun AccountRootScreen(
             bookings.sessions.firstOrNull { !it.isPastAccountTrip() }?.let { active ->
                 item { IumrahTripWalletEntryAndroid(active, profile, language) }
             }
-            bookings.sessions.firstOrNull { !it.isPastAccountTrip() }?.let { active ->
-                item { ActiveTripCard(active, language) { chrome.openBookingDetail(active.id) } }
-            }
             item { TripsSection(bookings.sessions, language, chrome) }
             item { TelegramIntegrationCard(language) { chrome.openAccountTelegramIntegration() } }
             item { PaymentSecuritySection(language, bookings.sessions.firstOrNull(), true, chrome) }
@@ -419,7 +416,11 @@ private fun ProfileSection(profile: IumrahAccountProfile, language: AppLanguage,
 
 @Composable
 private fun PaymentSecuritySection(language: AppLanguage, trip: StoredBookingSession?, authenticated: Boolean, chrome: AppChromeStore) {
-    SectionCard(tr(language,"Payment & security","Оплата и безопасность","To‘lov va xavfsizlik","Тўлов ва хавфсизлик"),tr(language,"Payment, policies, KYC and account protection","Оплата, правила, KYC и защита аккаунта","Тўлов, қоидалар, KYC ва аккаунт ҳимояси"),CupertinoSymbol.LockShield) {
+    SectionCard(
+        tr(language,"Payment & privacy","Оплата и правила","To‘lov va qoidalar","Тўлов ва қоидалар"),
+        tr(language,"Payment methods, refunds and privacy","Способы оплаты, возвраты и конфиденциальность","To‘lov usullari, qaytarish va maxfiylik","Тўлов усуллари, қайтариш ва махфийлик"),
+        CupertinoSymbol.CreditCard,
+    ) {
         IumrahPaymentMethodsMarquee(compact = true, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
         SettingsRow(CupertinoSymbol.CreditCard,tr(language,"Payment","Оплата","To‘lov","Тўлов"),tr(language,"Method, confirmation and payment security","Способ, подтверждение и безопасность платежа","Usul, tasdiqlash va to‘lov xavfsizligi","Усул, тасдиқлаш ва тўлов хавфсизлиги")){chrome.openAccountPolicy("payment")}
@@ -427,13 +428,8 @@ private fun PaymentSecuritySection(language: AppLanguage, trip: StoredBookingSes
         SettingsRow(CupertinoSymbol.UndoCircle,tr(language,"Refund policy","Правила возврата","Qaytarish qoidalari","Қайтариш қоидалари"),tr(language,"Flights, hotels, transfer and services","Авиабилеты, отели, трансфер и сервисы","Aviachipta, mehmonxona, transfer va xizmatlar","Авиачипта, меҳмонхона, трансфер ва хизматлар")){chrome.openAccountPolicy("refund")}
         HorizontalDivider(Modifier.padding(start=54.dp))
         SettingsRow(CupertinoSymbol.HandRaised,tr(language,"Privacy","Конфиденциальность","Maxfiylik","Махфийлик"),tr(language,"Personal data and privacy","Персональные данные и конфиденциальность","Shaxsiy ma’lumotlar va maxfiylik","Шахсий маълумотлар ва махфийлик")){chrome.openAccountPolicy("privacy")}
-        HorizontalDivider(Modifier.padding(start=54.dp))
-        if(trip!=null) SettingsRow(CupertinoSymbol.IdentityCard,"KYC · iumrah Security",tr(language,"Identity confirmation for booking ${trip.displayBookingNumber}","Подтверждение личности для брони ${trip.displayBookingNumber}","${trip.displayBookingNumber} broni uchun shaxsni tasdiqlash","${trip.displayBookingNumber} брони учун шахсни тасдиқлаш")){chrome.openAccountKyc(trip.id)}
-        else SettingsRow(CupertinoSymbol.IdentityCard,"KYC · iumrah Security",tr(language,"Available when you have a booking","Доступно после создания бронирования","Bron yaratilgandan keyin mavjud","Брон яратилгандан кейин мавжуд"),enabled=false){}
-        if(authenticated){HorizontalDivider(Modifier.padding(start=54.dp));SettingsRow(CupertinoSymbol.LockShield,tr(language,"Account security","Безопасность аккаунта","Akkaunt xavfsizligi","Аккаунт хавфсизлиги"),tr(language,"Apple, Google and active sessions","Apple, Google и активные сеансы","Apple, Google va faol seanslar","Apple, Google ва фаол сеанслар")){chrome.openAccountSecurity()}}
     }
 }
-
 @Composable
 private fun ServicesSection(language: AppLanguage, chrome: AppChromeStore) {
     SectionCard(
@@ -476,6 +472,8 @@ private fun ServicesSection(language: AppLanguage, chrome: AppChromeStore) {
 @Composable
 private fun SettingsSection(language: AppLanguage, appearance: AppAppearance, unread: Int, notificationStatus: String, chrome: AppChromeStore, context: android.content.Context) {
     SectionCard(tr(language,"Settings","Настройки","Sozlamalar","Созламалар"),tr(language,"Language, appearance and notifications","Язык, оформление и уведомления","Til, ko‘rinish va bildirishnomalar","Тил, кўриниш ва билдиришномалар"),CupertinoSymbol.Gear) {
+        SettingsRow(CupertinoSymbol.LockShield,tr(language,"Account security","Безопасность аккаунта","Akkaunt xavfsizligi","Аккаунт хавфсизлиги"),tr(language,"Google and active sessions","Google и активные сеансы","Google va faol seanslar","Google ва фаол сеанслар")){chrome.openAccountSecurity()}
+        HorizontalDivider(Modifier.padding(start=54.dp))
         SettingsRow(CupertinoSymbol.Globe,tr(language,"Language","Язык","Til","Тил"),languageTitle(language)){chrome.openAccountLanguage()}
         HorizontalDivider(Modifier.padding(start=54.dp))
         SettingsRow(CupertinoSymbol.HalfCircle,tr(language,"Appearance","Оформление","Ko‘rinish","Кўриниш"),appearanceTitle(appearance,language)){chrome.openAccountAppearance()}

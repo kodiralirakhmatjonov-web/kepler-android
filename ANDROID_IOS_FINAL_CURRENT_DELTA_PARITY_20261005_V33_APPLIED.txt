@@ -1,0 +1,28 @@
+Android iOS parity update v33 — 2026-10-05
+
+Source parity targets:
+- IUMRAH_ACCOUNT_BOOKING_ZIYARATS_POLISH_V3_20261004_APPLIED.txt
+- IUMRAH_ZIYARATS_WIDGETS_PAYMENTS_ACCOUNT_V4_20261004_APPLIED.txt
+- IUMRAH_APP_ICON_PROJECT_LOGO_20261004_APPLIED.txt
+
+Applied to Android:
+- Finalized iumrah ID back face to current iOS: larger traveler name + QR composition; removed redundant website/scan explanatory copy.
+- Enlarged public identity QR and kept copy-ID action/ID number footer.
+- Reworked Account -> Who travels with you into the current passport-first presentation with cover artwork, passport guidance and readability warning.
+- Traveler cards are now passport-centric: attach/review passport is the primary action and manual personal fields are explicitly optional.
+- Removed the duplicate active-trip card from Account while preserving the trip wallet entry and Trips section.
+- Account Payment section now matches current iOS "Payment & privacy" structure; visible legacy KYC row removed.
+- Moved Account Security into Settings, matching current iOS information architecture.
+- Replaced the old booking Care CTA/balance split with one production Care card at the end of Booking before Telegram.
+- New Booking Care card includes current artwork, Call, Telegram (loaded from public team profile) and in-app Care chat actions.
+- Replaced Android primary launcher artwork with the same current iumrah PROJECT world-map icon used by iOS and regenerated all launcher densities.
+
+Platform-equivalent behavior:
+- Ziyarats remote images already resolve through AppConfig.absoluteUrl and Coil memory/disk caching on Android; no iOS URLCache-specific implementation is required.
+- Android has no iOS WidgetExtension/signing/Mac Catalyst equivalents, so those iOS-only deployment changes are intentionally not ported.
+
+Validation:
+- Existing Stage 2-14 verification passes transitively before Stage 15.
+- Stage 15 verifies ID/account/passport/Care/icon parity and checks the expected launcher artwork checksum.
+- Build environment remains compileSdk 36 / targetSdk 36.
+- Full Gradle assemble is not available in this runtime because the supplied repository has no Gradle Wrapper and no Android SDK installation.

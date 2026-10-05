@@ -269,7 +269,7 @@ private fun IdentityBack(
             .background(Brush.verticalGradient(listOf(IdentityTop, IdentityBottom)))
             .border(.8.dp, Color.White.copy(alpha = .085f), IdentityShape),
     ) {
-        val nameSize = (maxWidth.value * .070f).coerceIn(22f, 29f).sp
+        val publicNameSize = (maxWidth.value * .078f).coerceIn(25f, 32f).sp
         Canvas(Modifier.fillMaxSize()) {
             drawRect(
                 Brush.radialGradient(
@@ -281,22 +281,21 @@ private fun IdentityBack(
         }
         Column(Modifier.fillMaxSize().padding(16.dp)) {
             Text("iumrah ID", color = Color.White.copy(alpha = .96f), fontSize = 20.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-.3).sp)
-            Spacer(Modifier.height(14.dp))
-            Text(displayName, color = Color.White, fontSize = nameSize, fontWeight = FontWeight.SemiBold, letterSpacing = (-.5).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.weight(1f))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text(
-                        awTr(language, "Scan to open your iumrah ID on the web", "QR-код открывает Вашу iumrah ID на сайте", "QR-kod iumrah ID’ingizni saytda ochadi", "QR-код iumrah ID’ингизни сайтда очади"),
-                        color = Color.White.copy(alpha = .58f),
-                        fontSize = 11.5.sp,
-                        lineHeight = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text("iumrah.app", color = Color.White.copy(alpha = .38f), fontSize = 10.5.sp, fontWeight = FontWeight.Medium, fontFamily = FontFamily.Monospace)
-                }
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                Text(
+                    displayName,
+                    modifier = Modifier.weight(1f),
+                    color = Color.White,
+                    fontSize = publicNameSize,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = (-.55).sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 PublicIdentityQr(normalizedIdentity(profile.iumrahID))
             }
+            Spacer(Modifier.weight(1f))
             Spacer(Modifier.height(10.dp))
             Box(Modifier.fillMaxWidth().height(.7.dp).background(Color.White.copy(alpha = .13f)))
             Row(Modifier.padding(top = 9.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -320,13 +319,13 @@ private fun PublicIdentityQr(identity: String) {
     val bitmap = remember(value) { makeQrBitmap(value) }
     if (bitmap != null) {
         Box(
-            Modifier.size(84.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(6.dp),
+            Modifier.size(106.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(7.dp),
             contentAlignment = Alignment.Center,
         ) {
             Image(bitmap = bitmap.asImageBitmap(), contentDescription = "iumrah ID QR", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
         }
     } else {
-        Box(Modifier.size(84.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .10f)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(106.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = .10f)), contentAlignment = Alignment.Center) {
             CupertinoIcon(CupertinoSymbol.Grid, null, Modifier.size(29.dp), Color.White.copy(alpha = .76f))
         }
     }

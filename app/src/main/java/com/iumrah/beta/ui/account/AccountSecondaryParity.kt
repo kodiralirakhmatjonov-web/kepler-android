@@ -265,21 +265,83 @@ fun AccountTravelCompanionsParityScreen(
         loading = false
     }
 
-    ApNavPage(apTr(language, "Travelers", "Кто едет с Вами", "Sayohatchilar", "Саёҳатчилар"), chrome, largeTitle = true, bottom = 42.dp) {
-        ApCard {
-            Image(painterResource(R.drawable.travel_companions_cover), null, Modifier.fillMaxWidth().height(118.dp).clip(RoundedCornerShape(18.dp)), contentScale = ContentScale.Crop)
-            Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-                ApBadge(CupertinoSymbol.Persons, ApCare)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(apTr(language, "Your family and loved ones", "Ваша семья и близкие", "Oilangiz va yaqinlaringiz", "Оилангиз ва яқинларингиз"), fontSize = 22.sp, lineHeight = 25.sp, fontWeight = FontWeight.Bold)
-                    Text(apTr(language, "Each traveler has a separate card with only the details needed for the flight and hotel.", "У каждого участника — отдельная карточка только с данными, необходимыми для авиабилета и отеля.", "Har bir sayohatchi uchun aviachipta va mehmonxonaga kerakli ma’lumotlar alohida kartada saqlanadi.", "Ҳар бир саёҳатчи учун авиачипта ва меҳмонхонага керакли маълумотлар алоҳида картада сақланади."), fontSize = 14.sp, lineHeight = 19.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    ApNavPage(apTr(language, "Who is traveling with you", "Кто едет с Вами", "Siz bilan kim bormoqda", "Сиз билан ким бормоқда"), chrome, largeTitle = true, bottom = 42.dp) {
+        Text(
+            apTr(
+                language,
+                "Attach the passport information page for each traveler. A clear passport photo is enough for booking operations.",
+                "Прикрепите страницу загранпаспорта с данными для каждого паломника. Чёткой фотографии паспорта достаточно для оформления бронирования.",
+                "Har bir ziyoratchining ma’lumotlar sahifasi tushirilgan pasport rasmini biriktiring. Aniq pasport rasmi bronni rasmiylashtirish uchun yetarli.",
+                "Ҳар бир зиёратчининг маълумотлар саҳифаси туширилган паспорт расмини бириктиринг. Аниқ паспорт расми бронни расмийлаштириш учун етарли.",
+            ),
+            modifier = Modifier.padding(horizontal = 2.dp),
+            fontSize = 14.sp,
+            lineHeight = 19.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 3.dp,
+            border = androidx.compose.foundation.BorderStroke(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .075f)),
+        ) {
+            Column {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painterResource(R.drawable.travel_companions_cover),
+                        null,
+                        Modifier.fillMaxWidth().height(106.dp),
+                        contentScale = ContentScale.Fit,
+                    )
                 }
-            }
-            Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFFFFCC00).copy(alpha = .13f)).padding(14.dp), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                CupertinoIcon(CupertinoSymbol.Lightbulb, null, Modifier.size(17.dp), MaterialTheme.colorScheme.onSurface)
-                Text(apTr(language, "You can fill in passport details while availability is being checked.", "Паспортные данные можно заполнить заранее, пока мы проверяем наличие.", "Mavjudlik tekshirilayotganda pasport ma’lumotlarini oldindan to‘ldirishingiz mumkin.", "Мавжудлик текширилаётганда паспорт маълумотларини олдиндан тўлдиришингиз мумкин."), Modifier.weight(1f), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+                        ApBadge(CupertinoSymbol.Passport, ApBlue)
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(apTr(language, "Passport first", "Сначала паспорт", "Avval pasport", "Аввал паспорт"), fontSize = 21.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                apTr(
+                                    language,
+                                    "Use a photo of the passport page with the holder photo and all personal data visible.",
+                                    "Нужна передняя страница паспорта: фотография владельца и все данные должны полностью попадать в кадр.",
+                                    "Pasportning egasi rasmi va barcha ma’lumotlar ko‘rinadigan old sahifasini suratga oling.",
+                                    "Паспортнинг эгаси расми ва барча маълумотлар кўринадиган олд саҳифасини суратга олинг.",
+                                ),
+                                fontSize = 14.sp,
+                                lineHeight = 19.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(ApOrange.copy(alpha = .10f)).padding(14.dp),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    ) {
+                        CupertinoIcon(CupertinoSymbol.ExclamationCircle, null, Modifier.size(17.dp), ApOrange)
+                        Text(
+                            apTr(
+                                language,
+                                "Make sure every passport field is sharp and readable. We use these details to issue airline tickets, hotel bookings and the rest of the trip documents.",
+                                "Обратите внимание: все данные паспорта должны быть чёткими и видимыми. Они используются для оформления авиабилетов, бронирования отеля и остальных документов поездки.",
+                                "E’tibor bering: pasportdagi barcha ma’lumotlar aniq va to‘liq ko‘rinsin. Ular aviachipta, mehmonxona va safar hujjatlarini rasmiylashtirish uchun ishlatiladi.",
+                                "Эътибор беринг: паспортдаги барча маълумотлар аниқ ва тўлиқ кўринсин. Улар авиачипта, меҳмонхона ва сафар ҳужжатларини расмийлаштириш учун ишлатилади.",
+                            ),
+                            Modifier.weight(1f),
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
             }
         }
 
@@ -287,15 +349,26 @@ fun AccountTravelCompanionsParityScreen(
             loading && items.isEmpty() -> ApCard {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
-                    Column { Text(apTr(language, "Loading travelers", "Загружаем участников поездки", "Sayohatchilar yuklanmoqda", "Саёҳатчилар юкланмоқда"), fontWeight = FontWeight.Bold); Text(apTr(language, "This usually takes only a few seconds.", "Обычно это занимает несколько секунд.", "Bu odatda bir necha soniya davom etadi.", "Бу одатда бир неча сония давом этади."), fontSize = 12.sp, color = ApGray) }
+                    Column { Text(apTr(language, "Loading travelers", "Загружаем участников", "Sayohatchilar yuklanmoqda", "Саёҳатчилар юкланмоқда"), fontWeight = FontWeight.Bold); Text(apTr(language, "This usually takes a few seconds.", "Обычно это занимает несколько секунд.", "Bu odatda bir necha soniya davom etadi.", "Бу одатда бир неча сония давом этади."), fontSize = 12.sp, color = ApGray) }
                 }
             }
             items.isEmpty() -> ApCard {
                 ApBadge(CupertinoSymbol.PlusPerson, ApCare)
                 Spacer(Modifier.height(12.dp))
-                Text(apTr(language, "No travelers yet", "Участники пока не добавлены", "Hozircha sayohatchilar yo‘q", "Ҳозирча саёҳатчилар йўқ"), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(apTr(language, "No companions yet", "Попутчики пока не добавлены", "Hozircha hamrohlar yo‘q", "Ҳозирча ҳамроҳлар йўқ"), fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(5.dp))
-                Text(apTr(language, "Create or link a booking. Everyone included in it will appear here automatically.", "Создайте или привяжите бронирование — все указанные в нём участники появятся здесь автоматически.", "Bron yarating yoki ulang — undagi barcha sayohatchilar bu yerda avtomatik ko‘rinadi.", "Брон яратинг ёки уланг — ундаги барча саёҳатчилар бу ерда автоматик кўринади."), fontSize = 14.sp, lineHeight = 19.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    apTr(
+                        language,
+                        "When your booking includes another traveler, their passport card will appear here automatically.",
+                        "Когда в бронировании появится ещё один паломник, его карточка паспорта автоматически появится здесь.",
+                        "Bronga yana bir ziyoratchi qo‘shilganda, uning pasport kartasi shu yerda avtomatik paydo bo‘ladi.",
+                        "Бронга яна бир зиёратчи қўшилганда, унинг паспорт картаси шу ерда автоматик пайдо бўлади.",
+                    ),
+                    fontSize = 14.sp,
+                    lineHeight = 19.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             else -> items.forEach { item -> CompanionCard(language, item, chrome) }
         }
@@ -326,34 +399,69 @@ private fun relationIcon(value: String?): CupertinoSymbol = when (value?.lowerca
 @Composable
 private fun CompanionCard(language: AppLanguage, item: CompanionItem, chrome: AppChromeStore) {
     val traveler = item.traveler
-    val name = listOf(traveler.firstName, traveler.middleName, traveler.lastName).map { it.trim() }.filter { it.isNotBlank() }.joinToString(" ").ifBlank { apTr(language, "Traveler ${traveler.position}", "Участник ${traveler.position}", "Sayohatchi ${traveler.position}", "Саёҳатчи ${traveler.position}") }
-    val complete = traveler.completed && traveler.hasPassport
-    val passport = traveler.passportNumber.trim().let { if (it.isBlank()) apTr(language, "Add a photo", "Добавьте фото", "Rasm qo‘shing", "Расм қўшинг") else if (it.length > 4) "•••• ${it.takeLast(4)}" else it }
-    Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp, border = androidx.compose.foundation.BorderStroke(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .075f))) {
+    val name = listOf(traveler.firstName, traveler.middleName, traveler.lastName)
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .joinToString(" ")
+        .ifBlank { apTr(language, "Traveler ${traveler.position}", "Паломник ${traveler.position}", "Ziyoratchi ${traveler.position}", "Зиёратчи ${traveler.position}") }
+    val passportReady = traveler.hasPassport
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 3.dp,
+        border = androidx.compose.foundation.BorderStroke(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .075f)),
+    ) {
         Column {
             Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-                    ApBadge(relationIcon(traveler.relationship), if (complete) ApGreen else ApCare)
+                    ApBadge(CupertinoSymbol.Passport, if (passportReady) ApGreen else ApCare)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(relationTitle(traveler.relationship, traveler.position, language).uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant, letterSpacing = .4.sp)
                         Text(name, fontSize = 21.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                         Text(item.tripTitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                     }
-                    CupertinoIcon(if (complete) CupertinoSymbol.CheckCircleFill else CupertinoSymbol.ExclamationCircle, null, Modifier.size(22.dp), if (complete) ApGreen else ApOrange)
+                    CupertinoIcon(if (passportReady) CupertinoSymbol.CheckCircleFill else CupertinoSymbol.ExclamationCircle, null, Modifier.size(22.dp), if (passportReady) ApGreen else ApOrange)
                 }
-                CompanionFact(CupertinoSymbol.IdentityCard, apTr(language, "Personal details", "Личные данные", "Shaxsiy ma’lumotlar", "Шахсий маълумотлар"), if (traveler.firstName.isBlank() || traveler.lastName.isBlank()) apTr(language, "Fill in", "Нужно заполнить", "To‘ldirish kerak", "Тўлдириш керак") else apTr(language, "Ready", "Заполнены", "Tayyor", "Тайёр"))
-                CompanionFact(CupertinoSymbol.Passport, apTr(language, "Passport", "Загранпаспорт", "Pasport", "Паспорт"), passport)
+
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                    CupertinoIcon(CupertinoSymbol.Passport, null, Modifier.size(16.dp), MaterialTheme.colorScheme.onSurface)
+                    Text(apTr(language, "Passport", "Загранпаспорт", "Pasport", "Паспорт"), fontSize = 14.sp)
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        if (passportReady) apTr(language, "Attached", "Прикреплён", "Biriktirilgan", "Бириктирилган") else apTr(language, "Photo required", "Нужно фото", "Rasm kerak", "Расм керак"),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (passportReady) ApGreen else ApOrange,
+                        textAlign = TextAlign.End,
+                    )
+                }
+
+                Text(
+                    if (passportReady) {
+                        apTr(language, "The passport is ready for booking operations. You can review or replace the photo at any time.", "Паспорт готов для оформления. При необходимости можно проверить или заменить фотографию.", "Pasport bronni rasmiylashtirish uchun tayyor. Rasmni istalgan payt tekshirish yoki almashtirish mumkin.", "Паспорт бронни расмийлаштириш учун тайёр. Расмни исталган пайт текшириш ёки алмаштириш мумкин.")
+                    } else {
+                        apTr(language, "A clear photo of the passport information page is enough. Manual fields are optional.", "Достаточно чёткой фотографии страницы паспорта с данными. Ручное заполнение полей необязательно.", "Pasport ma’lumotlar sahifasining aniq rasmi yetarli. Maydonlarni qo‘lda to‘ldirish ixtiyoriy.", "Паспорт маълумотлар саҳифасининг аниқ расми етарли. Майдонларни қўлда тўлдириш ихтиёрий.")
+                    },
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Surface(onClick = { chrome.openPilgrimCheckout(item.bookingID) }, color = Color.Black) {
                 Row(Modifier.fillMaxWidth().height(54.dp).padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (complete) apTr(language, "View traveler details", "Посмотреть данные", "Ma’lumotlarni ko‘rish", "Маълумотларни кўриш") else apTr(language, "Fill in traveler details", "Заполнить данные участника", "Sayohatchi ma’lumotlarini to‘ldirish", "Саёҳатчи маълумотларини тўлдириш"), Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(
+                        if (passportReady) apTr(language, "Review passport", "Проверить паспорт", "Pasportni tekshirish", "Паспортни текшириш") else apTr(language, "Attach passport", "Прикрепить паспорт", "Pasportni biriktirish", "Паспортни бириктириш"),
+                        Modifier.weight(1f),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
                     CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(16.dp), Color.White)
                 }
             }
         }
     }
 }
-
 @Composable
 private fun CompanionFact(icon: CupertinoSymbol, title: String, value: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {

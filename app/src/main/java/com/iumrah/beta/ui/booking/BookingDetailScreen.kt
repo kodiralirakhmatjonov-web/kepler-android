@@ -1,5 +1,8 @@
 package com.iumrah.beta.ui.booking
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -15,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -22,7 +27,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.iumrah.beta.R
 import com.iumrah.beta.core.config.AppConfig
+import com.iumrah.beta.core.network.APIClient
 import com.iumrah.beta.core.design.IumrahBookingStatusVisual
 import com.iumrah.beta.core.localization.L10n
 import com.iumrah.beta.core.navigation.AppChromeStore
@@ -30,6 +37,8 @@ import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.account.IumrahAccountService
 import com.iumrah.beta.data.account.IumrahAccountStore
 import com.iumrah.beta.data.booking.BookingStore
+import com.iumrah.beta.data.chat.ChatService
+import com.iumrah.beta.data.chat.IumrahPublicProfile
 import com.iumrah.beta.models.booking.BookingGeneratorFlightSnapshot
 import com.iumrah.beta.models.booking.BookingHotelSelectionSnapshot
 import com.iumrah.beta.models.booking.BookingItineraryItem
@@ -37,7 +46,6 @@ import com.iumrah.beta.models.booking.StoredBookingSession
 import com.iumrah.beta.ui.components.IumrahPressable
 import com.iumrah.beta.ui.cupertino.CupertinoIcon
 import com.iumrah.beta.ui.cupertino.CupertinoSymbol
-import com.iumrah.beta.ui.packageflow.UmrahCarePackageExplanationSheet
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -63,16 +71,19 @@ fun BookingDetailScreen(
     val storeState by bookingStore.state.collectAsState()
     val session = storeState.sessions.firstOrNull { it.id == bookingID }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val careService = remember { ChatService(APIClient()) }
+    var careProfile by remember(bookingID) { mutableStateOf<IumrahPublicProfile?>(null) }
     var selectedPage by remember(bookingID, initialPage) { mutableStateOf(initialPage) }
     var itinerary by remember(bookingID) { mutableStateOf<List<BookingItineraryItem>>(emptyList()) }
     var telegram by remember(session?.telegram) { mutableStateOf(session?.telegram.orEmpty()) }
     var whatsapp by remember(session?.whatsapp) { mutableStateOf(session?.whatsapp.orEmpty()) }
     var editContacts by remember { mutableStateOf(false) }
     var deletePrompt by remember { mutableStateOf(false) }
-    var showCareExplanation by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(bookingID) {
+        careProfile = runCatching { careService.loadCareProfile() }.getOrNull()
         val refreshed = bookingStore.refresh(bookingID) ?: return@LaunchedEffect
         itinerary = runCatching {
             bookingStore.service.fetchItinerary(bookingID, bookingStore.headersFor(refreshed))
@@ -113,10 +124,6 @@ fun BookingDetailScreen(
         )
     }
 
-    if (showCareExplanation) {
-        UmrahCarePackageExplanationSheet(language = language, onDismiss = { showCareExplanation = false })
-    }
-
     Column(
         Modifier
             .fillMaxSize()
@@ -154,10 +161,6 @@ fun BookingDetailScreen(
                 }
                 BookingMetaCard(session, language)
 
-                if (session.booking.perPilgrimUsd >= 1800.0) {
-                    BookingBalanceCard(language, onExplain = { showCareExplanation = true })
-                }
-
                 BookingItineraryCalendarAndroid(
                     language = language,
                     session = session,
@@ -189,13 +192,6 @@ fun BookingDetailScreen(
                     BookingPendingConfirmationCard(language)
                 }
 
-                BookingCareCard(
-                    title = "iumrah Care",
-                    body = L10n.text("booking_care_body", language),
-                    action = L10n.text("booking_open_care", language),
-                    onClick = { chrome.openBookingChat(bookingID) },
-                )
-
                 IumrahPressable(
                     onClick = { deletePrompt = true },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -215,6 +211,22 @@ fun BookingDetailScreen(
                         )
                     }
                 }
+
+                BookingCareBalanceCard(
+                    language = language,
+                    careProfile = careProfile,
+                    onCall = {
+                        val digits = "+998508898845".filter { it.isDigit() || it == '+' }
+                        runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits"))) }
+                    },
+                    onTelegram = {
+                        careProfile?.telegram?.let { raw ->
+                            val cleaned = raw.trim().removePrefix("https://t.me/").removePrefix("http://t.me/").removePrefix("t.me/").trim('@', '/', ' ')
+                            if (cleaned.isNotBlank()) runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/$cleaned"))) }
+                        }
+                    },
+                    onChat = { chrome.openBookingChat(bookingID) },
+                )
 
                 BookingTelegramCompactCard(session, language)
             } else if (selectedPage == BookingPrimaryPageAndroid.STATUS) {
@@ -526,44 +538,108 @@ private fun SummaryRow(title: String, value: String) {
 }
 
 @Composable
-private fun BookingBalanceCard(language: AppLanguage, onExplain: () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(bookingIosCard())
-            .border(.7.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .06f), RoundedCornerShape(28.dp)),
+private fun BookingCareBalanceCard(
+    language: AppLanguage,
+    careProfile: IumrahPublicProfile?,
+    onCall: () -> Unit,
+    onTelegram: () -> Unit,
+    onChat: () -> Unit,
+) {
+    val telegramReady = !careProfile?.telegram.isNullOrBlank()
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = bookingIosCard(),
+        shadowElevation = 3.dp,
+        border = androidx.compose.foundation.BorderStroke(.8.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .08f)),
     ) {
-        androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(com.iumrah.beta.R.drawable.care_price_support),
-            contentDescription = null,
-            modifier = Modifier.fillMaxWidth().background(Color.Black),
-            contentScale = ContentScale.FillWidth,
-        )
-        Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                bookingText(language, "iumrah Care проверит баланс вашей поездки", "iumrah Care will review your journey balance", "iumrah Care safaringiz muvozanatini tekshiradi", "iumrah Care сафарингиз мувозанатини текширади"),
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
+        Column {
+            Image(
+                painter = painterResource(R.drawable.care_price_support),
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth().height(182.dp).background(Color.Black),
+                contentScale = ContentScale.Crop,
             )
-            Text(
-                bookingText(language, "Цена этой поездки выше обычного ориентира. До окончательного оформления мы дополнительно проверим более удобные рейсы, распределение ночей и сопоставимые отели, чтобы стабилизировать поездку без потери качества.", "This trip is above our usual reference range. Before final ticketing we will review more convenient flights, night allocation and comparable hotels to stabilize the journey without compromising quality.", "Bu safar odatiy mo‘ljaldan yuqoriroq. Yakuniy rasmiylashtirishdan oldin qulayroq reyslar, tunlar taqsimoti va mos mehmonxonalar yana tekshiriladi.", "Бу сафар одатий мўлжалдан юқорироқ. Якуний расмийлаштиришдан олдин қулайроқ рейслар, тунлар тақсимоти ва мос меҳмонхоналар яна текширилади."),
-                fontSize = 14.sp,
-                lineHeight = 19.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = .56f),
-            )
-            IumrahPressable(
-                onClick = onExplain,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                cornerRadius = 18.dp,
-                background = bookingIosRaised(),
-                shadowElevation = 0.dp,
-            ) {
-                Row(Modifier.fillMaxSize().padding(horizontal = 15.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(bookingText(language, "Как это работает", "How it works", "Qanday ishlaydi", "Қандай ишлайди"), modifier = Modifier.weight(1f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    CupertinoIcon(CupertinoSymbol.ArrowUpRight, null, Modifier.size(15.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .48f))
+            Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CupertinoIcon(CupertinoSymbol.CheckCircleFill, null, Modifier.size(17.dp), Color(0xFF34C759))
+                    Text(
+                        bookingText(language, "Мы рядом", "We are with you", "Biz yoningizdamiz", "Биз ёнингиздамиз"),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f),
+                    )
+                }
+                Text(
+                    bookingText(language, "iumrah Care проверит баланс вашей поездки", "iumrah Care will review your journey balance", "iumrah Care safaringiz muvozanatini tekshiradi", "iumrah Care сафарингиз мувозанатини текширади"),
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    bookingText(
+                        language,
+                        "Если по бронированию, рейсам, отелю или маршруту появились вопросы — свяжитесь с нами удобным способом. Команда видит контекст Вашей брони, поэтому не придётся заново объяснять всю поездку.",
+                        "If anything about your booking, flights, hotel or route is unclear, contact us in the way that is most convenient for you. The team sees your booking context and can help without making you explain the trip again.",
+                        "Bron, reys, mehmonxona yoki yo‘nalish bo‘yicha savol tug‘ilsa, o‘zingizga qulay usulda bog‘laning. Jamoa bron kontekstini ko‘radi, safarni boshidan qayta tushuntirishingiz shart emas.",
+                        "Брон, рейс, меҳмонхона ёки йўналиш бўйича савол туғилса, ўзингизга қулай усулда боғланинг. Жамоа брон контекстини кўради, сафарни бошидан қайта тушунтиришингиз шарт эмас.",
+                    ),
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .58f),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CareContactButton(
+                        title = bookingText(language, "Позвонить", "Call", "Qo‘ng‘iroq", "Қўнғироқ"),
+                        symbol = CupertinoSymbol.Phone,
+                        enabled = true,
+                        modifier = Modifier.weight(1f),
+                        onClick = onCall,
+                    )
+                    CareContactButton(
+                        title = "Telegram",
+                        symbol = CupertinoSymbol.Send,
+                        enabled = telegramReady,
+                        modifier = Modifier.weight(1f),
+                        onClick = onTelegram,
+                    )
+                }
+                Surface(onClick = onChat, shape = RoundedCornerShape(17.dp), color = Color.Black) {
+                    Row(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CupertinoIcon(CupertinoSymbol.Message, null, Modifier.size(17.dp), Color.White)
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            bookingText(language, "Открыть чат iumrah", "Open iumrah chat", "iumrah chatini ochish", "iumrah чатини очиш"),
+                            Modifier.weight(1f),
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(15.dp), Color.White)
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CareContactButton(
+    title: String,
+    symbol: CupertinoSymbol,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.onBackground.copy(alpha = .055f),
+    ) {
+        Row(Modifier.height(48.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CupertinoIcon(symbol, null, Modifier.size(15.dp), if (enabled) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = .32f))
+            Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (enabled) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = .32f), maxLines = 1)
         }
     }
 }
