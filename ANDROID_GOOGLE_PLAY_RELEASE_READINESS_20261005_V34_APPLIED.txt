@@ -1,0 +1,14 @@
+Iumrah Android v34 — Google Play release readiness
+Date: 2026-10-05
+
+- Current iOS parity chain v28-v33 retained.
+- Stage 16 release gate added and bridged into the legacy Stage-10 CI selector.
+- Production package remains com.iumrah.app.
+- compileSdk/targetSdk = 36; minSdk = 26.
+- Cleartext traffic disabled and backup disabled.
+- Play Billing remains removed.
+- Release signing accepts environment or Gradle properties and requires an explicit Play versionCode.
+- Signed AAB builder added with tests, lint, signature/integrity checks and SHA-256 output.
+- MapLibre native libraries are checked for 16 KB ELF alignment and 64-bit ABI counterparts.
+- Obsolete Android 20% markup docs/golden tests removed; fallback pricing is synchronized to 50%.
+- GitHub Play-release workflow is staged under docs/release because the automatic ZIP extractor protects .github/workflows.

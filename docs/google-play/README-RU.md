@@ -10,7 +10,7 @@
 
 Распакуйте ZIP в корень Kepler Android с заменой файлов. Основа — kepler-android-main(5).zip от 04.10.2026. Этот ZIP заменяет предыдущий патч Google Play и подходит как поверх исходной версии, так и поверх первого патча. Если вы уже меняли перечисленные файлы после этой основы, перед распаковкой сравните изменения.
 
-Два прежних Kotlin-файла покупки заменены комментариями, чтобы обычная распаковка ZIP убрала их реализацию даже после установки первого патча. Их можно удалить вручную; для сборки этого не требуется. UI и запуск приложения возвращены к версии без Plus. Зависимость Google Play Billing убрана. Нет покупок, восстановления, запросов подписки или платного доступа. Ничего в каталоге Play Console патч не изменяет.
+Прежние Kotlin-файлы Google Play Billing удаляются полностью вместе с устаревшим `core/billing` package и legacy IAP-документами. UI и запуск приложения работают без Plus/подписок. Нет покупок, восстановления, purchase token, BillingClient initialization, listeners или платного entitlement. Ничего в каталоге Play Console патч не изменяет.
 
 ## Идентичность приложения
 
@@ -33,7 +33,7 @@
 В исходном Flutter ZIP нет key.properties, keystore и паролей: есть только ссылки на них. Перенести отсутствующий ключ из ZIP нельзя.
 
 В GitHub → Settings → Secrets and variables → Actions добавьте Secrets:
-- PLAY_KEYSTORE_BASE64 — содержимое прежнего upload keystore в base64 одной строкой.
+- PLAY_UPLOAD_KEYSTORE_BASE64 — содержимое прежнего upload keystore в base64 одной строкой.
 - PLAY_STORE_PASSWORD — пароль хранилища.
 - PLAY_KEY_ALIAS — alias ключа.
 - PLAY_KEY_PASSWORD — пароль ключа.
@@ -48,7 +48,7 @@ Actions → iumrah Google Play AAB → Run workflow:
 - version_code: максимальный использованный versionCode во всех треках Console + 1. Например 15 ТОЛЬКО если максимум действительно 14.
 - version_name: 2.0.3 или желаемая видимая версия.
 
-Workflow запускает unit tests, lintRelease, bundleRelease, сверку подписи ключа, jarsigner verification и bundletool validation. В готовом AAB дополнительно проверяются com.iumrah.app, выбранный versionCode, отсутствие debug/test-only и разрешения/метаданных Billing. Результат — AAB и mapping.txt в artifacts. Автоматической публикации нет.
+Workflow перед компиляцией разрешает `releaseRuntimeClasspath`, сохраняет `dependencies` и оба `dependencyInsight` отчёта (`billing` и `billingclient`) и останавливается при любом `com.android.billingclient`. Затем запускает clean, unit tests, lintRelease, assembleRelease и bundleRelease. Готовый AAB дополнительно сканируется по распакованным DEX/JAR/protobuf entries, а merged release manifest проверяется на Billing permission/service/metadata. Результат — signed AAB, release APK и audit logs в artifacts. Автоматической публикации нет.
 
 Локальная сборка требует тех же PLAY_* переменных подписи и явного -PPLAY_VERSION_CODE. Без них release останавливается. Debug не требует релизного ключа.
 
@@ -62,7 +62,7 @@ Workflow запускает unit tests, lintRelease, bundleRelease, сверку
 
 ## Проверено в этой среде
 
-Проверены XML, YAML, синтаксис shell/Python в workflow, отсутствие Billing в исходниках и статические ограничения идентичности. Проверена установка патча поверх исходной версии и поверх первого патча. Android-компиляция и обновление на устройстве не выполнены: здесь нет Android SDK/Gradle и действующего ключа. Окончательный результат сборки подтвердит GitHub Actions; принятие обновления — Play Console.
+Проверены активные Kotlin/XML/Gradle источники, manifest, ProGuard rules, Compose navigation и отсутствие runtime Billing API. Stage 17 удаляет legacy Billing stubs и запускает source guard. Production workflow обязан дополнительно подтвердить resolved `releaseRuntimeClasspath`, merged manifest и сам AAB. Локальная среда аудита не содержит Android SDK/Gradle и действующего upload keystore, поэтому подписанный AAB генерируется только release workflow с Вашими существующими Play signing secrets.
 
 Официальные требования к обновлению: https://support.google.com/googleplay/android-developer/answer/9859350
 Подпись: https://developer.android.com/studio/publish/app-signing

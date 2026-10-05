@@ -1,0 +1,15 @@
+iumrah Android v35 — Google Play non-Billing production cleanup
+Date: 2026-10-05
+
+- Cumulative over v34 / v28-v33 parity work.
+- Google Play Billing is intentionally NOT upgraded to 8/9; it is forbidden from the release graph.
+- Removed obsolete app/src/main/java/com/iumrah/beta/core/billing stubs.
+- Removed obsolete docs/google-play/legacy IAP remnants.
+- Added resolved releaseRuntimeClasspath Gradle gate: verifyNoGooglePlayBilling.
+- Added Stage 17 source/repository audit and CI bridge from legacy Stage 10 workflow.
+- Production release script now runs dependencies + dependencyInsight for billing/billingclient.
+- Production release script now runs clean, tests/lint, assembleRelease and bundleRelease.
+- Final AAB is scanned after decompression for Billing package/API markers.
+- Merged release AndroidManifest.xml is checked for Billing permission/service/metadata.
+- applicationId remains com.iumrah.app; namespace remains com.iumrah.beta.
+- Signing configuration / backend / auth / push / deep links are unchanged.

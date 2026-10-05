@@ -1,0 +1,16 @@
+{
+  "version": "v34",
+  "date": "2026-10-05",
+  "scope": "google_play_release_readiness",
+  "application_id": "com.iumrah.app",
+  "version_name_default": "2.0.3",
+  "compile_sdk": 36,
+  "target_sdk": 36,
+  "min_sdk": 26,
+  "billing": "removed",
+  "pricing_fallback_markup": 0.50,
+  "release_gate": "scripts/verify-stage16.sh",
+  "release_builder": "scripts/build-play-release.sh",
+  "native_16kb_verifier": "scripts/verify-16kb-native-libs.sh",
+  "workflow_staging": "docs/release/iumrah-play-release.yml"
+}

@@ -1,0 +1,36 @@
+{
+  "version": "v35",
+  "date": "2026-10-05",
+  "scope": "Google Play Billing removal + production release audit",
+  "billingPolicy": "Google Play Billing SDK must be completely absent; do not upgrade it",
+  "identity": {
+    "applicationId": "com.iumrah.app",
+    "namespace": "com.iumrah.beta",
+    "targetSdk": 36,
+    "defaultVersionCode": 15,
+    "defaultVersionName": "2.0.3"
+  },
+  "guards": [
+    "active source/Gradle scan",
+    "resolved releaseRuntimeClasspath component scan",
+    "Gradle dependencies report",
+    "dependencyInsight billing report",
+    "dependencyInsight billingclient report",
+    "merged release manifest scan",
+    "decompressed final AAB binary scan"
+  ],
+  "removed": [
+    "core/billing legacy stubs",
+    "legacy Plus/IAP documentation remnants"
+  ],
+  "unchanged": [
+    "applicationId/package identity",
+    "namespace",
+    "release signing configuration",
+    "Firebase production identity inputs",
+    "backend API",
+    "authorization",
+    "push notifications",
+    "deep links / Android App Links"
+  ]
+}

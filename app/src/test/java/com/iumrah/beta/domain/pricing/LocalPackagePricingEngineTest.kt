@@ -15,7 +15,7 @@ class LocalPackagePricingEngineTest {
     private val observed = Instant.parse("2026-09-04T12:00:00Z")
 
     @Test
-    fun standardTwoPilgrims_roundTrip_matches20PercentGoldenPrice() {
+    fun standardTwoPilgrims_roundTrip_matches50PercentGoldenPrice() {
         val trip = TripDraft(
             departureDate = LocalDate.parse("2026-10-01"),
             saudiArrivalDate = LocalDate.parse("2026-10-01"),
@@ -38,10 +38,10 @@ class LocalPackagePricingEngineTest {
             madinahHotel = LocalHotelPriceComponent(BigDecimal("80"), 2, 1, "madinah-1", "room-2", "iumrah_business"),
         )
 
-        assertMoney("3600", quote.totalPackagePrice)
-        assertMoney("1800", quote.pricePerPerson)
-        assertEquals("local-expedia-package-v6-android-test-20pct", quote.pricingSnapshot?.pricingVersion)
-        assertMoney("0.20", quote.pricingSnapshot!!.totals.markupRate)
+        assertMoney("4500", quote.totalPackagePrice)
+        assertMoney("2250", quote.pricePerPerson)
+        assertEquals("local-expedia-package-v6", quote.pricingSnapshot?.pricingVersion)
+        assertMoney("0.50", quote.pricingSnapshot!!.totals.markupRate)
     }
 
     @Test
@@ -71,8 +71,8 @@ class LocalPackagePricingEngineTest {
             madinahHotel = LocalHotelPriceComponent(BigDecimal("120"), 3, 2, "madinah-2", null, "iumrah_business"),
         )
 
-        assertMoney("8660", quote.totalPackagePrice)
-        assertMoney("2165", quote.pricePerPerson)
+        assertMoney("10820", quote.totalPackagePrice)
+        assertMoney("2705", quote.pricePerPerson)
         assertEquals(2, quote.pricingSnapshot?.context?.vehicleCount)
         assertMoney(
             "320",
@@ -104,8 +104,8 @@ class LocalPackagePricingEngineTest {
             madinahHotel = null,
         )
 
-        assertMoney("1660", quote.totalPackagePrice)
-        assertMoney("1660", quote.pricePerPerson)
+        assertMoney("2075", quote.totalPackagePrice)
+        assertMoney("2075", quote.pricePerPerson)
         assertEquals(false, quote.pricingSnapshot!!.components.any { it.code == "madinah_hotel" || it.code == "ziyarat_madinah" })
     }
 

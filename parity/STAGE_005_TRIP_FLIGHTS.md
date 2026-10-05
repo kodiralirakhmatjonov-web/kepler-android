@@ -20,4 +20,4 @@ Flight/hotel choice cards use the iumrah press spring rather than Material rippl
 Final package generation, checkout and booking creation are Stage 006/007 work. Booking and Care root tabs therefore remain placeholders at this stage; Trip Builder, Hotel Selection, Hotels and Flights do not.
 
 ## Test pricing exception
-Android beta package markup remains **20%**. All other pricing rules remain parity-controlled.
+Android fallback package markup is **50%**, matching iOS. All pricing rules remain parity-controlled.

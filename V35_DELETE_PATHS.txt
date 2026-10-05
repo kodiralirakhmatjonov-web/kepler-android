@@ -1,0 +1,5 @@
+These obsolete files are deleted by scripts/remove-legacy-play-billing.sh during Stage 17 validation after the cumulative ZIP is applied:
+app/src/main/java/com/iumrah/beta/core/billing/LegacyPlayCard.kt
+app/src/main/java/com/iumrah/beta/core/billing/LegacyPlayPurchases.kt
+docs/google-play/legacy/plus_page.dart.txt
+docs/google-play/legacy/premium_service.dart.txt

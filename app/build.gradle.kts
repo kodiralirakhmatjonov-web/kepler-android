@@ -15,6 +15,11 @@ private val firebaseConfig: (String) -> String = { name ->
         ?: firebaseProperties.getProperty(name)
         ?: "").trim()
 }
+private val releaseConfig: (String) -> String = { name ->
+    (providers.gradleProperty(name).orNull
+        ?: System.getenv(name)
+        ?: "").trim()
+}
 
 android {
     namespace = "com.iumrah.beta"
@@ -40,11 +45,11 @@ android {
 
     signingConfigs {
         create("playRelease") {
-            val path = System.getenv("PLAY_KEYSTORE_PATH")
-            if (!path.isNullOrBlank()) storeFile = file(path)
-            storePassword = System.getenv("PLAY_STORE_PASSWORD")
-            keyAlias = System.getenv("PLAY_KEY_ALIAS")
-            keyPassword = System.getenv("PLAY_KEY_PASSWORD")
+            val path = releaseConfig("PLAY_KEYSTORE_PATH")
+            if (path.isNotBlank()) storeFile = file(path)
+            storePassword = releaseConfig("PLAY_STORE_PASSWORD").ifBlank { null }
+            keyAlias = releaseConfig("PLAY_KEY_ALIAS").ifBlank { null }
+            keyPassword = releaseConfig("PLAY_KEY_PASSWORD").ifBlank { null }
         }
     }
 
@@ -72,6 +77,11 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        jniLibs {
+            // Keep native libraries uncompressed/aligned for modern Play delivery.
+            // MapLibre ships native .so files, so 16 KB page-size compatibility is release-critical.
+            useLegacyPackaging = false
+        }
     }
 }
 
@@ -132,17 +142,42 @@ androidComponents {
     }
 }
 
+val verifyNoGooglePlayBilling by tasks.registering {
+    group = "verification"
+    description = "Resolve releaseRuntimeClasspath and fail if Google Play Billing is present."
+    doLast {
+        val configuration = configurations.getByName("releaseRuntimeClasspath")
+        val forbidden = configuration.incoming.resolutionResult.allComponents
+            .mapNotNull { component ->
+                component.moduleVersion?.takeIf { module ->
+                    module.group == "com.android.billingclient" ||
+                        module.name.contains("billingclient", ignoreCase = true)
+                }?.let { module -> "${module.group}:${module.name}:${module.version}" }
+            }
+            .distinct()
+            .sorted()
+        check(forbidden.isEmpty()) {
+            "Google Play Billing must not be present in releaseRuntimeClasspath: ${forbidden.joinToString()}"
+        }
+        println("Verified releaseRuntimeClasspath: no com.android.billingclient components.")
+    }
+}
+
 val validatePlayRelease by tasks.registering {
     doLast {
-        listOf("PLAY_KEYSTORE_PATH", "PLAY_STORE_PASSWORD", "PLAY_KEY_ALIAS", "PLAY_KEY_PASSWORD").forEach {
-            check(!System.getenv(it).isNullOrBlank()) { "Missing release signing environment: $it" }
+        val required = listOf("PLAY_KEYSTORE_PATH", "PLAY_STORE_PASSWORD", "PLAY_KEY_ALIAS", "PLAY_KEY_PASSWORD")
+        required.forEach { name ->
+            check(releaseConfig(name).isNotBlank()) { "Missing release signing value: $name (env or -P$name=...)" }
         }
-        check(file(System.getenv("PLAY_KEYSTORE_PATH")).isFile) { "Upload keystore not found" }
+        check(file(releaseConfig("PLAY_KEYSTORE_PATH")).isFile) { "Upload keystore not found" }
         check(providers.gradleProperty("PLAY_VERSION_CODE").orNull?.toIntOrNull()?.let { it in 15..2100000000 } == true) {
             "Pass -PPLAY_VERSION_CODE explicitly: greater than ALL Console versions (legacy archive: 14)"
         }
     }
 }
 tasks.configureEach {
-    if (name == "preReleaseBuild") dependsOn(validatePlayRelease)
+    if (name == "preReleaseBuild") {
+        dependsOn(validatePlayRelease)
+        dependsOn(verifyNoGooglePlayBilling)
+    }
 }
