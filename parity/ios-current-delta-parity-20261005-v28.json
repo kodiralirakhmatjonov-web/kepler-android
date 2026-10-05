@@ -1,0 +1,47 @@
+{
+  "version": 28,
+  "date": "2026-10-05",
+  "source_ios": "kepler-ios-main 3(7).zip",
+  "base_android": "kepler-android-main 2(1).zip",
+  "scope": [
+    "IUMRAH_FLIGHTS_REDESIGN_V6_20261005_APPLIED",
+    "IUMRAH_AIRPORT_MAP_PRODUCTION_V1_20261004_APPLIED"
+  ],
+  "implemented": {
+    "aviasales_discovery": true,
+    "offers_direct_calendar_contract": true,
+    "ranked_single_list": true,
+    "direct_cheapest_fastest_badges": true,
+    "nearby_dates": true,
+    "price_chart": true,
+    "airline_filter": true,
+    "flight_detail_refresh": true,
+    "favorites_local_persistence": true,
+    "favorite_price_change_notifications": true,
+    "native_share": true,
+    "aviasales_deeplink": true,
+    "use_for_umrah": true,
+    "route_map_picker": true,
+    "bundled_airport_catalog_count": 54,
+    "offline_priority_airport_search": true,
+    "backend_map_tap_resolution": true,
+    "route_visualization": true
+  },
+  "platform_adaptations": {
+    "ios_mapkit_poi": "Android MapLibre + bundled catalog + existing geocoder/API nearest-airport resolution",
+    "ios_geodesic_polyline": "Android projected curved route overlay"
+  },
+  "not_in_scope_next_deltas": [
+    "BOOKING_TRAVEL_INFO_20261004",
+    "IUMRAH_FRIENDS_SCHEDULE_VIDEO_V5_20261004_APPLIED",
+    "IUMRAH_ACCOUNT_BOOKING_ZIYARATS_POLISH_V3_20261004_APPLIED",
+    "IUMRAH_PASSPORT_STATUS_PRAYER_GUIDE_REDESIGN_20261004_APPLIED",
+    "IUMRAH_ZIYARATS_WIDGETS_PAYMENTS_ACCOUNT_V4_20261004_APPLIED"
+  ],
+  "validation": {
+    "verify_stage10": "pass",
+    "verify_stage9": "pass",
+    "verify_build_env": "pass",
+    "full_gradle_assemble": "not_run_no_wrapper_or_gradle"
+  }
+}

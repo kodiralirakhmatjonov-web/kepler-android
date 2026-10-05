@@ -1,0 +1,22 @@
+iumrah Android v29 — Booking Travel Info parity
+Source of truth: kepler-ios-main 3(7).zip / Sources/Views/Booking/JourneyTravelInfoView.swift
+Base: Android v28 Flights + Airport Map parity
+
+Implemented:
+- Booking active hub now places Travel Info directly below the branded header and before Booking / Status / Schedule, matching current iOS hierarchy.
+- Makkah / Madinah segmented holy-city selector with persisted selection.
+- Prayer card with Fajr, Dhuhr, Asr, Maghrib, Isha, next-prayer highlight and live HH:mm:ss countdown.
+- Prayer data: AlAdhan timings endpoint, Umm al-Qura method=4, Saudi timezone, today + tomorrow Fajr, daily offline cache and stale-cache fallback.
+- Weather card with current temperature/condition and seven-day forecast.
+- Weather data: MET Norway Locationforecast 2.0 compact, 30-minute cache and stale-cache fallback.
+- World Clock card with Saudi and device-local analog clocks, live seconds, UTC offsets and offset explanation.
+- Horizontal swipe pages + page indicator.
+- Manual refresh control and loading/offline placeholder behavior.
+- Four app languages preserved (RU / EN / UZ Latin / UZ Cyrillic).
+- Booking header no longer duplicates the Makkah clock because Travel Info supplies the richer clock surface, matching iOS.
+
+Validation:
+- Stage 2 through Stage 10 repository structural verifiers: PASS.
+- Stage 11 Travel Info verifier: PASS.
+- Build environment verifier: PASS (compileSdk 36 / targetSdk 36 / versionCode 15).
+- Full Gradle compile remains delegated to existing GitHub workflow because this artifact runtime has no Android SDK/Gradle installation.

@@ -1,0 +1,36 @@
+{
+  "version": 30,
+  "date": "2026-10-05",
+  "source_ios": "kepler-ios-main 3(7).zip",
+  "base_android": "v29",
+  "scope": [
+    "IUMRAH_FRIENDS_SCHEDULE_VIDEO_V5_20261004_APPLIED"
+  ],
+  "implemented": {
+    "hotels_hero_redundant_note_removed": true,
+    "iumrah_friends_showcase": true,
+    "friends_cover_asset": true,
+    "friends_group_1_to_16": true,
+    "friends_star_picker_1_to_5": true,
+    "friends_automatic_rooms_4_guests": true,
+    "friends_published_direct_pair": true,
+    "friends_primary_hotel_star_selection": true,
+    "friends_live_package_engine_quote": true,
+    "friends_supplier_cost_hidden": true,
+    "friends_everything_included": true,
+    "booking_itinerary_four_locale_normalization": true,
+    "home_build_my_umrah_reordered": true,
+    "home_video_inline_pause_for_fullscreen": true,
+    "home_video_swipe_hit_testing_fix": true
+  },
+  "remaining_major_deltas": [
+    "IUMRAH_ACCOUNT_BOOKING_ZIYARATS_POLISH_V3_20261004_APPLIED",
+    "IUMRAH_PASSPORT_STATUS_PRAYER_GUIDE_REDESIGN_20261004_APPLIED",
+    "IUMRAH_ZIYARATS_WIDGETS_PAYMENTS_ACCOUNT_V4_20261004_APPLIED"
+  ],
+  "validation": {
+    "verify_stage12": "pass",
+    "verify_build_env": "pass",
+    "full_gradle_assemble": "not_run_no_android_sdk_or_gradle_wrapper_in_artifact_runtime"
+  }
+}

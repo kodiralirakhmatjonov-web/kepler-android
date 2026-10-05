@@ -79,6 +79,9 @@ fun LoopingRawVideo(
             factory = {
                 PlayerView(it).apply {
                     useController = false
+                    isClickable = false
+                    isFocusable = false
+                    setOnTouchListener { _, _ -> false }
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                     this.player = player

@@ -1,0 +1,40 @@
+{
+  "version": 29,
+  "date": "2026-10-05",
+  "source_ios": "kepler-ios-main 3(7).zip",
+  "base_android": "v28",
+  "scope": [
+    "BOOKING_TRAVEL_INFO_20261004"
+  ],
+  "implemented": {
+    "booking_hub_position": true,
+    "holy_city_picker": true,
+    "holy_city_persisted_selection": true,
+    "prayer_times_aladhan": true,
+    "umm_al_qura_method_4": true,
+    "tomorrow_fajr": true,
+    "next_prayer_countdown": true,
+    "prayer_daily_cache": true,
+    "weather_met_norway": true,
+    "weather_7_day": true,
+    "weather_30_minute_cache": true,
+    "stale_cache_fallback": true,
+    "saudi_local_dual_clock": true,
+    "analog_clocks": true,
+    "utc_offset_explanation": true,
+    "horizontal_pager": true,
+    "manual_refresh": true,
+    "four_language_copy": true
+  },
+  "remaining_major_deltas": [
+    "IUMRAH_FRIENDS_SCHEDULE_VIDEO_V5_20261004_APPLIED",
+    "IUMRAH_ACCOUNT_BOOKING_ZIYARATS_POLISH_V3_20261004_APPLIED",
+    "IUMRAH_PASSPORT_STATUS_PRAYER_GUIDE_REDESIGN_20261004_APPLIED",
+    "IUMRAH_ZIYARATS_WIDGETS_PAYMENTS_ACCOUNT_V4_20261004_APPLIED"
+  ],
+  "validation": {
+    "verify_stage11": "pass",
+    "verify_build_env": "pass",
+    "full_gradle_assemble": "not_run_no_android_sdk_or_gradle_in_artifact_runtime"
+  }
+}

@@ -130,11 +130,11 @@ fun HomeScreen(
             item { HomeNotificationCarousel(language, notificationState.home, chrome, notifications) }
         }
         item { EmotionalPrompt(language = language, onOpen = { storyStartIndex = 0 }) }
-        item { HomeVideoCarousel(language = language, onOpenStory = { storyStartIndex = it }) }
+        item { HomeVideoCarousel(language = language, isStoryPresented = storyStartIndex != null, onOpenStory = { storyStartIndex = it }) }
         item { AudienceSection(language) }
+        item { BuildMyUmrahSection(language, chrome) }
         item { ServicesSection(language, chrome) }
         item { ReadyPackagesSection(language, chrome, hotelCatalog, storefrontOrigin) }
-        item { BuildMyUmrahSection(language, chrome) }
         item { HotelFirstPackagesSection(language, chrome, hotelCatalog, storefrontOrigin) }
         item { HomeIntegrationsSection(language, chrome) }
         item { ProductsSection(language, chrome) }
@@ -1338,7 +1338,7 @@ private fun tr(language: AppLanguage, ru: String, en: String, uz: String, uzCy: 
 private val storyResources = listOf("home_story_01", "home_story_03", "home_story_04", "home_story_05", "home_story_07", "home_story_08")
 
 @Composable
-private fun HomeVideoCarousel(language: AppLanguage, onOpenStory: (Int) -> Unit) {
+private fun HomeVideoCarousel(language: AppLanguage, isStoryPresented: Boolean, onOpenStory: (Int) -> Unit) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val availableWidth = configuration.screenWidthDp.dp - 36.dp
@@ -1372,7 +1372,7 @@ private fun HomeVideoCarousel(language: AppLanguage, onOpenStory: (Int) -> Unit)
                 LoopingRawVideo(
                     resourceName = storyResources[index],
                     modifier = Modifier.fillMaxSize(),
-                    play = pager.currentPage == index,
+                    play = pager.currentPage == index && !isStoryPresented,
                     muted = muted,
                     fallback = { Image(painterResource(R.drawable.iumrah_makkah_background), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) },
                 )

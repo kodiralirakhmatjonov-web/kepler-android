@@ -62,6 +62,7 @@ import com.iumrah.beta.data.booking.BookingStore
 import com.iumrah.beta.data.chat.ChatService
 import com.iumrah.beta.data.notification.ClientNotificationStore
 import com.iumrah.beta.data.flight.AirportSearchService
+import com.iumrah.beta.data.flight.AviasalesFlightDiscoveryService
 import com.iumrah.beta.data.flight.CuratedFlightRecommendationService
 import com.iumrah.beta.data.flight.IgnavFlightInventoryProvider
 import com.iumrah.beta.data.hotel.HotelCatalogService
@@ -130,6 +131,7 @@ fun AppShell(
     packageEngine: RemotePackageEngineClient,
     journey: JourneyStore,
     airports: AirportSearchService,
+    flightDiscovery: AviasalesFlightDiscoveryService,
     flightInventory: IgnavFlightInventoryProvider,
     curatedFlights: CuratedFlightRecommendationService,
     packageGenerator: PackageGenerator,
@@ -156,7 +158,7 @@ fun AppShell(
             when (route) {
                 AppRoute.Root -> when (tab) {
                     AppTab.HOME -> HomeScreen(language, chrome, hotelCatalog, journey, notifications)
-                    AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, journey, airports, chrome, unreadCount = shellNotificationState.unreadCount)
+                    AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, journey, airports, flightDiscovery, chrome, unreadCount = shellNotificationState.unreadCount)
                     AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, accountService, notifications, chrome)
                     AppTab.CARE -> CareHomeScreen(language, bookingStore, chatService, notifications, chrome)
                     AppTab.ACCOUNT -> AccountRootScreen(language, accountStore, bookingStore, settingsStore, notifications, chrome)
@@ -231,6 +233,7 @@ fun AppShell(
                     service = hotelCatalog,
                     journey = journey,
                     airports = airports,
+                    flightDiscovery = flightDiscovery,
                     chrome = chrome,
                     initialBoard = HotelsBoard.FLIGHTS,
                     unreadCount = shellNotificationState.unreadCount,
@@ -241,6 +244,7 @@ fun AppShell(
                     service = hotelCatalog,
                     journey = journey,
                     airports = airports,
+                    flightDiscovery = flightDiscovery,
                     chrome = chrome,
                     initialBoard = HotelsBoard.SUNDAY,
                     unreadCount = shellNotificationState.unreadCount,

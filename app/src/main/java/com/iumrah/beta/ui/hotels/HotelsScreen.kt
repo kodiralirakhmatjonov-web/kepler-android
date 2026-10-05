@@ -82,6 +82,7 @@ import com.iumrah.beta.core.navigation.AppChromeStore
 import com.iumrah.beta.core.share.IumrahPackageShare
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.flight.AirportSearchService
+import com.iumrah.beta.data.flight.AviasalesFlightDiscoveryService
 import com.iumrah.beta.data.hotel.HotelCatalogService
 import com.iumrah.beta.domain.journey.JourneyStore
 import com.iumrah.beta.models.flight.Airport
@@ -90,6 +91,7 @@ import com.iumrah.beta.models.hotel.HotelSummary
 import com.iumrah.beta.models.hotel.StorefrontFlightLeg
 import com.iumrah.beta.models.hotel.StorefrontFlightOption
 import com.iumrah.beta.models.hotel.StorefrontPackageSnapshot
+import com.iumrah.beta.ui.flights.FlightDiscoveryPanel
 import com.iumrah.beta.ui.components.IumrahPressable
 import com.iumrah.beta.ui.components.IumrahPrimaryButton
 import com.iumrah.beta.ui.components.IumrahRootPageHeader
@@ -120,6 +122,7 @@ fun HotelsScreen(
     service: HotelCatalogService,
     journey: JourneyStore,
     airports: AirportSearchService,
+    flightDiscovery: AviasalesFlightDiscoveryService,
     chrome: AppChromeStore,
     initialBoard: HotelsBoard = HotelsBoard.HOTELS,
     unreadCount: Int = 0,
@@ -143,6 +146,7 @@ fun HotelsScreen(
     var locatingAirport by remember { mutableStateOf(false) }
     var flightOriginFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var flightDestinationFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var friendsCalculatorPresented by remember { mutableStateOf(false) }
     val previews = remember { mutableStateMapOf<String, HotelPreview>() }
 
     val favoritePrefs = remember { context.getSharedPreferences("iumrah_storefront_favorites", Context.MODE_PRIVATE) }
@@ -251,10 +255,11 @@ fun HotelsScreen(
                         image = R.drawable.iumrah_hotels_showcase,
                         title = "iumrah Hotels",
                         description = hotelText(language, "hotel_body"),
-                        note = hotelText(language, "hotel_note"),
+                        note = null,
                         imageBackground = Color.Black,
                     )
                 }
+                item { IumrahFriendsShowcaseCard(language) { friendsCalculatorPresented = true } }
 
                 if (makkah.isNotEmpty()) {
                     item { StorefrontSectionHeader(L10n.text("hotels_makkah", language), L10n.text("hotels_selected_badge", language)) }
@@ -329,6 +334,15 @@ fun HotelsScreen(
                         imageBackground = Color.Black,
                     )
                 }
+                item {
+                    FlightDiscoveryPanel(
+                        language = language,
+                        service = flightDiscovery,
+                        airports = airports,
+                        journey = journey,
+                        chrome = chrome,
+                    )
+                }
                 if (flights.isNotEmpty()) {
                     item { StorefrontSectionHeader(hotelText(language, "published"), hotelText(language, "current")) }
                     item {
@@ -399,6 +413,16 @@ fun HotelsScreen(
     }
     if (carePresented) {
         HotelCareContactSheet(language = language, onDismiss = { carePresented = false })
+    }
+    if (friendsCalculatorPresented) {
+        IumrahFriendsCalculatorSheet(
+            language = language,
+            service = service,
+            flightPackages = flightPackages,
+            makkahHotels = makkah,
+            madinahHotels = madinah,
+            onDismiss = { friendsCalculatorPresented = false },
+        )
     }
     packageShareError?.let { message ->
         AlertDialog(

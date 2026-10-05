@@ -76,7 +76,7 @@ fun BookingDetailScreen(
         val refreshed = bookingStore.refresh(bookingID) ?: return@LaunchedEffect
         itinerary = runCatching {
             bookingStore.service.fetchItinerary(bookingID, bookingStore.headersFor(refreshed))
-        }.getOrDefault(emptyList())
+        }.getOrDefault(emptyList()).let { localizeServerItinerary(it, language) }
     }
 
     if (session == null) {

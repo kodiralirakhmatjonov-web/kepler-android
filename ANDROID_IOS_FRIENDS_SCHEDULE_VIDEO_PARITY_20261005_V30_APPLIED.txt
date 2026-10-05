@@ -1,0 +1,22 @@
+iumrah Android v30 — Friends / Schedule / Video parity
+Source of truth: kepler-ios-main 3(7).zip / IUMRAH_FRIENDS_SCHEDULE_VIDEO_V5_20261004_APPLIED.txt
+Base: Android v29 Booking Travel Info parity
+
+Implemented:
+- iumrah Hotels hero removes the redundant note paragraph.
+- iumrah Friends showcase card added directly below the Hotels hero with the current iOS cover asset.
+- Group calculator supports 1–5 star hotels, 1–16 total travelers, adults + children, automatic rooms at up to 4 guests per room, live 420 ms recalculation and loading state.
+- Calculator selects a published direct outbound/return package with Madinah, exact star-level Makkah/Madinah hotels, and requests the live total from /api/package/quote through HotelCatalogService.
+- Calculator deliberately sends null room ids when changing the star-level hotel, matching iOS Package Engine behavior instead of leaking a room id from the source snapshot.
+- Total group and per-person public prices only; supplier cost remains hidden.
+- Everything Included view covers direct flights, Primary Hotels, transfer, Guide, ziyarat, Care and eSIM.
+- Booking server itinerary titles/subtitles/locations normalize into RU / EN / UZ Latin / UZ Cyrillic at render time.
+- Build my Umrah is moved immediately after Who Iumrah is for on Home.
+- Home video carousel pauses inline playback while the fullscreen story is presented.
+- Native Media3 PlayerView no longer captures taps/swipes, keeping HorizontalPager gestures reliable.
+
+Validation:
+- Stage 2 through Stage 11 structural verifiers: PASS.
+- Stage 12 Friends / Schedule / Video verifier: PASS.
+- Android build environment verifier: PASS (compileSdk 36 / targetSdk 36 / versionCode 15).
+- Full Gradle assemble is not available in this artifact runtime because the source artifact has no Gradle wrapper and no Android SDK/Gradle installation is present.

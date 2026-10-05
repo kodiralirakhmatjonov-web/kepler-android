@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.iumrah.beta.core.settings.AppLanguage
+import com.iumrah.beta.data.flight.AirportMapBootstrapCatalog
 import com.iumrah.beta.data.flight.AirportSearchService
 import com.iumrah.beta.models.flight.Airport
 import com.iumrah.beta.ui.components.IumrahPressable
@@ -286,25 +287,15 @@ fun IumrahAirportMapDialog(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val featuredCodes = remember { listOf("TAS", "SKD", "JED", "MED", "IST", "DXB", "DOH", "GYD", "ALA", "NQZ", "DMM", "TIF") }
-    var airports by remember { mutableStateOf(listOfNotNull(current)) }
-    var selected by remember(current) { mutableStateOf(current) }
-    var loading by remember { mutableStateOf(true) }
+    var airports by remember(current) {
+        mutableStateOf((AirportMapBootstrapCatalog.airports + listOfNotNull(current)).distinctBy { it.iata.uppercase() })
+    }
+    var selected by remember(current, fallbackCode) {
+        mutableStateOf(current ?: AirportMapBootstrapCatalog.airport(fallbackCode))
+    }
+    var loading by remember { mutableStateOf(false) }
     var resolving by remember { mutableStateOf(false) }
     var resetMapNonce by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-
-    LaunchedEffect(Unit) {
-        val found = linkedMapOf<String, Airport>()
-        current?.let { found[it.iata.uppercase()] = it }
-        for (code in featuredCodes) {
-            runCatching { service.search(code, 4) }.getOrDefault(emptyList())
-                .firstOrNull { it.iata.equals(code, true) }
-                ?.let { found[it.iata.uppercase()] = it }
-        }
-        airports = found.values.toList()
-        if (selected == null) selected = airports.firstOrNull { it.iata.equals(fallbackCode, true) } ?: airports.firstOrNull()
-        loading = false
-    }
 
     fun resolvePoint(point: LatLng) {
         if (resolving) return
@@ -682,3 +673,312 @@ private fun airportSearchHint(language: AppLanguage) = when (language) {
 private fun airportSearchPlaceholder(language: AppLanguage) = when (language) {
     AppLanguage.RUSSIAN -> "Например, TAS или Ташкент"; AppLanguage.ENGLISH -> "For example, TAS or Tashkent"; AppLanguage.UZBEK -> "Masalan, TAS yoki Toshkent"; AppLanguage.UZBEK_CYRILLIC -> "Масалан, TAS ёки Тошкент"
 }
+
+private enum class AirportRouteSelectionMode { ORIGIN, DESTINATION }
+
+/**
+ * Android parity for iOS AirportRouteMapPickerView.
+ * One full-screen map selects both departure and arrival airport and keeps the route visible.
+ */
+@Composable
+fun IumrahAirportRouteMapDialog(
+    language: AppLanguage,
+    service: AirportSearchService,
+    origin: Airport?,
+    originCode: String,
+    destination: Airport?,
+    destinationCode: String,
+    onDismiss: () -> Unit,
+    onCommit: (Airport, Airport) -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var airports by remember(origin, destination) {
+        mutableStateOf((AirportMapBootstrapCatalog.airports + listOfNotNull(origin, destination)).distinctBy { it.iata.uppercase() })
+    }
+    var selectedOrigin by remember(origin, originCode) { mutableStateOf(origin ?: AirportMapBootstrapCatalog.airport(originCode)) }
+    var selectedDestination by remember(destination, destinationCode) { mutableStateOf(destination ?: AirportMapBootstrapCatalog.airport(destinationCode)) }
+    var mode by remember { mutableStateOf(if (selectedOrigin == null) AirportRouteSelectionMode.ORIGIN else AirportRouteSelectionMode.DESTINATION) }
+    var loading by remember { mutableStateOf(false) }
+    var resolving by remember { mutableStateOf(false) }
+    var searchOpen by remember { mutableStateOf(false) }
+    var searchMode by remember { mutableStateOf(AirportRouteSelectionMode.ORIGIN) }
+
+    fun choose(airport: Airport) {
+        when (mode) {
+            AirportRouteSelectionMode.ORIGIN -> {
+                if (!selectedDestination?.iata.equals(airport.iata, true)) selectedOrigin = airport
+                mode = AirportRouteSelectionMode.DESTINATION
+            }
+            AirportRouteSelectionMode.DESTINATION -> {
+                if (!selectedOrigin?.iata.equals(airport.iata, true)) selectedDestination = airport
+            }
+        }
+    }
+
+    fun resolvePoint(point: LatLng) {
+        if (resolving) return
+        resolving = true
+        scope.launch {
+            val airport = resolveAirportAtCoordinate(context, service, point.latitude, point.longitude)
+            if (airport != null) {
+                airports = (airports + airport).distinctBy { it.iata.uppercase() }
+                choose(airport)
+            }
+            resolving = false
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        Box(Modifier.fillMaxSize().background(Color(0xFF05070C))) {
+            AirportRouteMapLibreSurface(
+                airports = airports,
+                origin = selectedOrigin,
+                destination = selectedDestination,
+                mode = mode,
+                onSelect = ::choose,
+                onMapTap = ::resolvePoint,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp)) {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(Color.Black.copy(alpha = .48f))
+                        .border(.8.dp, Color.White.copy(alpha = .12f), RoundedCornerShape(26.dp)).padding(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    IumrahPressable(onClick = onDismiss, modifier = Modifier.size(44.dp), cornerRadius = 22.dp, background = Color.White.copy(alpha = .10f), shadowElevation = 0.dp) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.Close, null, Modifier.size(16.dp), Color.White) }
+                    }
+                    Text(routeMapTitle(language), Modifier.weight(1f), color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    IumrahPressable(
+                        onClick = {
+                            val old = selectedOrigin
+                            selectedOrigin = selectedDestination
+                            selectedDestination = old
+                        },
+                        modifier = Modifier.size(44.dp), cornerRadius = 22.dp, background = Color.White.copy(alpha = .10f), shadowElevation = 0.dp,
+                    ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.ArrowLeftRight, null, Modifier.size(18.dp), Color.White) } }
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                if (loading || resolving) {
+                    Row(Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp).clip(CircleShape).background(Color.Black.copy(alpha = .52f)).padding(horizontal = 13.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(15.dp), color = Color.White, strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (resolving) airportMapResolving(language) else airportMapLoading(language), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).background(Color.Black.copy(alpha = .62f))
+                        .border(.8.dp, Color.White.copy(alpha = .13f), RoundedCornerShape(30.dp)).padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    RouteAirportSelectorRow(
+                        language = language,
+                        title = routeMapFrom(language),
+                        airport = selectedOrigin,
+                        active = mode == AirportRouteSelectionMode.ORIGIN,
+                        onClick = { mode = AirportRouteSelectionMode.ORIGIN },
+                        onSearch = { searchMode = AirportRouteSelectionMode.ORIGIN; searchOpen = true },
+                    )
+                    RouteAirportSelectorRow(
+                        language = language,
+                        title = routeMapTo(language),
+                        airport = selectedDestination,
+                        active = mode == AirportRouteSelectionMode.DESTINATION,
+                        onClick = { mode = AirportRouteSelectionMode.DESTINATION },
+                        onSearch = { searchMode = AirportRouteSelectionMode.DESTINATION; searchOpen = true },
+                    )
+                    val from = selectedOrigin
+                    val to = selectedDestination
+                    IumrahPressable(
+                        onClick = { if (from != null && to != null && !from.iata.equals(to.iata, true)) onCommit(from, to) },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        cornerRadius = 19.dp,
+                        background = if (from != null && to != null && !from.iata.equals(to.iata, true)) Color.White else Color.White.copy(alpha = .25f),
+                        shadowElevation = 0.dp,
+                    ) {
+                        Row(Modifier.fillMaxSize().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(routeMapUse(language), Modifier.weight(1f), color = if (from != null && to != null) Color.Black else Color.White.copy(alpha = .65f), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Icon(CupertinoSymbol.ArrowRight, null, Modifier.size(17.dp), if (from != null && to != null) Color.Black else Color.White.copy(alpha = .65f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (searchOpen) {
+        RouteAirportSearchSheet(
+            language = language,
+            service = service,
+            onDismiss = { searchOpen = false },
+            onSelect = { airport ->
+                airports = (airports + airport).distinctBy { it.iata.uppercase() }
+                if (searchMode == AirportRouteSelectionMode.ORIGIN) {
+                    if (!selectedDestination?.iata.equals(airport.iata, true)) selectedOrigin = airport
+                    mode = AirportRouteSelectionMode.DESTINATION
+                } else if (!selectedOrigin?.iata.equals(airport.iata, true)) selectedDestination = airport
+                searchOpen = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun RouteAirportSelectorRow(
+    language: AppLanguage,
+    title: String,
+    airport: Airport?,
+    active: Boolean,
+    onClick: () -> Unit,
+    onSearch: () -> Unit,
+) {
+    val shape = RoundedCornerShape(19.dp)
+    Row(
+        Modifier.fillMaxWidth().clip(shape).background(if (active) Color.White.copy(alpha = .13f) else Color.White.copy(alpha = .07f))
+            .border(.8.dp, if (active) Color(0xFF0A84FF).copy(alpha = .85f) else Color.White.copy(alpha = .08f), shape)
+            .clickable(onClick = onClick).padding(start = 13.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(38.dp).clip(CircleShape).background(if (active) Color(0xFF0A84FF) else Color.White.copy(alpha = .10f)), contentAlignment = Alignment.Center) {
+            Icon(if (title == routeMapFrom(language)) CupertinoSymbol.AirplaneTakeoff else CupertinoSymbol.AirplaneLand, null, Modifier.size(17.dp), Color.White)
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title.uppercase(), color = Color.White.copy(alpha = .55f), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+            Text(airport?.let { "${it.iata.uppercase()} · ${it.city}" } ?: routeMapChooseAirport(language), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        IumrahPressable(onClick = onSearch, modifier = Modifier.size(38.dp), cornerRadius = 19.dp, background = Color.White.copy(alpha = .08f), shadowElevation = 0.dp) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.Menu, null, Modifier.size(15.dp), Color.White) }
+        }
+    }
+}
+
+@Composable
+private fun RouteAirportSearchSheet(
+    language: AppLanguage,
+    service: AirportSearchService,
+    onDismiss: () -> Unit,
+    onSelect: (Airport) -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<Airport>>(emptyList()) }
+    var loading by remember { mutableStateOf(false) }
+    LaunchedEffect(query) {
+        if (query.trim().length >= 2) {
+            loading = true
+            results = runCatching { service.search(query.trim(), 12) }.getOrDefault(emptyList())
+            loading = false
+        } else results = emptyList()
+    }
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = generatorPageColor(), dragHandle = null, shape = RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(top = 20.dp, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(airportSearchTitle(language), Modifier.weight(1f), fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                IumrahPressable(onClick = onDismiss, modifier = Modifier.size(40.dp), cornerRadius = 20.dp, background = generatorRaisedColor()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.Close, null, Modifier.size(14.dp)) } }
+            }
+            Row(Modifier.fillMaxWidth().height(54.dp).clip(RoundedCornerShape(18.dp)).background(generatorRaisedColor()).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(CupertinoSymbol.Menu, null, Modifier.size(16.dp), MaterialTheme.colorScheme.onSurface.copy(alpha = .45f))
+                Spacer(Modifier.width(8.dp))
+                BasicTextField(value = query, onValueChange = { query = it }, modifier = Modifier.weight(1f), singleLine = true, textStyle = androidx.compose.ui.text.TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp), decorationBox = { inner -> Box { if (query.isBlank()) Text(airportSearchHint(language), color = MaterialTheme.colorScheme.onSurface.copy(alpha = .42f)); inner() } })
+                if (loading) CircularProgressIndicator(Modifier.size(17.dp), strokeWidth = 2.dp)
+            }
+            results.forEach { airport ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable { onSelect(airport) }.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(38.dp).clip(CircleShape).background(Color(0xFF007AFF).copy(alpha = .12f)), contentAlignment = Alignment.Center) { Icon(CupertinoSymbol.Airplane, null, Modifier.size(16.dp), Color(0xFF007AFF)) }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) { Text(airport.compactTitle, fontWeight = FontWeight.Bold); Text(airport.subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AirportRouteMapLibreSurface(
+    airports: List<Airport>,
+    origin: Airport?,
+    destination: Airport?,
+    mode: AirportRouteSelectionMode,
+    onSelect: (Airport) -> Unit,
+    onMapTap: (LatLng) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val controller = rememberIumrahMapController()
+    val map = controller.map
+    val pinPositions = remember { mutableStateMapOf<String, IntOffset>() }
+
+    fun updatePins(activeMap: MapLibreMap = map ?: return) {
+        airports.forEach { airport ->
+            val p = activeMap.projection.toScreenLocation(LatLng(airport.lat, airport.lon))
+            pinPositions[airport.iata.uppercase()] = IntOffset(p.x.roundToInt(), p.y.roundToInt())
+        }
+    }
+
+    LaunchedEffect(map) { controller.setStyle(IumrahMapStyle.STANDARD) }
+    LaunchedEffect(map, controller.styleEpoch, origin?.iata, destination?.iata) {
+        val activeMap = map ?: return@LaunchedEffect
+        if (controller.styleEpoch <= 0) return@LaunchedEffect
+        val points = listOfNotNull(origin, destination)
+        val center = when (points.size) {
+            2 -> LatLng((points[0].lat + points[1].lat) / 2.0, (points[0].lon + points[1].lon) / 2.0)
+            1 -> LatLng(points[0].lat, points[0].lon)
+            else -> LatLng(30.0, 48.0)
+        }
+        activeMap.animateCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(center).zoom(if (points.size == 2) 3.8 else 5.2).build()), 550)
+        updatePins(activeMap)
+    }
+    DisposableEffect(map, airports) {
+        val active = map ?: return@DisposableEffect onDispose { }
+        val move = MapLibreMap.OnCameraMoveListener { updatePins(active) }
+        val idle = MapLibreMap.OnCameraIdleListener { updatePins(active) }
+        val click = MapLibreMap.OnMapClickListener { point -> onMapTap(point); true }
+        active.addOnCameraMoveListener(move); active.addOnCameraIdleListener(idle); active.addOnMapClickListener(click); updatePins(active)
+        onDispose { active.removeOnCameraMoveListener(move); active.removeOnCameraIdleListener(idle); active.removeOnMapClickListener(click) }
+    }
+
+    Box(modifier) {
+        IumrahMapLibreView(controller, Modifier.fillMaxSize())
+        val fromPoint = origin?.iata?.uppercase()?.let(pinPositions::get)
+        val toPoint = destination?.iata?.uppercase()?.let(pinPositions::get)
+        if (fromPoint != null && toPoint != null) {
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                val start = androidx.compose.ui.geometry.Offset(fromPoint.x.toFloat(), fromPoint.y.toFloat())
+                val end = androidx.compose.ui.geometry.Offset(toPoint.x.toFloat(), toPoint.y.toFloat())
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(start.x, start.y)
+                    val lift = kotlin.math.min(220f, kotlin.math.abs(end.x - start.x) * .20f + 70f)
+                    quadraticBezierTo((start.x + end.x) / 2f, kotlin.math.min(start.y, end.y) - lift, end.x, end.y)
+                }
+                drawPath(path, Color.White.copy(alpha = .28f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 7f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                drawPath(path, Color(0xFF0A84FF), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.5f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            }
+        }
+        airports.forEach { airport ->
+            val point = pinPositions[airport.iata.uppercase()] ?: return@forEach
+            val isOrigin = origin?.iata.equals(airport.iata, true)
+            val isDestination = destination?.iata.equals(airport.iata, true)
+            val active = (mode == AirportRouteSelectionMode.ORIGIN && isOrigin) || (mode == AirportRouteSelectionMode.DESTINATION && isDestination)
+            Column(
+                Modifier.offset { IntOffset(point.x - 20.dp.roundToPx(), point.y - 40.dp.roundToPx()) }.clickable { onSelect(airport) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                if (isOrigin || isDestination) Text(airport.iata.uppercase(), Modifier.padding(bottom = 4.dp).clip(CircleShape).background(Color.White).padding(horizontal = 8.dp, vertical = 4.dp), color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Box(Modifier.size(if (isOrigin || isDestination) 40.dp else 30.dp).clip(RoundedCornerShape(12.dp)).background(when { active -> Color(0xFF34C759); isOrigin || isDestination -> Color(0xFF0A84FF); else -> Color.Black.copy(alpha = .76f) }).border(1.7.dp, Color.White, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                    Icon(if (isDestination) CupertinoSymbol.AirplaneLand else CupertinoSymbol.AirplaneTakeoff, null, Modifier.size(if (isOrigin || isDestination) 18.dp else 13.dp), Color.White)
+                }
+            }
+        }
+    }
+}
+
+private fun routeMapTitle(language: AppLanguage) = when (language) { AppLanguage.RUSSIAN -> "Маршрут на карте"; AppLanguage.ENGLISH -> "Route on map"; AppLanguage.UZBEK -> "Xaritadagi yo‘nalish"; AppLanguage.UZBEK_CYRILLIC -> "Харитадаги йўналиш" }
+private fun routeMapFrom(language: AppLanguage) = when (language) { AppLanguage.RUSSIAN -> "Откуда"; AppLanguage.ENGLISH -> "From"; AppLanguage.UZBEK -> "Qayerdan"; AppLanguage.UZBEK_CYRILLIC -> "Қаердан" }
+private fun routeMapTo(language: AppLanguage) = when (language) { AppLanguage.RUSSIAN -> "Куда"; AppLanguage.ENGLISH -> "To"; AppLanguage.UZBEK -> "Qayerga"; AppLanguage.UZBEK_CYRILLIC -> "Қаерга" }
+private fun routeMapUse(language: AppLanguage) = when (language) { AppLanguage.RUSSIAN -> "Использовать маршрут"; AppLanguage.ENGLISH -> "Use route"; AppLanguage.UZBEK -> "Yo‘nalishni tanlash"; AppLanguage.UZBEK_CYRILLIC -> "Йўналишни танлаш" }
+private fun routeMapChooseAirport(language: AppLanguage) = when (language) { AppLanguage.RUSSIAN -> "Выберите аэропорт"; AppLanguage.ENGLISH -> "Choose airport"; AppLanguage.UZBEK -> "Aeroportni tanlang"; AppLanguage.UZBEK_CYRILLIC -> "Аэропортни танланг" }

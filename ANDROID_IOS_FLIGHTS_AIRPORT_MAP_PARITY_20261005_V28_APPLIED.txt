@@ -1,0 +1,42 @@
+iumrah Android v28 — iOS Flights + Airport Map parity
+Source of truth: kepler-ios-main 3(7).zip (iOS markers IUMRAH_FLIGHTS_REDESIGN_V6_20261005_APPLIED + IUMRAH_AIRPORT_MAP_PRODUCTION_V1_20261004_APPLIED)
+Base Android: kepler-android-main 2(1).zip / v27 Hotels parity
+
+Implemented in Android:
+- Aviasales Data API discovery client on /api/package/flights/data for offers/direct/calendar views.
+- New embedded Flights discovery UI in the Hotels > Flights board.
+- One-way / round-trip search, route swap, date and passenger controls.
+- Single ranked result list with direct-first ordering and cheapest / fastest ranking.
+- iumrah direct recommendation, Cheapest and Fastest badges.
+- Inline Direct Flights toggle, airline filter, nearby dates and price chart.
+- Flight detail sheet with outbound/return information, fare conditions and a fresh-price recheck.
+- Native Android share and Aviasales booking/search deep link.
+- Saved flights persisted locally; fresh-price reconciliation can post Android price-change notifications.
+- Saved Flights sheet and Android 13+ notification permission request.
+- “Use for Umrah” carries route/date/passenger state into the existing journey flow.
+
+Airport-map parity:
+- Added Android AirportMapBootstrapCatalog with the same 54 zero-network priority airports bundled by current iOS.
+- AirportSearchService now merges bundled results with /api/airports so core airports remain selectable offline/intermittently.
+- Existing single-airport MapLibre picker now boots instantly from the bundled catalog rather than serial network lookups.
+- Added full-screen From/To route picker used by Flights.
+- Both endpoints remain visible with a curved route line and route swap.
+- Duplicate endpoint selection is blocked.
+- Search can add arbitrary backend airports to the map.
+- Map tap resolves the nearest real airport through the existing Android geocoder + /api/airports path, so selection is not limited to the bundled catalog.
+
+Integration:
+- AviasalesFlightDiscoveryService is registered in IumrahAppContainer.
+- AppShell passes the service into HotelsScreen for root Flights and Storefront Flights/Sunday routes.
+- Existing published flight/package cards remain below the new discovery UI; no old flow was removed.
+
+Validation performed:
+- scripts/verify-stage10.sh: PASS
+- scripts/verify-stage9.sh: PASS
+- scripts/verify-build-env.sh: PASS (compileSdk 36, targetSdk 36, versionCode 15)
+- Kotlin delimiter/syntax sanity checks on changed/new files: PASS
+- Current Material3 DatePicker state transition updated to DatePickerState.setSelectedDate(LocalDate).
+- Full Gradle assemble was not run because the supplied repository contains no Gradle wrapper and the environment has no system Gradle/Android SDK dependency cache.
+
+Platform-specific note:
+- iOS uses MapKit airport POI discovery and MKGeodesicPolyline. Android uses MapLibre, the identical bundled priority airport dataset, backend-assisted map-tap resolution and a projected curved route overlay. The user-facing selection flow is preserved without introducing Google Maps/Places dependencies.

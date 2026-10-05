@@ -102,6 +102,8 @@ class HotelCatalogService(private val api: APIClient) {
         makkahNightsOverride: Int? = null,
         madinahNightsOverride: Int? = null,
         includeMadinahOverride: Boolean? = null,
+        makkahRoomIdOverride: String? = snapshot.configuration?.makkahRoomId,
+        madinahRoomIdOverride: String? = snapshot.configuration?.madinahRoomId,
     ): PackageQuote {
         val makkahHotelId = makkahHotelIdOverride ?: requireNotNull(snapshot.makkahHotelId ?: snapshot.hotelFirstAnchorHotelId) { "Makkah hotel is missing from package snapshot." }
         val includeMadinah = includeMadinahOverride ?: ((snapshot.madinahNights ?: 0) > 0 && !snapshot.madinahHotelId.isNullOrBlank())
@@ -132,12 +134,12 @@ class HotelCatalogService(private val api: APIClient) {
             hotels = StorefrontQuoteRequest.Hotels(
                 makkah = StorefrontQuoteRequest.Hotel(
                     makkahHotelId,
-                    snapshot.configuration?.makkahRoomId,
+                    makkahRoomIdOverride,
                     maxOf(1, makkahNightsOverride ?: snapshot.makkahNights ?: 1),
                 ),
                 madinah = if (includeMadinah) StorefrontQuoteRequest.Hotel(
                     hotelId = requireNotNull(resolvedMadinahHotelId),
-                    roomId = snapshot.configuration?.madinahRoomId,
+                    roomId = madinahRoomIdOverride,
                     nights = maxOf(1, madinahNightsOverride ?: snapshot.madinahNights ?: 1),
                 ) else null,
             ),

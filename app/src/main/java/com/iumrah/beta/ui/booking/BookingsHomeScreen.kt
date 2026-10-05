@@ -125,7 +125,7 @@ fun BookingsHomeScreen(
             }.getOrNull()
             itinerary = runCatching {
                 bookingStore.service.fetchItinerary(session.id, bookingStore.headersFor(session))
-            }.getOrDefault(emptyList())
+            }.getOrDefault(emptyList()).let { localizeServerItinerary(it, language) }
         } ?: run {
             checkout = null
             itinerary = emptyList()
@@ -204,10 +204,12 @@ private fun ActiveBookingHome(
                 language = language,
                 title = L10n.text("tab_booking", language),
                 usesBrandLogo = true,
-                showsMakkahTime = true,
+                showsMakkahTime = false,
                 unreadCount = unreadCount,
                 chrome = chrome,
             )
+            Spacer(Modifier.height(16.dp))
+            JourneyTravelInfoPanel(language = language)
             Spacer(Modifier.height(18.dp))
             BookingPanelPicker(language, panel, onPanel)
             Spacer(Modifier.height(12.dp))
