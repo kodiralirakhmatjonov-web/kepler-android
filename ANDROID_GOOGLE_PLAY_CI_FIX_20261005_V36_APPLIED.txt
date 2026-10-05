@@ -1,0 +1,8 @@
+iumrah Android v36 release CI hotfix
+
+- Fixes GitHub Actions failure caused by android-actions/setup-android@v3 requesting the removed Android SDK package `tools`.
+- Uses android-actions/setup-android@v4 with cmdline-tools.
+- Installs only platform-tools, Android API 36 and build-tools 36.0.0.
+- Keeps all v34/v35 non-Billing release gates intact.
+- Supports both current PLAY_* signing secret names and legacy IUMRAH_UPLOAD_* secret names.
+- Does not change applicationId, namespace, signing model, backend, Firebase identity, auth, push, deeplinks or Play Billing state.

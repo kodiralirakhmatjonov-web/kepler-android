@@ -18,10 +18,10 @@ git push
 
 Configure these GitHub Actions secrets:
 
-- `PLAY_UPLOAD_KEYSTORE_BASE64` — the existing Google Play upload keystore, Base64 encoded.
-- `PLAY_STORE_PASSWORD`
-- `PLAY_KEY_ALIAS`
-- `PLAY_KEY_PASSWORD`
+- `PLAY_UPLOAD_KEYSTORE_BASE64` — the existing Google Play upload keystore, Base64 encoded. Legacy `IUMRAH_UPLOAD_KEYSTORE_BASE64` is also accepted.
+- `PLAY_STORE_PASSWORD` (or legacy `IUMRAH_UPLOAD_STORE_PASSWORD`)
+- `PLAY_KEY_ALIAS` (or legacy `IUMRAH_UPLOAD_KEY_ALIAS`)
+- `PLAY_KEY_PASSWORD` (or legacy `IUMRAH_UPLOAD_KEY_PASSWORD`)
 Add repository Variable `PLAY_UPLOAD_CERT_SHA256` with the SHA-256 fingerprint of the existing Play Console **Upload key certificate**. The release build stops if the restored keystore does not match it.
 
 - `IUMRAH_FIREBASE_API_KEY` (needed for production push)
@@ -49,3 +49,8 @@ bash scripts/build-play-release.sh 15 2.0.3
 ## Play Console pre-publish checks
 
 Before Production rollout, confirm: package identity and signing certificate accepted; versionCode higher than previous; App content/Data safety reflects coarse location, notifications, account/profile data, passport/receipt uploads and booking data actually collected by the product; Privacy Policy and Terms links resolve; no subscriptions or Play Billing products are declared for this build; internal/closed testing has covered login, booking, passport upload, payment receipt, push, flights, maps, Ziyarats and Care on at least one Android 8–9 class device and one current Android device.
+
+
+## 2026-10-05 CI hotfix (v36)
+
+The Play workflow uses `android-actions/setup-android@v4`. Do not downgrade it to v3: Google removed the legacy SDK package named `tools`, and v3 fails before Gradle with `Failed to find package 'tools'`.

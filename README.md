@@ -37,3 +37,6 @@ Release guide: `docs/release/GOOGLE_PLAY_RELEASE.md`.
 ## v35 Google Play non-Billing release gate
 
 Google Play Billing is intentionally not part of this application. v35 removes the remaining legacy Billing source/docs stubs and makes Billing absence a production invariant: the resolved `releaseRuntimeClasspath`, merged release manifest and final AAB must all be Billing-free. Release identity remains `com.iumrah.app`; signing configuration is unchanged.
+
+## Google Play CI v36 hotfix
+The release workflow staged at `docs/release/iumrah-play-release.yml` now uses `android-actions/setup-android@v4` because Google removed the legacy Android SDK package `tools`. It also accepts the older `IUMRAH_UPLOAD_*` signing secret names used by previous iumrah workflows.
