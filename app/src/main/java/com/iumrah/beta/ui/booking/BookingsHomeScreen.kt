@@ -55,7 +55,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.iumrah.beta.R
+import com.iumrah.beta.core.config.AppConfig
 import com.iumrah.beta.core.design.IumrahHaptics
 import com.iumrah.beta.core.design.IumrahBookingStatusVisual
 import com.iumrah.beta.core.localization.L10n
@@ -64,6 +66,8 @@ import com.iumrah.beta.core.navigation.AppTab
 import com.iumrah.beta.core.settings.AppLanguage
 import com.iumrah.beta.data.account.IumrahAccountService
 import com.iumrah.beta.data.booking.BookingStore
+import com.iumrah.beta.data.chat.ChatService
+import com.iumrah.beta.data.chat.IumrahPublicProfile
 import com.iumrah.beta.data.notification.ClientNotificationStore
 import com.iumrah.beta.models.account.IumrahCheckoutResponse
 import com.iumrah.beta.models.booking.BookingGeneratorFlightSegmentSnapshot
@@ -100,6 +104,7 @@ fun BookingsHomeScreen(
     language: AppLanguage,
     bookingStore: BookingStore,
     accountService: IumrahAccountService,
+    chatService: ChatService,
     notifications: ClientNotificationStore,
     chrome: AppChromeStore,
 ) {
@@ -109,6 +114,7 @@ fun BookingsHomeScreen(
     var checkout by remember { mutableStateOf<IumrahCheckoutResponse?>(null) }
     var itinerary by remember { mutableStateOf<List<BookingItineraryItem>>(emptyList()) }
     var deleteError by remember { mutableStateOf<String?>(null) }
+    var activeGuideProfile by remember { mutableStateOf<IumrahPublicProfile?>(null) }
 
     val activeSessions = bookingState.sessions.filterNot {
         it.effectiveStatus.uppercase() in setOf("COMPLETED", "CANCELLED")
@@ -140,6 +146,14 @@ fun BookingsHomeScreen(
         }
     }
 
+    LaunchedEffect(activeSession?.guide?.id) {
+        activeGuideProfile = null
+        val guideID = activeSession?.guide?.id.orEmpty()
+        if (guideID.isNotBlank()) {
+            activeGuideProfile = runCatching { chatService.loadTeamProfile(guideID) }.getOrNull()
+        }
+    }
+
     AnimatedContent(
         targetState = activeSession?.id,
         transitionSpec = { fadeIn().togetherWith(fadeOut()) },
@@ -161,6 +175,7 @@ fun BookingsHomeScreen(
                 checkout = checkout,
                 itinerary = itinerary,
                 unreadCount = notificationState.unreadCount,
+                activeGuideProfile = activeGuideProfile,
                 chrome = chrome,
                 onDelete = { id ->
                     deleteError = null
@@ -183,6 +198,7 @@ private fun ActiveBookingHome(
     checkout: IumrahCheckoutResponse?,
     itinerary: List<BookingItineraryItem>,
     unreadCount: Int,
+    activeGuideProfile: IumrahPublicProfile?,
     chrome: AppChromeStore,
     onDelete: suspend (String) -> Unit,
     deleteError: String?,
@@ -226,7 +242,7 @@ private fun ActiveBookingHome(
             item {
                 BookingTimerOverview(language, session)
                 Spacer(Modifier.height(28.dp))
-                BookingFulfillmentCenter(language, session, checkout, chrome)
+                BookingFulfillmentCenter(language, session, checkout, activeGuideProfile, chrome)
                 Spacer(Modifier.height(34.dp))
 
                 if (shouldShowTravelReadyFlights(session)) {
@@ -1171,14 +1187,17 @@ private fun BookingFulfillmentCenter(
     language: AppLanguage,
     session: StoredBookingSession,
     checkout: IumrahCheckoutResponse?,
+    guideProfile: IumrahPublicProfile?,
     chrome: AppChromeStore,
 ) {
-    val completed = checkout?.travelers?.count { it.completed } ?: 0
+    val passportCount = checkout?.travelers?.count { it.hasPassport } ?: 0
     val total = checkout?.travelers?.size ?: session.booking.input.travelers.totalPeople
+    val passportsReady = total > 0 && passportCount == total
     val receiptReady = !checkout?.receipts.isNullOrEmpty()
     val documents = checkout?.documents.orEmpty()
-    val ticketReady = documents.any { it.documentKind.lowercase() in setOf("ticket", "flight_ticket", "airline_ticket") }
-    val hotelReady = documents.any { it.documentKind.lowercase() in setOf("voucher", "hotel_voucher", "hotel_booking", "hotel_confirmation") }
+    val paidOrLater = session.effectiveStatus.uppercase() in setOf("BOOKING_CONFIRMED", "DOCUMENTS_READY", "READY_TO_TRAVEL", "IN_TRIP", "COMPLETED")
+    val documentEnabled = paidOrLater || documents.isNotEmpty()
+    val guideEnabled = session.guide != null || session.effectiveStatus.uppercase() in setOf("BOOKING_CONFIRMED", "DOCUMENTS_READY", "READY_TO_TRAVEL", "IN_TRIP", "COMPLETED")
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(15.dp)) {
         SectionHeader(
@@ -1186,67 +1205,73 @@ private fun BookingFulfillmentCenter(
             null,
         )
         Text(
-            t(language, "Открывайте карточки по порядку. Все введённые данные сохраняются в бронировании.", "Open the cards in order. Everything you enter is saved with the booking.", "Kartalarni ketma-ket oching. Kiritilgan ma’lumotlar bronda saqlanadi.", "Карталарни кетма-кет очинг. Киритилган маълумотлар бронда сақланади."),
+            t(language, "Каждый этап открывается тогда, когда он нужен. Сейчас достаточно прикрепить паспорта — без KYC и длинных анкет.", "Each stage opens when it is needed. For now, attaching the passports is enough — no KYC or long forms.", "Har bir bosqich kerak bo‘lganda ochiladi. Hozir pasportlarni biriktirishning o‘zi yetarli — KYC va uzun anketalarsiz.", "Ҳар бир босқич керак бўлганда очилади. Ҳозир паспортларни бириктиришнинг ўзи етарли — KYC ва узун анкеталарсиз."),
             fontSize = 14.sp,
             lineHeight = 20.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f),
         )
 
         BookingActionCard(
-            icon = CupertinoSymbol.IdentityCard,
-            tint = iOSGreen,
-            title = "KYC · iumrah Security",
-            body = t(language, "Подтвердите личность владельца бронирования.", "Confirm the booking holder’s identity.", "Bron egasining shaxsini tasdiqlang.", "Брон эгасининг шахсини тасдиқланг."),
-            action = t(language, "Проверить личность", "Confirm identity", "Shaxsni tasdiqlash", "Шахсни тасдиқлаш"),
-            ready = false,
-        ) { chrome.openBookingSecurity(session.id) }
-
-        BookingActionCard(
-            icon = CupertinoSymbol.Persons,
-            tint = iOSCyan,
-            title = t(language, "Кто едет с Вами", "Who is traveling with you", "Siz bilan kim bormoqda", "Сиз билан ким бормоқда"),
-            body = t(language, "Заполнено анкет: $completed из $total. Можно заполнить заранее во время проверки наличия.", "Forms completed: $completed of $total. You can fill them in while availability is checked.", "To‘ldirilgan anketalar: $completed/$total. Mavjudlik tekshirilayotganda oldindan to‘ldirish mumkin.", "Тўлдирилган анкеталар: $completed/$total. Мавжудлик текширилаётганда олдиндан тўлдириш мумкин."),
-            action = if (completed == total && total > 0) {
-                t(language, "Проверить анкеты", "Review forms", "Anketalarni tekshirish", "Анкеталарни текшириш")
+            icon = CupertinoSymbol.Passport,
+            tint = iOSBlue,
+            title = t(language, "Прикрепить паспорта", "Attach passports", "Pasportlarni biriktirish", "Паспортларни бириктириш"),
+            body = if (passportsReady) {
+                t(language, "Паспорта всех паломников прикреплены. Можно переходить к следующему этапу.", "Every pilgrim passport is attached. You are ready for the next stage.", "Barcha ziyoratchilar pasporti biriktirilgan. Keyingi bosqichga tayyor.", "Барча зиёратчилар паспорти бириктирилган. Кейинги босқичга тайёр.")
             } else {
-                t(language, "Заполнить данные заранее", "Complete details in advance", "Ma’lumotlarni oldindan to‘ldirish", "Маълумотларни олдиндан тўлдириш")
+                t(language, "Прикреплено: $passportCount из $total. Для каждого паломника нужна чёткая фотография страницы с данными.", "Attached: $passportCount of $total. Each pilgrim needs a clear photo of the passport information page.", "Biriktirilgan: $passportCount/$total. Har bir ziyoratchi uchun pasport ma’lumotlar sahifasining aniq rasmi kerak.", "Бириктирилган: $passportCount/$total. Ҳар бир зиёратчи учун паспорт маълумотлар саҳифасининг аниқ расми керак.")
             },
-            ready = completed == total && total > 0,
+            action = if (passportsReady) t(language, "Проверить паспорта", "Review passports", "Pasportlarni tekshirish", "Паспортларни текшириш") else t(language, "Прикрепить паспорта", "Attach passports", "Pasportlarni biriktirish", "Паспортларни бириктириш"),
+            ready = passportsReady,
         ) { chrome.openPilgrimCheckout(session.id) }
 
+        val paymentLocked = session.effectiveStatus.uppercase() == "AVAILABILITY_CHECK"
         BookingActionCard(
-            icon = CupertinoSymbol.CreditCard,
+            icon = if (paymentLocked) CupertinoSymbol.Lock else CupertinoSymbol.CreditCard,
             tint = iOSGreen,
             title = t(language, "Оплата", "Payment", "To‘lov", "Тўлов"),
-            body = if (session.effectiveStatus.uppercase() == "AVAILABILITY_CHECK") {
-                t(language, "Пока ничего оплачивать не нужно. Оплата откроется после подтверждения наличия.", "No payment is needed yet. It will open after availability is confirmed.", "Hozircha to‘lov kerak emas. Mavjudlik tasdiqlangach ochiladi.", "Ҳозирча тўлов керак эмас. Мавжудлик тасдиқлангач очилади.")
+            body = if (paymentLocked) {
+                t(language, "Оплата откроется после подтверждения наличия. Пока ничего оплачивать не нужно.", "Payment opens after availability is confirmed. Nothing needs to be paid yet.", "To‘lov mavjudlik tasdiqlangach ochiladi. Hozircha hech narsa to‘lash shart emas.", "Тўлов мавжудлик тасдиқлангач очилади. Ҳозирча ҳеч нарса тўлаш шарт эмас.")
             } else if (receiptReady) {
-                t(language, "Чек получен и сохранён в бронировании.", "The receipt is received and saved with the booking.", "Chek qabul qilindi va bronda saqlandi.", "Чек қабул қилинди ва бронда сақланди.")
+                t(language, "Оплата получена. Чек сохранён в бронировании.", "Payment received. The receipt is saved with the booking.", "To‘lov qabul qilindi. Chek bronda saqlandi.", "Тўлов қабул қилинди. Чек бронда сақланди.")
             } else {
-                t(language, "Оплатите по реквизитам и прикрепите чек.", "Pay using the provided details and attach the receipt.", "Rekvizitlar bo‘yicha to‘lang va chekni biriktiring.", "Реквизитлар бўйича тўланг ва чекни бириктиринг.")
+                t(language, "Наличие подтверждено. Откройте реквизиты, оплатите и прикрепите чек.", "Availability is confirmed. Open payment details, pay and attach the receipt.", "Mavjudlik tasdiqlandi. Rekvizitlarni oching, to‘lang va chekni biriktiring.", "Мавжудлик тасдиқланди. Реквизитларни очинг, тўланг ва чекни бириктиринг.")
             },
-            action = if (receiptReady) t(language, "Открыть чек", "Open receipt", "Chekni ochish", "Чекни очиш")
-            else t(language, "Перейти к оплате", "Go to payment", "To‘lovga o‘tish", "Тўловга ўтиш"),
+            action = if (paymentLocked) t(language, "Откроется после подтверждения", "Opens after confirmation", "Tasdiqdan keyin ochiladi", "Тасдиқдан кейин очилади") else if (receiptReady) t(language, "Открыть оплату", "Open payment", "To‘lovni ochish", "Тўловни очиш") else t(language, "Перейти к оплате", "Go to payment", "To‘lovga o‘tish", "Тўловга ўтиш"),
             ready = receiptReady,
+            enabled = !paymentLocked,
         ) { chrome.openPilgrimCheckout(session.id) }
 
         BookingActionCard(
-            icon = CupertinoSymbol.Document,
+            icon = if (documentEnabled) CupertinoSymbol.Document else CupertinoSymbol.Lock,
             tint = iOSCyan,
             title = t(language, "Документы поездки", "Travel documents", "Safar hujjatlari", "Сафар ҳужжатлари"),
             body = if (documents.isNotEmpty()) {
-                t(language, "Готово документов: ${documents.size}. Каждый файл доступен отдельно.", "Documents ready: ${documents.size}. Each file is available separately.", "Tayyor hujjatlar: ${documents.size}. Har biri alohida ochiladi.", "Тайёр ҳужжатлар: ${documents.size}. Ҳар бири алоҳида очилади.")
+                t(language, "Готово документов: ${documents.size}. Авиабилеты, подтверждения отеля и остальные файлы находятся внутри.", "Documents ready: ${documents.size}. Tickets, hotel confirmations and the other files are inside.", "Tayyor hujjatlar: ${documents.size}. Chiptalar, mehmonxona tasdiqlari va boshqa fayllar shu yerda.", "Тайёр ҳужжатлар: ${documents.size}. Чипталар, меҳмонхона тасдиқлари ва бошқа файллар шу ерда.")
             } else {
-                t(language, "После оплаты здесь появятся авиабилет, отель и остальные готовые документы.", "After payment, your ticket, hotel confirmation and other documents will appear here.", "To‘lovdan keyin aviachipta, mehmonxona tasdig‘i va boshqa hujjatlar shu yerda chiqadi.", "Тўловдан кейин авиачипта, меҳмонхона тасдиғи ва бошқа ҳужжатлар шу ерда чиқади.")
+                t(language, "Авиабилеты, виза и номера бронирований будут доступны после оплаты и подтверждения бронирования.", "Airline tickets, visa and booking references become available after payment and booking confirmation.", "Aviachiptalar, viza va bron raqamlari to‘lov hamda bron tasdiqlangach ochiladi.", "Авиачипталар, виза ва брон рақамлари тўлов ҳамда брон тасдиқлангач очилади.")
             },
-            action = t(language, "Посмотреть документы", "View documents", "Hujjatlarni ko‘rish", "Ҳужжатларни кўриш"),
-            ready = ticketReady && hotelReady,
+            action = if (documentEnabled) t(language, "Посмотреть документы", "View documents", "Hujjatlarni ko‘rish", "Ҳужжатларни кўриш") else t(language, "Откроется после оплаты", "Opens after payment", "To‘lovdan keyin ochiladi", "Тўловдан кейин очилади"),
+            ready = documents.isNotEmpty(),
+            enabled = documentEnabled,
         ) { chrome.openPilgrimCheckout(session.id) }
 
-        StatusButton(
-            t(language, "Перейти к бронированию", "Open booking", "Bronni ochish", "Бронни очиш"),
-            primary = true,
-        ) { chrome.openPilgrimCheckout(session.id) }
+        session.guide?.let { guide ->
+            AssignedGuideStatusCard(language, guide.displayName, guideProfile, onClick = { chrome.openBookingGuideTransfer(session.id) })
+        }
+
+        BookingActionCard(
+            icon = if (guideEnabled) CupertinoSymbol.ShieldCheck else CupertinoSymbol.Lock,
+            tint = iOSIndigo,
+            title = t(language, "Гид и трансфер", "Guide & transfer", "Gid va transfer", "Гид ва трансфер"),
+            body = if (session.guide != null) {
+                t(language, "Гид назначен. Здесь доступны его контакты, данные трансфера и фото для быстрой встречи в аэропорту.", "Your guide is assigned. Contacts, transfer details and the airport recognition photo are available here.", "Gid tayinlangan. Kontaktlar, transfer ma’lumotlari va aeroportda tezroq topish uchun rasm shu yerda.", "Гид тайинланган. Контактлар, трансфер маълумотлари ва аэропортда тезроқ топиш учун расм шу ерда.")
+            } else {
+                t(language, "Контакты гида и детали встречи откроются после подтверждения бронирования и назначения команды.", "Guide contacts and meeting details open after the booking is confirmed and the team is assigned.", "Gid kontaktlari va kutib olish ma’lumotlari bron tasdiqlanib, jamoa tayinlangach ochiladi.", "Гид контактлари ва кутиб олиш маълумотлари брон тасдиқланиб, жамоа тайинлангач очилади.")
+            },
+            action = if (guideEnabled) t(language, "Открыть данные встречи", "Open meeting details", "Kutib olish ma’lumotlarini ochish", "Кутиб олиш маълумотларини очиш") else t(language, "Откроется после подтверждения", "Opens after confirmation", "Tasdiqdan keyin ochiladi", "Тасдиқдан кейин очилади"),
+            ready = session.guide != null,
+            enabled = guideEnabled,
+        ) { chrome.openBookingGuideTransfer(session.id) }
 
         IumrahPressable(
             onClick = { chrome.openBookingPolicy("refund") },
@@ -1255,23 +1280,49 @@ private fun BookingFulfillmentCenter(
             background = Color.Transparent,
             shadowElevation = 0.dp,
         ) {
-            Row(
-                Modifier.padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CupertinoIcon(
-                    CupertinoSymbol.Document,
-                    null,
-                    Modifier.size(15.dp),
-                    MaterialTheme.colorScheme.onBackground.copy(alpha = .48f),
-                )
-                Text(
-                    t(language, "Условия возврата", "Refund policy", "Qaytarish shartlari", "Қайтариш шартлари"),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f),
-                )
+            Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CupertinoIcon(CupertinoSymbol.Document, null, Modifier.size(15.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .48f))
+                Text(t(language, "Условия возврата", "Refund policy", "Qaytarish shartlari", "Қайтариш шартлари"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AssignedGuideStatusCard(
+    language: AppLanguage,
+    guideName: String,
+    profile: IumrahPublicProfile?,
+    onClick: () -> Unit,
+) {
+    IumrahPressable(onClick = onClick, modifier = Modifier.fillMaxWidth(), cornerRadius = 26.dp, background = bookingCardColor(), pressedScale = .985f) {
+        Column(Modifier.fillMaxWidth().border(.75.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = .095f), RoundedCornerShape(26.dp)).padding(17.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                val photo = AppConfig.absoluteUrl(profile?.photoURL)
+                if (!photo.isNullOrBlank()) {
+                    AsyncImage(model = photo, contentDescription = null, modifier = Modifier.size(60.dp).clip(CircleShape).background(bookingRaisedColor()), contentScale = ContentScale.Crop)
+                } else {
+                    Box(Modifier.size(60.dp).clip(CircleShape).background(bookingRaisedColor()), contentAlignment = Alignment.Center) {
+                        CupertinoIcon(CupertinoSymbol.PersonCircle, null, Modifier.size(29.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .48f))
+                    }
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(guideName.ifBlank { t(language, "Ваш гид", "Your guide", "Gidingiz", "Гидингиз") }, fontSize = 21.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        CupertinoIcon(CupertinoSymbol.CheckCircleFill, null, Modifier.size(16.dp), iOSBlue)
+                    }
+                    Text(t(language, "Главный гид iumrah · стаж 4 года", "Lead iumrah guide · 4 years experience", "iumrah bosh gidi · 4 yil tajriba", "iumrah бош гиди · 4 йил тажриба"), fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
+                }
+                CupertinoIcon(CupertinoSymbol.ChevronRight, null, Modifier.size(13.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .30f))
+            }
+            Row(Modifier.fillMaxWidth().background(bookingRaisedColor(), RoundedCornerShape(15.dp)).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                CupertinoIcon(CupertinoSymbol.Phone, null, Modifier.size(14.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .52f))
+                Spacer(Modifier.width(8.dp))
+                Text(t(language, "Контакты", "Contacts", "Kontaktlar", "Контактлар"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
+                Spacer(Modifier.weight(1f))
+                Text(t(language, "Гид и трансфер", "Guide & transfer", "Gid va transfer", "Гид ва трансфер"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground.copy(alpha = .55f))
+                Spacer(Modifier.width(6.dp))
+                CupertinoIcon(CupertinoSymbol.ArrowRight, null, Modifier.size(13.dp), MaterialTheme.colorScheme.onBackground.copy(alpha = .45f))
             }
         }
     }
@@ -1285,6 +1336,7 @@ private fun BookingActionCard(
     body: String,
     action: String,
     ready: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(26.dp)
@@ -1329,12 +1381,12 @@ private fun BookingActionCard(
             }
         }
         IumrahPressable(
-            onClick = onClick,
+            onClick = { if (enabled) onClick() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
             cornerRadius = 17.dp,
-            background = bookingPrimaryButtonColor(),
+            background = if (enabled) bookingPrimaryButtonColor() else bookingRaisedColor(),
             shadowElevation = 0.dp,
         ) {
             Row(
@@ -1347,14 +1399,14 @@ private fun BookingActionCard(
                     action,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = bookingPrimaryButtonTextColor(),
+                    color = if (enabled) bookingPrimaryButtonTextColor() else MaterialTheme.colorScheme.onBackground.copy(alpha = .42f),
                 )
                 Spacer(Modifier.weight(1f))
                 CupertinoIcon(
                     CupertinoSymbol.ArrowRight,
                     null,
                     Modifier.size(15.dp),
-                    MaterialTheme.colorScheme.onPrimary,
+                    if (enabled) bookingPrimaryButtonTextColor() else MaterialTheme.colorScheme.onBackground.copy(alpha = .36f),
                 )
             }
         }
@@ -2464,7 +2516,7 @@ private fun bookingDarkMode(): Boolean = MaterialTheme.colorScheme.background.io
 
 /** iOS systemBackground used by the SwiftUI Booking tab. */
 @Composable
-private fun bookingPageColor(): Color = if (bookingDarkMode()) Color.Black else Color.White
+private fun bookingPageColor(): Color = if (bookingDarkMode()) Color.Black else Color(0xFFF2F2F7)
 
 /** iOS secondarySystemGroupedBackground used by the SwiftUI booking cards. */
 @Composable

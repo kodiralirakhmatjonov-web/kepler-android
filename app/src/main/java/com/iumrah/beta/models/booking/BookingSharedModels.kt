@@ -1,5 +1,6 @@
 package com.iumrah.beta.models.booking
 
+import com.iumrah.beta.domain.trip.TransferVehicleKind
 import com.iumrah.beta.domain.pricing.GeneratorPricingSnapshot
 import com.iumrah.beta.models.hotel.HotelRoom
 import com.iumrah.beta.models.hotel.HotelSummary
@@ -329,6 +330,7 @@ data class StoredBookingSession(
     var hotelSelection: BookingHotelSelectionSnapshot? = null,
     var madinahHotelSelection: BookingHotelSelectionSnapshot? = null,
     var guide: BookingGuideSnapshot? = null,
+    var transferVehicle: TransferVehicleKind? = null,
     var ziyaratMakkahOverride: Boolean? = null,
     var ziyaratMadinahOverride: Boolean? = null,
     var esimOverride: Boolean? = null,

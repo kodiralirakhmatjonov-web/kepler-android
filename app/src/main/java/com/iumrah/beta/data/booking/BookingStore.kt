@@ -92,6 +92,7 @@ class BookingStore(
                 whatsapp = serverProfile?.whatsapp,
                 hotelSelection = journey.makkahHotel?.let { BookingHotelSelectionSnapshot.from(it, journey.makkahRoom, journey.makkahRoomCategory) },
                 madinahHotelSelection = journey.madinahHotel?.let { BookingHotelSelectionSnapshot.from(it, journey.madinahRoom, journey.madinahRoomCategory) },
+                transferVehicle = journey.resolvedTransferVehicle,
             )
 
             commitPricingReportWithRetry(session.id, session.accessToken, quoteProof)

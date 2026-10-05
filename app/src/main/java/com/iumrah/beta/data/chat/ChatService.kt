@@ -64,8 +64,16 @@ class ChatService(private val api: APIClient) {
         )
     }
 
-    suspend fun loadCareProfile(): IumrahPublicProfile? {
+    suspend fun loadTeamProfiles(): List<IumrahPublicProfile> {
         val value = api.get<IumrahPublicProfilesResponse>("/api/catalog/hotels/team")
-        return value.members.firstOrNull { it.isOwner } ?: value.members.firstOrNull()
+        return value.members.filter { it.active && it.publicVisible }
     }
+
+    suspend fun loadCareProfile(): IumrahPublicProfile? {
+        val members = loadTeamProfiles()
+        return members.firstOrNull { it.isOwner } ?: members.firstOrNull()
+    }
+
+    suspend fun loadTeamProfile(id: String): IumrahPublicProfile? =
+        loadTeamProfiles().firstOrNull { it.id == id }
 }

@@ -1,0 +1,28 @@
+Android iOS parity update v32 — 2026-10-05
+
+Source parity targets:
+- IUMRAH_PASSPORT_STATUS_PRAYER_GUIDE_REDESIGN_20261004_APPLIED.txt
+- IUMRAH_VISUAL_CONTRAST_GUIDE_TEAM_V2_20261004_APPLIED.txt
+- IUMRAH_ACCOUNT_BOOKING_ZIYARATS_POLISH_V3_20261004_APPLIED.txt
+
+Applied to Android:
+- Rebuilt booking traveler entry as passport-first: a clear passport information-page photo is sufficient.
+- Added passport preview, replace-photo path, image clarity warning and existing iumrah Security identity loop.
+- Manual passport fields are explicitly optional and collapsible; they can be saved independently.
+- Booking Status no longer exposes KYC as a required stage. The visible hierarchy is passports -> payment -> documents -> guide/transfer.
+- Added locked/unlocked payment, document and Guide & Transfer states matching current iOS status rules.
+- Added a dedicated verified assigned-guide card in Booking Status.
+- Added Guide & Transfer page with verified lead guide, founder, responsibilities, contacts and iumrah Care entry point.
+- Guide direct contacts remain locked until payment confirmation; founder contact remains directly available as in current iOS.
+- Added optional traveler face photo upload to the existing Care conversation for airport pickup recognition.
+- Persisted selected transfer vehicle for newly created bookings.
+- Guide & Transfer shows the selected Chevrolet Malibu / Kia Carnival / GMC Yukon artwork, model and capacity.
+- Airport meeting details use the confirmed outbound flight arrivalAt and format the scheduled time in Asia/Riyadh.
+- Added public team profile loading through /api/catalog/hotels/team for guide/founder photos and contact metadata.
+- Updated booking light-mode page surface to iOS system-grouped style so white cards are visually separated from the page.
+
+Validation:
+- Previous structural stages 1-13: PASS before Stage 14 creation.
+- Stage 14 verifies passport/status/team/transfer contracts and prior stages transitively.
+- Kotlin standalone parser pass found no syntax/grammar errors in the modified Booking files; full Android dependency resolution is unavailable in this runtime.
+- Build environment verifier remains compileSdk 36 / targetSdk 36.

@@ -80,6 +80,7 @@ import com.iumrah.beta.ui.booking.BookingDetailScreen
 import com.iumrah.beta.ui.booking.BookingHotelChangeScreen
 import com.iumrah.beta.ui.booking.BookingsHomeScreen
 import com.iumrah.beta.ui.booking.PilgrimCheckoutScreen
+import com.iumrah.beta.ui.booking.IumrahGuideTransferScreen
 import com.iumrah.beta.ui.care.CareHomeScreen
 import com.iumrah.beta.ui.ziyarats.ZiyaratJourneyScreen
 import com.iumrah.beta.ui.ziyarats.BookingZiyaratCatalogScreen
@@ -160,7 +161,7 @@ fun AppShell(
                 AppRoute.Root -> when (tab) {
                     AppTab.HOME -> HomeScreen(language, chrome, hotelCatalog, journey, notifications)
                     AppTab.HOTELS -> HotelsScreen(language, hotelCatalog, journey, airports, flightDiscovery, chrome, unreadCount = shellNotificationState.unreadCount)
-                    AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, accountService, notifications, chrome)
+                    AppTab.BOOKING -> BookingsHomeScreen(language, bookingStore, accountService, chatService, notifications, chrome)
                     AppTab.CARE -> CareHomeScreen(language, bookingStore, chatService, notifications, chrome)
                     AppTab.ACCOUNT -> AccountRootScreen(language, accountStore, bookingStore, settingsStore, notifications, chrome)
                 }
@@ -275,6 +276,7 @@ fun AppShell(
                 )
                 is AppRoute.BookingHotelChange -> BookingHotelChangeScreen(route.bookingID, route.role, language, bookingStore, hotelCatalog, packageEngine, chrome)
                 is AppRoute.PilgrimCheckout -> PilgrimCheckoutScreen(route.bookingID, language, bookingStore, accountStore, accountService, chrome)
+                is AppRoute.BookingGuideTransfer -> IumrahGuideTransferScreen(route.bookingID, language, bookingStore, chatService, chrome)
                 is AppRoute.BookingChat -> BookingChatScreen(route.bookingID, language, bookingStore, chatService, chrome)
                 AppRoute.BookingZiyarats -> BookingZiyaratCatalogScreen(language, chrome)
                 AppRoute.Ziyarats -> ZiyaratJourneyScreen(language, chrome)

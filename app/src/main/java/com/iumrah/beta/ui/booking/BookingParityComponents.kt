@@ -38,7 +38,7 @@ internal fun bookingIosDark(): Boolean {
     return (.2126f * c.red + .7152f * c.green + .0722f * c.blue) < .45f
 }
 
-@Composable internal fun bookingIosPage(): Color = if (bookingIosDark()) Color.Black else Color.White
+@Composable internal fun bookingIosPage(): Color = if (bookingIosDark()) Color.Black else Color(0xFFF2F2F7)
 @Composable internal fun bookingIosCard(): Color = if (bookingIosDark()) Color(0xFF1C1C1E) else Color.White
 @Composable internal fun bookingIosRaised(): Color = if (bookingIosDark()) Color(0xFF2C2C2E) else Color(0xFFF2F2F7)
 @Composable internal fun bookingIosPrimary(): Color = if (bookingIosDark()) Color(0xFFF5F5F7) else Color.Black

@@ -1,0 +1,37 @@
+{
+  "version": 32,
+  "date": "2026-10-05",
+  "source": "kepler-ios-main 3(7)",
+  "target": "kepler-android-main 2(1) + cumulative v28-v31",
+  "parity_targets": [
+    "IUMRAH_PASSPORT_STATUS_PRAYER_GUIDE_REDESIGN_20261004_APPLIED.txt",
+    "IUMRAH_VISUAL_CONTRAST_GUIDE_TEAM_V2_20261004_APPLIED.txt",
+    "IUMRAH_ACCOUNT_BOOKING_ZIYARATS_POLISH_V3_20261004_APPLIED.txt"
+  ],
+  "implemented": [
+    "passport-first traveler flow with photo-only sufficiency",
+    "passport preview / replacement / clarity warning and optional manual details",
+    "booking status hierarchy passport -> payment -> documents -> guide/transfer",
+    "visible booking KYC stage removed",
+    "locked payment/document/guide states match iOS status rules",
+    "verified assigned-guide card on booking status",
+    "dedicated Guide & Transfer screen with lead guide and founder contacts",
+    "guide contacts unlock after payment confirmation while founder contact remains direct",
+    "selected transfer vehicle persisted for newly created bookings",
+    "Malibu / Carnival / Yukon artwork and capacity surfaced on transfer page",
+    "airport meeting uses confirmed flight arrivalAt formatted in Asia/Riyadh",
+    "optional face photo is delivered through existing iumrah Care chat attachment flow",
+    "light booking page background separated from white cards"
+  ],
+  "already_covered_by_prior_cumulative_packets": [
+    "HH:MM:SS prayer countdown (v29/v31)",
+    "Makkah/Madinah booking Ziyarats carousel (v31)",
+    "localized itinerary refetch/content language behavior (v30)"
+  ],
+  "remaining_after_v32": [
+    "final current-iOS delta / UI parity packet",
+    "full iOS-Android parity audit",
+    "device QA and crash/edge-case pass",
+    "Google Play production release preparation and AAB"
+  ]
+}
