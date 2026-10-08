@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -452,9 +453,10 @@ private fun AirportMapLibreSurface(
     val map = controller.map
     val pinPositions = remember { mutableStateMapOf<String, IntOffset>() }
 
-    fun updatePins(activeMap: MapLibreMap = map ?: return) {
+    fun updatePins(activeMap: MapLibreMap? = map) {
+        val resolvedMap = activeMap ?: return
         airports.forEach { airport ->
-            val p = activeMap.projection.toScreenLocation(LatLng(airport.lat, airport.lon))
+            val p = resolvedMap.projection.toScreenLocation(LatLng(airport.lat, airport.lon))
             pinPositions[airport.iata.uppercase()] = IntOffset(p.x.roundToInt(), p.y.roundToInt())
         }
     }
@@ -913,9 +915,10 @@ private fun AirportRouteMapLibreSurface(
     val map = controller.map
     val pinPositions = remember { mutableStateMapOf<String, IntOffset>() }
 
-    fun updatePins(activeMap: MapLibreMap = map ?: return) {
+    fun updatePins(activeMap: MapLibreMap? = map) {
+        val resolvedMap = activeMap ?: return
         airports.forEach { airport ->
-            val p = activeMap.projection.toScreenLocation(LatLng(airport.lat, airport.lon))
+            val p = resolvedMap.projection.toScreenLocation(LatLng(airport.lat, airport.lon))
             pinPositions[airport.iata.uppercase()] = IntOffset(p.x.roundToInt(), p.y.roundToInt())
         }
     }

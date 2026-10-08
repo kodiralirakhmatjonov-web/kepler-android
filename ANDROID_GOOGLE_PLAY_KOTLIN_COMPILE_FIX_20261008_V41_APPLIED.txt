@@ -1,0 +1,14 @@
+iumrah Android v41 — production Kotlin compile repair
+Date: 2026-10-08
+
+Fixes every Kotlin compiler diagnostic emitted by GitHub run logs_102435360209:
+- Material3 Typography: remove unsupported top-level fontFamily argument.
+- Flight discovery: avoid delegated-state smart cast of returnAt.
+- Flight-first package: force non-null inbound leg across Elvis fallback.
+- Hotel detail: use the correct Compose graphicsLayer import.
+- Hotels storefront: make optional hero note genuinely nullable.
+- Airport maps: fix local-function default-return usage and import layout offset.
+- Ziyarats map: fix prohibited returns in local helper default arguments.
+
+No change to applicationId, namespace, signing identity, backend, Firebase identity,
+push, deeplinks, or Google Play Billing policy. Billing SDK remains absent.

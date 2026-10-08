@@ -47,3 +47,6 @@ Stage 8 now rejects only real credential/signing files instead of any filename c
 
 ### v39 Google Play ZIP-safe release tooling
 Release verification no longer treats normalized Unix execute bits as a missing AAB builder. All release shell scripts are invoked explicitly via `bash`, so ZIP/mobile patch extraction can safely produce mode 0644. Stage 20 guards this behavior.
+
+## v41 production Kotlin compile repair (2026-10-08)
+The GitHub production build now reaches Kotlin compilation. v41 fixes every compiler diagnostic from run `logs_102435360209.zip` in one cumulative patch and adds a fail-fast debug+release Kotlin compile preflight before lint/R8/AAB packaging. Google Play Billing remains absent from the resolved release runtime classpath.

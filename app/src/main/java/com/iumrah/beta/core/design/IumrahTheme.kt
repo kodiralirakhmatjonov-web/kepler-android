@@ -149,7 +149,6 @@ val IumrahFontFamily = FontFamily(
 )
 
 private val IumrahTypography = Typography(
-    fontFamily = IumrahFontFamily,
     displayLarge = TextStyle(
                 fontSize = 38.sp,
         lineHeight = 42.sp,

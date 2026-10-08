@@ -308,14 +308,16 @@ private fun ZiyaratMapSurface(
     val map = controller.map
     val pinPositions = remember { mutableStateMapOf<String, IntOffset>() }
 
-    fun updatePinPositions(activeMap: MapLibreMap = map ?: return) {
+    fun updatePinPositions(activeMap: MapLibreMap? = map) {
+        val resolvedMap = activeMap ?: return
         ordered.forEach { place ->
-            val point = activeMap.projection.toScreenLocation(LatLng(place.latitude, place.longitude))
+            val point = resolvedMap.projection.toScreenLocation(LatLng(place.latitude, place.longitude))
             pinPositions[place.id] = IntOffset(point.x.roundToInt(), point.y.roundToInt())
         }
     }
 
-    fun fitRoute(activeMap: MapLibreMap = map ?: return, animate: Boolean = true) {
+    fun fitRoute(activeMap: MapLibreMap? = map, animate: Boolean = true) {
+        val resolvedMap = activeMap ?: return
         if (ordered.isEmpty()) return
         val points = ordered.map { LatLng(it.latitude, it.longitude) }
         val update = if (points.size == 1) {
@@ -330,21 +332,22 @@ private fun ZiyaratMapSurface(
             )
         }
         controller.mapView.post {
-            if (animate) activeMap.animateCamera(update, 650) else activeMap.moveCamera(update)
+            if (animate) resolvedMap.animateCamera(update, 650) else resolvedMap.moveCamera(update)
         }
     }
 
-    fun redrawRoute(activeMap: MapLibreMap = map ?: return) {
-        activeMap.clear()
+    fun redrawRoute(activeMap: MapLibreMap? = map) {
+        val resolvedMap = activeMap ?: return
+        resolvedMap.clear()
         if (!showRoute || ordered.size < 2) return
         val points = ordered.map { LatLng(it.latitude, it.longitude) }
-        activeMap.addPolyline(
+        resolvedMap.addPolyline(
             PolylineOptions()
                 .addAll(points)
                 .color(android.graphics.Color.argb(235, 255, 255, 255))
                 .width(8f),
         )
-        activeMap.addPolyline(
+        resolvedMap.addPolyline(
             PolylineOptions()
                 .addAll(points)
                 .color(android.graphics.Color.rgb(0, 122, 255))

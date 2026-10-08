@@ -1051,7 +1051,7 @@ private fun selectBestFlightsForRoute(
     }.distinctBy { "${it.id}:${it.leg.flightNumber}:${it.leg.departureAt}" }.sortedBy { it.leg.departureAt }
     val out = candidates(origin, outboundDestination).firstOrNull() ?: return null
     val inbound = candidates(returnOrigin, origin).firstOrNull()
-        ?: if (origin != "TAS") candidates(returnOrigin, "TAS").firstOrNull() else null
+        ?: (if (origin != "TAS") candidates(returnOrigin, "TAS").firstOrNull() else null)
         ?: return null
     return out to inbound
 }

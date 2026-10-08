@@ -77,6 +77,14 @@ fi
 "$GRADLE" --no-daemon --console=plain clean \
   2>&1 | tee artifacts/play-release/clean.log
 
+# Fail fast on Kotlin source errors before lint/R8/bundling. Gradle reuses these outputs later.
+"$GRADLE" --no-daemon --console=plain --stacktrace \
+  -PPLAY_VERSION_CODE="$VERSION_CODE" \
+  -PPLAY_VERSION_NAME="$VERSION_NAME" \
+  :app:compileDebugKotlin \
+  :app:compileReleaseKotlin \
+  2>&1 | tee artifacts/play-release/compile-kotlin.log
+
 "$GRADLE" --no-daemon --console=plain --stacktrace \
   -PPLAY_VERSION_CODE="$VERSION_CODE" \
   -PPLAY_VERSION_NAME="$VERSION_NAME" \

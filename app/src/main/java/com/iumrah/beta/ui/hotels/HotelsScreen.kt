@@ -622,7 +622,7 @@ private fun StorefrontSegmentedControl(language: AppLanguage, selected: HotelsBo
 }
 
 @Composable
-private fun ShowcaseHero(image: Int, title: String, description: String, note: String, imageBackground: Color) {
+private fun ShowcaseHero(image: Int, title: String, description: String, note: String? = null, imageBackground: Color) {
     val shape = RoundedCornerShape(34.dp)
     Column(
         Modifier.fillMaxWidth().shadow(8.dp, shape, clip = false).clip(shape).background(MaterialTheme.colorScheme.surface).border(.7.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .07f), shape),
@@ -638,9 +638,11 @@ private fun ShowcaseHero(image: Int, title: String, description: String, note: S
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(title, fontSize = 29.sp, lineHeight = 33.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
             Text(description, fontSize = 15.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f))
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.Top) {
-                CupertinoIcon(CupertinoSymbol.ShieldCheck, null, Modifier.size(15.dp), Color(0xFF30B0C7))
-                Text(note, modifier = Modifier.weight(1f), fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f))
+            note?.takeIf { it.isNotBlank() }?.let { noteText ->
+                Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.Top) {
+                    CupertinoIcon(CupertinoSymbol.ShieldCheck, null, Modifier.size(15.dp), Color(0xFF30B0C7))
+                    Text(noteText, modifier = Modifier.weight(1f), fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .56f))
+                }
             }
         }
     }
