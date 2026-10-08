@@ -1,0 +1,7 @@
+iumrah Android v40 — Gradle Kotlin DSL production build fix
+2026-10-08
+
+- Fixes Gradle 9.6 Kotlin DSL compilation in app/build.gradle.kts.
+- Imports java.util.Properties explicitly instead of resolving java through Gradle script symbols.
+- Loads firebase.properties with an explicitly typed Properties instance and lambda.
+- Does not change applicationId, namespace, signing, Firebase identity, backend, auth, push, deeplinks, or Billing policy.

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -5,9 +7,11 @@ plugins {
 }
 
 private fun String.asBuildConfigString(): String = "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-private val firebaseProperties = java.util.Properties().apply {
-    val file = rootProject.file("firebase.properties")
-    if (file.isFile) file.inputStream().use(::load)
+private val firebaseProperties: Properties = Properties().also { properties ->
+    val propertiesFile = rootProject.file("firebase.properties")
+    if (propertiesFile.isFile) {
+        propertiesFile.inputStream().use { input -> properties.load(input) }
+    }
 }
 private val firebaseConfig: (String) -> String = { name ->
     (providers.gradleProperty(name).orNull
