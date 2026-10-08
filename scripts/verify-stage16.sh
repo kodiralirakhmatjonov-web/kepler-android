@@ -62,11 +62,13 @@ grep -q 'API_BASE_URL = "https://iumrah.app"' app/src/main/java/com/iumrah/beta/
   echo 'STOP: production backend must be https://iumrah.app'; exit 1
 }
 
-# Final release tooling must be present and executable.
-test -x scripts/build-play-release.sh || { echo 'STOP: production AAB builder missing'; exit 1; }
-test -x scripts/verify-16kb-native-libs.sh || { echo 'STOP: 16 KB native verifier missing'; exit 1; }
+# Final release tooling must be present and non-empty.
+# Do not require Unix execute bits: mobile ZIP patchers/GitHub uploads may normalize
+# file modes, while every release invocation intentionally uses `bash script.sh`.
+test -s scripts/build-play-release.sh || { echo 'STOP: production AAB builder missing'; exit 1; }
+test -s scripts/verify-16kb-native-libs.sh || { echo 'STOP: 16 KB native verifier missing'; exit 1; }
 test -s scripts/verify_play_manifest.py || { echo 'STOP: Play manifest verifier missing'; exit 1; }
-test -x scripts/install-play-release-workflow.sh || { echo 'STOP: Play workflow installer missing'; exit 1; }
+test -s scripts/install-play-release-workflow.sh || { echo 'STOP: Play workflow installer missing'; exit 1; }
 test -s docs/release/iumrah-play-release.yml || { echo 'STOP: staged Play release workflow missing'; exit 1; }
 
 echo 'Stage 016 Google Play release-readiness checks passed.'

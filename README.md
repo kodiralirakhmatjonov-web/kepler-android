@@ -44,3 +44,6 @@ The release workflow staged at `docs/release/iumrah-play-release.yml` now uses `
 
 ## v38 Google Play release verifier hotfix
 Stage 8 now rejects only real credential/signing files instead of any filename containing the word `keystore`. This prevents update ZIP filenames from falsely blocking CI while preserving the no-secrets-in-repository gate. Stage 19 verifies this invariant.
+
+### v39 Google Play ZIP-safe release tooling
+Release verification no longer treats normalized Unix execute bits as a missing AAB builder. All release shell scripts are invoked explicitly via `bash`, so ZIP/mobile patch extraction can safely produce mode 0644. Stage 20 guards this behavior.

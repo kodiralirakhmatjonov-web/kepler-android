@@ -1,0 +1,11 @@
+iumrah Android v39 — Google Play ZIP-safe release tooling fix
+Date: 2026-10-08
+
+Fixes a production CI false-negative caused by mobile/root ZIP patchers normalizing
+Unix executable bits on shell scripts. Release scripts are intentionally invoked
+with `bash`, so executable file mode is not required. Stage 16 now validates
+presence/non-empty content (`-s`) rather than executable mode (`-x`). Stage 10's
+compatibility bridge is likewise permission-neutral and delegates to Stage 20.
+
+No applicationId, namespace, signing configuration, backend, Firebase identity,
+auth, push, deeplinks, package pricing, or Billing policy was changed.
