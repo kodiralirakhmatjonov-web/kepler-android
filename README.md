@@ -70,3 +70,8 @@ CI `logs_102463053359.zip` reported exactly two errors: unobserved `StateFlow.va
 inside `GuestLoginCard` and an unused `AnimatedContent` target in Booking.
 Both are fixed in the source; Lint is not disabled and no baseline added.
 Stage 23 guards these changes. Release `.aab` remains unverified locally.
+
+### v44 production resource fix (2026-10-09)
+- Fixes release `mergeReleaseResources` / AAPT2 failure caused by `iumrah_esim_home_card.png` containing JPEG bytes.
+- The asset is now a genuine PNG at the same Android resource name; UI references do not change.
+- Stage 24 verifies image signatures across Android `res/` before release build.

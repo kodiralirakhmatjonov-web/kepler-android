@@ -1,0 +1,5 @@
+v44: production AAPT resource integrity fix
+- Re-encoded app/src/main/res/drawable-nodpi/iumrah_esim_home_card.png as a genuine PNG.
+- Audited all Android PNG/JPEG/WebP resources; this was the only extension/signature mismatch.
+- Added Stage 24 image magic-byte verification so mislabeled/corrupt image resources fail before AAPT2.
+- No applicationId, namespace, signing, Firebase, backend, auth, push, deeplink, or Billing changes.
