@@ -19,8 +19,17 @@ if grep -q 'deviceToken = null' app/src/main/java/com/iumrah/beta/ui/notificatio
  echo 'STOP: notification sync must not hard-code a null device token'; exit 1
 fi
 grep -q 'POST_NOTIFICATIONS' app/src/main/AndroidManifest.xml
-if find . -iname 'google-services.json' -o -iname '*keystore*' | grep -q .; then
- echo 'STOP: credentials/signing material must not be shipped in update'; exit 1
+# Security gate: reject actual credential/signing files committed inside the repository.
+# Do not match arbitrary filenames merely because they contain the word "keystore".
+if find . -type f \
+  \( -iname 'google-services.json' \
+     -o -iname 'key.properties' \
+     -o -iname '*.jks' \
+     -o -iname '*.keystore' \
+     -o -iname '*.p12' \
+     -o -iname '*.pfx' \) \
+  -not -path './.git/*' | grep -q .; then
+  echo 'STOP: credentials/signing material must not be shipped in update'; exit 1
 fi
 grep -q 'packageEngine.packageQuote(state)' app/src/main/java/com/iumrah/beta/domain/pricing/PackageGenerator.kt
 

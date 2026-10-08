@@ -12,8 +12,8 @@ if grep -Fq 'android-actions/setup-android@v3' "$WF"; then
 fi
 grep -Fq "packages: ''" "$WF" || { echo 'STOP: setup-android v4 must not install legacy extra packages'; exit 1; }
 grep -Fq 'sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"' "$WF" || { echo 'STOP: API 36 install gate missing'; exit 1; }
-grep -Fq 'secrets.PLAY_UPLOAD_KEYSTORE_BASE64 || secrets.IUMRAH_UPLOAD_KEYSTORE_BASE64' "$WF" || { echo 'STOP: upload keystore secret fallback missing'; exit 1; }
+grep -Fq 'secrets.PLAY_UPLOAD_KEYSTORE_BASE64 || secrets.PLAY_KEYSTORE_BASE64 || secrets.IUMRAH_UPLOAD_KEYSTORE_BASE64' "$WF" || { echo 'STOP: upload keystore secret fallback missing'; exit 1; }
 grep -Fq 'secrets.PLAY_STORE_PASSWORD || secrets.IUMRAH_UPLOAD_STORE_PASSWORD' "$WF" || { echo 'STOP: store password fallback missing'; exit 1; }
 grep -Fq 'secrets.PLAY_KEY_ALIAS || secrets.IUMRAH_UPLOAD_KEY_ALIAS' "$WF" || { echo 'STOP: key alias fallback missing'; exit 1; }
 grep -Fq 'secrets.PLAY_KEY_PASSWORD || secrets.IUMRAH_UPLOAD_KEY_PASSWORD' "$WF" || { echo 'STOP: key password fallback missing'; exit 1; }
-echo 'Stage 018 Google Play CI SDK/signing compatibility checks passed.'
+echo 'Stage 018 Google Play CI SDK/signing compatibility checks passed (including legacy PLAY_KEYSTORE_BASE64).'

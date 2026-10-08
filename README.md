@@ -40,3 +40,7 @@ Google Play Billing is intentionally not part of this application. v35 removes t
 
 ## Google Play CI v36 hotfix
 The release workflow staged at `docs/release/iumrah-play-release.yml` now uses `android-actions/setup-android@v4` because Google removed the legacy Android SDK package `tools`. It also accepts the older `IUMRAH_UPLOAD_*` signing secret names used by previous iumrah workflows.
+
+
+## v38 Google Play release verifier hotfix
+Stage 8 now rejects only real credential/signing files instead of any filename containing the word `keystore`. This prevents update ZIP filenames from falsely blocking CI while preserving the no-secrets-in-repository gate. Stage 19 verifies this invariant.

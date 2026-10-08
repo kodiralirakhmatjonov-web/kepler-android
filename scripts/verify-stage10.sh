@@ -97,8 +97,10 @@ grep -q 'TierComparisonOption' app/src/main/java/com/iumrah/beta/ui/packageflow/
 echo 'Stage 010 iOS Configurator strict pixel/flow parity checks passed.'
 # Compatibility bridge: older GitHub workflows in this repository still select
 # the highest verifier only from Stage 1..10. When Stage 10 is invoked directly,
-# delegate once to the current release verifier so CI cannot skip Stages 11..18.
-if [[ "${IUMRAH_VERIFY_LATEST:-0}" != "1" && -x scripts/verify-stage18.sh ]]; then
+# delegate once to the current release verifier so CI cannot skip Stages 11..19.
+if [[ "${IUMRAH_VERIFY_LATEST:-0}" != "1" && -x scripts/verify-stage19.sh ]]; then
+  IUMRAH_VERIFY_LATEST=1 bash scripts/verify-stage19.sh
+elif [[ "${IUMRAH_VERIFY_LATEST:-0}" != "1" && -x scripts/verify-stage18.sh ]]; then
   IUMRAH_VERIFY_LATEST=1 bash scripts/verify-stage18.sh
 elif [[ "${IUMRAH_VERIFY_LATEST:-0}" != "1" && -x scripts/verify-stage17.sh ]]; then
   IUMRAH_VERIFY_LATEST=1 bash scripts/verify-stage17.sh

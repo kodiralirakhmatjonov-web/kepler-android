@@ -1,0 +1,7 @@
+iumrah Android v38 — Google Play release verifier fix
+
+- Fixes Stage 8 false positive that treated any filename containing "keystore" as credential material.
+- Real signing files remain blocked: *.jks, *.keystore, key.properties, *.p12, *.pfx, google-services.json.
+- GitHub Actions upload keystore restored into $RUNNER_TEMP remains outside the repository and is not shipped.
+- Stage 19 guards against regression of the broad matcher.
+- No applicationId, namespace, signing identity, Firebase identity, backend, auth, push, deeplinks, Billing state, or product code changed.
