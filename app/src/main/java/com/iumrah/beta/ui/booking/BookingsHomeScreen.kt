@@ -158,8 +158,11 @@ fun BookingsHomeScreen(
         targetState = activeSession?.id,
         transitionSpec = { fadeIn().togetherWith(fadeOut()) },
         label = "booking-root-parity",
-    ) {
-        if (activeSession == null) {
+    ) { bookingID ->
+        // Render the session tied to AnimatedContent's target state, not an
+        // outer mutable selection that may change mid-transition.
+        val displayedSession = activeSessions.firstOrNull { it.id == bookingID }
+        if (displayedSession == null) {
             EmptyBookingHome(
                 language = language,
                 unreadCount = notificationState.unreadCount,
@@ -168,8 +171,8 @@ fun BookingsHomeScreen(
         } else {
             ActiveBookingHome(
                 language = language,
-                session = activeSession,
-                otherSessions = activeSessions.drop(1),
+                session = displayedSession,
+                otherSessions = activeSessions.filterNot { it.id == displayedSession.id },
                 panel = panel,
                 onPanel = { panel = it },
                 checkout = checkout,

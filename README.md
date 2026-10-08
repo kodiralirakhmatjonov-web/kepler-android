@@ -63,3 +63,10 @@ This patch fixes that error (and updates the analogous account security path),
 and keeps `lintRelease` strict. If remaining lint errors exist, the build now
 prints **all error file paths, line numbers and lint IDs** to the GitHub log.
 Do not claim release-AAB completion until `:app:bundleRelease` succeeds.
+
+## v43 — remaining release lint fixes
+
+CI `logs_102463053359.zip` reported exactly two errors: unobserved `StateFlow.value`
+inside `GuestLoginCard` and an unused `AnimatedContent` target in Booking.
+Both are fixed in the source; Lint is not disabled and no baseline added.
+Stage 23 guards these changes. Release `.aab` remains unverified locally.

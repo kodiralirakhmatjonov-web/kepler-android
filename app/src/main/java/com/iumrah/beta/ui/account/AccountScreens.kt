@@ -508,6 +508,9 @@ private fun GuestSettingsSection(language: AppLanguage, appearance: AppAppearanc
 
 @Composable
 private fun GuestLoginCard(language:AppLanguage,accountStore:IumrahAccountStore,bookingStore:BookingStore,chrome:AppChromeStore){
+    // Observe the booking store from composition. Reading StateFlow.value here would not
+    // trigger recomposition when an active booking is added or removed.
+    val bookings by bookingStore.state.collectAsState()
     val scope=rememberCoroutineScope(); val activity = LocalActivity.current; var register by remember{mutableStateOf(false)}; var method by remember{mutableStateOf("sms")}
     var identifier by remember{mutableStateOf("")};var password by remember{mutableStateOf("")};var code by remember{mutableStateOf("")};var challenge by remember{mutableStateOf<String?>(null)}
     var first by remember{mutableStateOf("")};var last by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)};var error by remember{mutableStateOf<String?>(null)}
@@ -541,7 +544,7 @@ private fun GuestLoginCard(language:AppLanguage,accountStore:IumrahAccountStore,
             }
         }.onFailure{error=it.message ?: "Error"};busy=false}},modifier=Modifier.fillMaxWidth().height(56.dp),shape=RoundedCornerShape(19.dp),enabled=!busy,colors=ButtonDefaults.buttonColors(containerColor=Color.Black)){if(busy) CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=Color.White) else Text(if(challenge==null) tr(language,"Continue","Продолжить","Davom etish","Давом этиш") else tr(language,"Confirm","Подтвердить","Tasdiqlash","Тасдиқлаш"),fontWeight=FontWeight.Bold)}
         if(!register && (method=="email" || method=="id")){Spacer(Modifier.height(8.dp));TextButton(onClick={chrome.openAccountPasswordRecovery()},modifier=Modifier.fillMaxWidth()){Text(tr(language,"Forgot password?","Забыли пароль?","Parolni unutdingizmi?","Паролни унутдингизми?"),fontSize=14.sp,fontWeight=FontWeight.SemiBold)}}
-        if(register && method=="id" && bookingStore.state.value.sessions.isNotEmpty()){Spacer(Modifier.height(10.dp));Text(tr(language,"Use the active booking to finish creating this account.","Используйте активную бронь, чтобы завершить создание аккаунта.","Akkaunt yaratishni yakunlash uchun faol brondan foydalaning.","Аккаунт яратишни якунлаш учун фаол брондан фойдаланинг."),fontSize=12.sp,color=IosGray)}
+        if(register && method=="id" && bookings.sessions.isNotEmpty()){Spacer(Modifier.height(10.dp));Text(tr(language,"Use the active booking to finish creating this account.","Используйте активную бронь, чтобы завершить создание аккаунта.","Akkaunt yaratishni yakunlash uchun faol brondan foydalaning.","Аккаунт яратишни якунлаш учун фаол брондан фойдаланинг."),fontSize=12.sp,color=IosGray)}
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface.copy(alpha = .20f))

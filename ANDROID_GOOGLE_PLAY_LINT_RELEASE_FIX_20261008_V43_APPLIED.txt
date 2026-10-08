@@ -1,0 +1,12 @@
+iumrah Android v43 — remaining strict Compose release lint errors (2026-10-08)
+
+CI run: logs_102463053359.zip
+
+Fixed both lint ERROR diagnostics (without suppressing lint):
+- AccountScreens.kt:544 / StateFlowValueCalledInComposition: observe bookingStore.state
+  with collectAsState() before use in GuestLoginCard.
+- BookingsHomeScreen.kt:161 / UnusedContentLambdaTargetStateParameter: use the
+  AnimatedContent target booking ID to select the displayed session.
+
+Build/signing/manifest/Google Play Billing policy are unchanged.
+Full Gradle lint/assemble/bundle can only be verified in Android SDK CI.
