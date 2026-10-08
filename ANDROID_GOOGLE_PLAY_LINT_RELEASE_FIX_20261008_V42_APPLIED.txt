@@ -1,0 +1,7 @@
+iumrah Android cumulative release update v42
+
+- Migrate Compose login Activity access from unsafe LocalContext cast to LocalActivity.current.
+- Apply the same improvement to Account Security sign-in screens.
+- Keep strict lintRelease; on failure print every Android Lint error with file/line/ID, not only Gradle's first reported error.
+- Preserve v34-v41 functionality and Google Play non-Billing gates.
+- Structural Stage 22 only; real lintRelease/bundleRelease must still pass in CI.

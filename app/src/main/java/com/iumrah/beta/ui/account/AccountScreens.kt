@@ -1,7 +1,7 @@
 package com.iumrah.beta.ui.account
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.activity.compose.LocalActivity
 
-import android.app.Activity
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.Image
@@ -508,7 +508,7 @@ private fun GuestSettingsSection(language: AppLanguage, appearance: AppAppearanc
 
 @Composable
 private fun GuestLoginCard(language:AppLanguage,accountStore:IumrahAccountStore,bookingStore:BookingStore,chrome:AppChromeStore){
-    val scope=rememberCoroutineScope(); val activity = LocalContext.current as? Activity; var register by remember{mutableStateOf(false)}; var method by remember{mutableStateOf("sms")}
+    val scope=rememberCoroutineScope(); val activity = LocalActivity.current; var register by remember{mutableStateOf(false)}; var method by remember{mutableStateOf("sms")}
     var identifier by remember{mutableStateOf("")};var password by remember{mutableStateOf("")};var code by remember{mutableStateOf("")};var challenge by remember{mutableStateOf<String?>(null)}
     var first by remember{mutableStateOf("")};var last by remember{mutableStateOf("")};var busy by remember{mutableStateOf(false)};var error by remember{mutableStateOf<String?>(null)}
     CardBlock{

@@ -50,3 +50,16 @@ Release verification no longer treats normalized Unix execute bits as a missing 
 
 ## v41 production Kotlin compile repair (2026-10-08)
 The GitHub production build now reaches Kotlin compilation. v41 fixes every compiler diagnostic from run `logs_102435360209.zip` in one cumulative patch and adds a fail-fast debug+release Kotlin compile preflight before lint/R8/AAB packaging. Google Play Billing remains absent from the resolved release runtime classpath.
+
+
+## v42 — Android release lint diagnostics
+
+Based on CI run `logs_102450458969.zip`: Kotlin debug and release compilation,
+unit tests, and resolved no-Billing dependency gates passed. `:app:lintRelease`
+reported 3 errors; its console output included only the first,
+`ContextCastToActivity` in `ui/account/AccountScreens.kt:511`.
+
+This patch fixes that error (and updates the analogous account security path),
+and keeps `lintRelease` strict. If remaining lint errors exist, the build now
+prints **all error file paths, line numbers and lint IDs** to the GitHub log.
+Do not claim release-AAB completion until `:app:bundleRelease` succeeds.

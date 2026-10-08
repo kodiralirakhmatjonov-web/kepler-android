@@ -1,8 +1,5 @@
 package com.iumrah.beta.ui.account
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -48,7 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.LocalActivity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -78,12 +75,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
-
 private val SecurityCare = Color(0xFF30B0C7)
 private val SecurityBlue = Color(0xFF1677FF)
 private val SecurityGreen = Color(0xFF34C759)
@@ -105,7 +96,7 @@ internal fun AccountSecurityParityContent(
     chrome: AppChromeStore,
 ) {
     val scope = rememberCoroutineScope()
-    val activity = LocalContext.current.findActivity()
+    val activity = LocalActivity.current
     var overview by remember { mutableStateOf<IumrahSecurityOverview?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }

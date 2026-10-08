@@ -85,12 +85,20 @@ fi
   :app:compileReleaseKotlin \
   2>&1 | tee artifacts/play-release/compile-kotlin.log
 
-"$GRADLE" --no-daemon --console=plain --stacktrace \
+# Keep the release lint gate strict. If lint fails, Gradle normally prints only
+# the *first* of several errors. Expand the complete report into Actions logs.
+if ! "$GRADLE" --no-daemon --console=plain --stacktrace \
   -PPLAY_VERSION_CODE="$VERSION_CODE" \
   -PPLAY_VERSION_NAME="$VERSION_NAME" \
   :app:testDebugUnitTest \
   :app:lintRelease \
-  2>&1 | tee artifacts/play-release/tests-lint.log
+  2>&1 | tee artifacts/play-release/tests-lint.log; then
+  echo '===== FULL ANDROID LINT ERROR SUMMARY ====='
+  python3 scripts/print-all-release-lint-errors.py || true
+  echo '===== END ANDROID LINT ERROR SUMMARY ====='
+  echo 'STOP: release lint failed; AAB not produced. All detected errors are listed above.'
+  exit 1
+fi
 
 "$GRADLE" --no-daemon --console=plain --stacktrace \
   -PPLAY_VERSION_CODE="$VERSION_CODE" \
