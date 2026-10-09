@@ -41,7 +41,7 @@ else
 fi
 [[ -n "$GRADLE" && -x "$GRADLE" ]] || { echo 'STOP: Gradle executable not found (Gradle 9.6 is expected by CI).'; exit 1; }
 
-bash scripts/verify-stage17.sh
+bash scripts/verify-stage25.sh
 bash scripts/verify-build-env.sh
 
 rm -rf artifacts/play-release

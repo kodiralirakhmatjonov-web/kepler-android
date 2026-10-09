@@ -1,0 +1,10 @@
+iumrah Android v45 — Google Play 16 KB verifier correction
+
+The production AAB was already building and signing successfully. The previous
+post-build verifier incorrectly applied the 16 KB ELF PT_LOAD alignment gate to
+32-bit MapLibre binaries (armeabi-v7a/x86). Google Play's page-size requirement
+is for 64-bit devices, so v45 enforces 16 KB ELF alignment on arm64-v8a/x86_64,
+while retaining 64-bit counterpart checks for any shipped 32-bit ABI.
+
+No applicationId, namespace, signing config, Firebase identity, backend, Billing,
+or application functionality was changed.

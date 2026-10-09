@@ -98,7 +98,9 @@ echo 'Stage 010 iOS Configurator strict pixel/flow parity checks passed.'
 # Compatibility bridge: older GitHub workflows in this repository still select
 # the highest verifier only from Stage 1..10. When Stage 10 is invoked directly,
 # delegate once to the current release verifier so CI cannot skip later stages.
-if [[ "${IUMRAH_VERIFY_LATEST:-0}" != "1" && -s scripts/verify-stage24.sh ]]; then
+if [[ "${IUMRAH_VERIFY_LATEST:-0}" != "1" && -s scripts/verify-stage25.sh ]]; then
+  IUMRAH_VERIFY_LATEST=1 bash scripts/verify-stage25.sh
+elif [[ "${IUMRAH_VERIFY_LATEST:-0}" != "1" && -s scripts/verify-stage24.sh ]]; then
   IUMRAH_VERIFY_LATEST=1 bash scripts/verify-stage24.sh
 elif [[ "${IUMRAH_VERIFY_LATEST:-0}" != "1" && -s scripts/verify-stage23.sh ]]; then
   IUMRAH_VERIFY_LATEST=1 bash scripts/verify-stage23.sh

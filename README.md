@@ -75,3 +75,6 @@ Stage 23 guards these changes. Release `.aab` remains unverified locally.
 - Fixes release `mergeReleaseResources` / AAPT2 failure caused by `iumrah_esim_home_card.png` containing JPEG bytes.
 - The asset is now a genuine PNG at the same Android resource name; UI references do not change.
 - Stage 24 verifies image signatures across Android `res/` before release build.
+
+## v45 Google Play 16 KB verifier correction (2026-10-09)
+The release AAB already builds and signs successfully. The post-build native verifier now applies the 16 KB ELF alignment gate to the 64-bit ABIs used by 16 KB devices (`arm64-v8a`, `x86_64`) and treats 32-bit `armeabi-v7a`/`x86` alignment as informational while still requiring matching 64-bit counterparts.
