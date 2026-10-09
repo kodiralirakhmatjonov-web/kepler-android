@@ -1,12 +1,16 @@
 package com.iumrah.beta.domain.journey
 
 import com.iumrah.beta.data.flight.CuratedFlightRecommendationService
+import com.iumrah.beta.data.flight.FlightDiscoveryOffer
 import com.iumrah.beta.data.flight.IgnavFlightInventoryProvider
 import com.iumrah.beta.data.hotel.RemotePackageEngineClient
 import com.iumrah.beta.domain.pricing.PackageQuote
 import com.iumrah.beta.domain.trip.HaramainFareClass
 import com.iumrah.beta.domain.trip.JourneyScope
 import com.iumrah.beta.domain.trip.PackageFlightPath
+import com.iumrah.beta.domain.trip.FlightTripType
+import com.iumrah.beta.domain.trip.SaudiArrivalAirport
+import com.iumrah.beta.domain.trip.FlightFareScope
 import com.iumrah.beta.domain.trip.PackageMealSelection
 import com.iumrah.beta.domain.trip.PackageTier
 import com.iumrah.beta.domain.trip.TransferVehicleKind
@@ -15,10 +19,15 @@ import com.iumrah.beta.models.flight.FlightJourneyDatePair
 import com.iumrah.beta.models.flight.FlightJourneySearchRequest
 import com.iumrah.beta.models.flight.CuratedPublishedFlightSelection
 import com.iumrah.beta.models.flight.LiveFlightJourneyCandidate
+import com.iumrah.beta.models.flight.FlightDirection
+import com.iumrah.beta.models.flight.FlightAirportSnapshot
 import com.iumrah.beta.models.hotel.HotelRoom
 import com.iumrah.beta.models.hotel.HotelSummary
 import com.iumrah.beta.models.hotel.IumrahRoomCategoryOption
 import java.time.ZoneId
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.math.BigDecimal
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -38,6 +47,9 @@ data class JourneyState(
     val selectedPublishedCompleteID: String? = null,
     val selectedPublishedOutboundID: String? = null,
     val selectedPublishedReturnID: String? = null,
+    val stagedAviasalesRoundTrip: FlightDiscoveryOffer? = null,
+    val stagedAviasalesOutbound: FlightDiscoveryOffer? = null,
+    val stagedAviasalesReturn: FlightDiscoveryOffer? = null,
     val selectedTransferVehicle: TransferVehicleKind? = null,
     val haramainTrainSelected: Boolean = false,
     val haramainFareClass: HaramainFareClass = HaramainFareClass.ECONOMY,
@@ -64,6 +76,20 @@ data class JourneyState(
     val hasCompletePublishedFlightSelection: Boolean get() =
         !selectedPublishedCompleteID.isNullOrBlank() ||
             (!selectedPublishedOutboundID.isNullOrBlank() && !selectedPublishedReturnID.isNullOrBlank())
+    val hasCompleteStagedFlightSelection: Boolean get() {
+        val roundTrip = stagedAviasalesRoundTrip
+        if (roundTrip != null) {
+            return roundTrip.isRoundTrip && roundTrip.origin.uppercase() !in setOf("JED", "MED") &&
+                roundTrip.destination.uppercase() in setOf("JED", "MED") &&
+                runCatching { java.time.LocalDate.parse(roundTrip.returnAt!!.take(10)) > java.time.LocalDate.parse(roundTrip.departureAt.take(10)) }.getOrDefault(false)
+        }
+        val out = stagedAviasalesOutbound ?: return false
+        val back = stagedAviasalesReturn ?: return false
+        return out.origin.equals(back.destination, true) &&
+            out.destination.uppercase() in setOf("JED", "MED") &&
+            back.origin.uppercase() in setOf("JED", "MED") &&
+            runCatching { java.time.LocalDate.parse(back.departureAt.take(10)) > java.time.LocalDate.parse(out.departureAt.take(10)) }.getOrDefault(false)
+    }
     val hasSelectableHotelMeals: Boolean get() = trip.packageTier == PackageTier.COMFORT || trip.packageTier == PackageTier.LUXURY
     val hasFinalGeneratorQuote: Boolean get() =
         quote?.quoteId?.startsWith("server-") == true &&
@@ -81,6 +107,20 @@ class JourneyStore {
             if (current.trip == value) current else JourneyState(
                 trip = value,
                 packageFlightPath = if (value.isWeekendUmrah) PackageFlightPath.WEEKEND else PackageFlightPath.PUBLISHED_DIRECT,
+            )
+        }
+    }
+
+    /** Changing package destination scope in Flights must not erase a staged outbound
+     * ticket. No implicit change of the first flight's origin or selected fare. */
+    fun updateFlightScopePreservingSelection(scope: JourneyScope) {
+        _state.update { current ->
+            if (current.trip.scope == scope) current else current.copy(
+                trip = current.trip.copy(scope = scope,
+                    arrivalAirport = if (scope == JourneyScope.MAKKAH_ONLY) SaudiArrivalAirport.JEDDAH else current.trip.arrivalAirport),
+                makkahHotel = null, makkahRoom = null, makkahRoomCategory = null,
+                madinahHotel = null, madinahRoom = null, madinahRoomCategory = null,
+                quote = null, packageError = null, transferSelectionConfirmed = false,
             )
         }
     }
@@ -193,6 +233,151 @@ class JourneyStore {
             quote
         }.onFailure { error ->
             _state.update { it.copy(packageError = error.message ?: "PACKAGE_QUOTE_FAILED", quote = null) }
+        }
+    }
+
+
+    /** The public Data API fare is only a snapshot. Identity and price are
+     * re-resolved by /api/package/quote; the client never trusts this amount. */
+    fun stageAviasalesFlight(offer: FlightDiscoveryOffer, returnLeg: Boolean = false, adults: Int? = null, children: Int? = null, infants: Int? = null) {
+        val isSaudiOrigin = offer.origin.uppercase() in setOf("JED", "MED")
+        val isSaudiDestination = offer.destination.uppercase() in setOf("JED", "MED")
+        if (!isSaudiOrigin && !isSaudiDestination) return
+        _state.update { current ->
+            val asRoundTrip = offer.isRoundTrip && !returnLeg
+            val asReturn = returnLeg || (isSaudiOrigin && !isSaudiDestination)
+            val matchingOutbound = current.stagedAviasalesOutbound?.takeIf { it.origin.equals(offer.destination, true) }
+            val matchingReturn = current.stagedAviasalesReturn?.takeIf { it.destination.equals(offer.origin, true) }
+            val update = if (asRoundTrip) {
+                Triple(offer, null, null)
+            } else if (asReturn) {
+                Triple(null, matchingOutbound, offer)
+            } else {
+                Triple(null, offer, matchingReturn)
+            }
+            val newTrip = current.trip.copy(
+                origin = if (!asReturn) offer.origin.uppercase() else current.trip.origin,
+                originAirport = if (!asReturn && current.trip.originCode != offer.origin.uppercase()) null else current.trip.originAirport,
+                arrivalAirport = if (isSaudiDestination) (if (offer.destination.equals("MED", true)) SaudiArrivalAirport.MADINAH else SaudiArrivalAirport.JEDDAH) else current.trip.arrivalAirport,
+                departureDate = if (!asReturn) parseAviasalesDay(offer.departureAt) ?: current.trip.departureDate else current.trip.departureDate,
+                returnDate = if (asRoundTrip) offer.returnAt?.let(::parseAviasalesDay) ?: current.trip.returnDate else if (asReturn) parseAviasalesDay(offer.departureAt) ?: current.trip.returnDate else current.trip.returnDate,
+                flightTripType = FlightTripType.ROUND_TRIP,
+                adults = adults ?: current.trip.adults,
+                children = children ?: current.trip.children,
+                infants = infants ?: current.trip.infants,
+                saudiArrivalDate = null,
+            )
+            current.copy(
+                trip = newTrip,
+                packageFlightPath = PackageFlightPath.AVIASALES_SELECTED,
+                stagedAviasalesRoundTrip = update.first,
+                stagedAviasalesOutbound = update.second,
+                stagedAviasalesReturn = update.third,
+                selectedPublishedCompleteID = null, selectedPublishedOutboundID = null, selectedPublishedReturnID = null,
+                flightResults = emptyList(), selectedJourneyId = null, selectedOutboundJourneyId = null,
+                makkahHotel = null, makkahRoom = null, makkahRoomCategory = null,
+                madinahHotel = null, madinahRoom = null, madinahRoomCategory = null,
+                quote = null, packageError = null, transferSelectionConfirmed = false,
+            )
+        }
+    }
+
+    fun clearStagedAviasalesFlights() {
+        _state.update { it.copy(stagedAviasalesRoundTrip = null, stagedAviasalesOutbound = null, stagedAviasalesReturn = null) }
+    }
+
+    private fun parseAviasalesDay(raw: String): java.time.LocalDate? =
+        runCatching { java.time.LocalDate.parse(raw.take(10)) }.getOrNull()
+
+    private fun parseAviasalesInstant(raw: String): Instant? =
+        runCatching { Instant.parse(raw) }.getOrNull()
+            ?: runCatching { OffsetDateTime.parse(raw).toInstant() }.getOrNull()
+
+    private fun identityToken(raw: String): String = raw.uppercase().filter { it.isLetterOrDigit() || it == '-' || it == '_' }.ifEmpty { "-" }
+
+    private fun aviasalesIdentity(out: FlightDiscoveryOffer, back: FlightDiscoveryOffer?): String = listOf(
+        "aviasales", if (out.isRoundTrip) "rt" else if (back == null) "ow" else "pair",
+        identityToken(out.origin), identityToken(out.destination), out.departureAt.take(10),
+        if (out.isRoundTrip) out.returnAt?.take(10) ?: "-" else back?.departureAt?.take(10) ?: "-",
+        identityToken(out.airlineCode), identityToken(out.flightNumber),
+        identityToken(if (out.isRoundTrip) out.returnAirlineCode.orEmpty() else back?.airlineCode.orEmpty()),
+        identityToken(if (out.isRoundTrip) out.returnFlightNumber.orEmpty() else back?.flightNumber.orEmpty()),
+    ).joinToString(":")
+
+    suspend fun prepareAviasalesSelectedPackage(packageEngine: RemotePackageEngineClient): Result<PackageQuote> {
+        val snapshot = _state.value
+        if (snapshot.packageFlightPath != PackageFlightPath.AVIASALES_SELECTED || !snapshot.hasCompleteStagedFlightSelection) {
+            return Result.failure(IllegalStateException("Complete both flight directions before proceeding."))
+        }
+        return runCatching {
+            val outbound = snapshot.stagedAviasalesRoundTrip ?: snapshot.stagedAviasalesOutbound
+                ?: error("Outbound flight not selected")
+            val inbound = snapshot.stagedAviasalesReturn
+            val providerID = aviasalesIdentity(outbound, inbound)
+            val at = Instant.now()
+            fun candidate(row: FlightDiscoveryOffer, departure: Instant, direction: FlightDirection, origin: String, destination: String, duration: Int, carrier: String, flightNumber: String): com.iumrah.beta.models.flight.LiveFlightCandidate {
+                require(duration > 0) { "AVIASALES_UNVERIFIED_DURATION" }
+                require(row.price.isFinite() && row.price > 0) { "AVIASALES_INVALID_FARE" }
+                return com.iumrah.beta.models.flight.LiveFlightCandidate(
+                    id = "$providerID:${direction.name}", sourceID = "aviasales-data", sourceName = "Aviasales Data",
+                    direction = direction, airline = carrier, flightNumber = flightNumber,
+                    origin = origin, destination = destination,
+                    departureAt = departure, arrivalAt = departure.plusSeconds(duration.toLong() * 60L),
+                    stops = if (direction == FlightDirection.inbound && row.isRoundTrip) (row.returnTransfers
+                        ?: error("AVIASALES_UNVERIFIED_RETURN_STOPS"))
+                        else row.transfers,
+                    durationMinutes = duration, observedFare = BigDecimal.valueOf(row.price), observedCurrency = "USD",
+                    fareScope = FlightFareScope.PER_PASSENGER, observedAt = at,
+                    sourceURL = row.bookingUrl, airlineCode = carrier.takeIf { it.isNotBlank() },
+                    segments = null, providerItineraryID = providerID, cabinClass = "economy",
+                )
+            }
+            val outAt = parseAviasalesInstant(outbound.departureAt) ?: error("Invalid outbound date")
+            val outCandidate = candidate(outbound, outAt, FlightDirection.outbound, outbound.origin, outbound.destination, outbound.durationMinutes, outbound.airlineCode, outbound.flightNumber)
+            val reverse = when {
+                outbound.isRoundTrip -> {
+                    val returnAt = parseAviasalesInstant(outbound.returnAt ?: "") ?: error("Invalid return date")
+                    candidate(outbound, returnAt, FlightDirection.inbound, outbound.destination, outbound.origin,
+                        outbound.returnDurationMinutes ?: 0, outbound.returnAirlineCode.orEmpty(), outbound.returnFlightNumber.orEmpty())
+                }
+                inbound != null -> {
+                    val returnAt = parseAviasalesInstant(inbound.departureAt) ?: error("Invalid return date")
+                    candidate(inbound, returnAt, FlightDirection.inbound, inbound.origin, inbound.destination, inbound.durationMinutes, inbound.airlineCode, inbound.flightNumber)
+                }
+                else -> error("Return flight missing")
+            }
+            val journey = LiveFlightJourneyCandidate(
+                id = providerID, sourceID = "aviasales-data", sourceName = "Aviasales Data",
+                totalFare = BigDecimal.valueOf(outbound.price + (if (outbound.isRoundTrip) 0.0 else inbound?.price ?: 0.0)),
+                currency = "USD", fareScope = FlightFareScope.PER_PASSENGER, observedAt = at,
+                providerItineraryID = providerID, outbound = outCandidate, inbound = reverse,
+            )
+            val prepared = _state.value.copy(
+                flightResults = listOf(journey), selectedJourneyId = providerID, selectedOutboundJourneyId = providerID,
+                trip = _state.value.trip.copy(flightTripType = FlightTripType.ROUND_TRIP),
+                quote = null, packageError = null,
+            )
+            _state.value = prepared
+            val quote = packageEngine.packageQuote(prepared) // authoritative server-side fare re-resolution
+            _state.update { it.copy(quote = quote, packageError = null) }
+            quote
+        }.onFailure { error ->
+            _state.update { it.copy(quote = null, packageError = error.message) }
+        }
+    }
+
+    /** Flight First package tier changes must not erase the selected Data API flight.
+     * Primary hotels and their room categories are resolved afresh for each tier. */
+    fun setFlightFirstHotelTier(tier: PackageTier) {
+        _state.update { current ->
+            if (current.packageFlightPath != PackageFlightPath.AVIASALES_SELECTED || current.trip.packageTier == tier) current
+            else current.copy(
+                trip = current.trip.copy(packageTier = tier, hotelStars = tier.primaryHotelStars,
+                    mealSelection = if (tier == PackageTier.COMFORT || tier == PackageTier.LUXURY) PackageMealSelection() else null),
+                makkahHotel = null, makkahRoom = null, makkahRoomCategory = null,
+                madinahHotel = null, madinahRoom = null, madinahRoomCategory = null,
+                quote = null, packageError = null, transferSelectionConfirmed = false,
+            )
         }
     }
 

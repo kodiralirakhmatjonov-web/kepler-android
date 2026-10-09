@@ -1,0 +1,12 @@
+iumrah Android v47 — iOS 4 Flights factual-correctness and Flight First tier parity.
+Cumulative from v34 through v47. Must be applied to original kepler-android-main 2(1).zip.
+Change scope:
+- Airport-local time and arrival time where duration confirmed, ISO offset-safe 120s fare refresh.
+- Price refresh rejects different flight/carrier; return identity not fabricated.
+- Data API unknown return duration/stops not borrowed from outbound, not replaced by arbitrary 45 min.
+- Flight First Primary Hotels exposes 2/3/4/5 star tiers while preserving the staged flight IDs.
+- Legacy unused Data API sheet removed; real fare page is full-screen.
+- Kotlin unit tests added for date/time/identity/unknown transfers; existing Play signing and non-Billing preserved.
+Limitation: unavailable flight leg duration/stop count fails closed before constructing a verified
+booking candidate. Backend must return confirmed metadata/re-resolution for those offers.
+Real Android Gradle release build and device pixel comparisons NOT performed in this environment.

@@ -1,0 +1,21 @@
+iumrah Android v46 — iOS Flights discovery v15 port
+CUMULATIVE: v34–v45 plus v46. Use one update ZIP on original Android repo.
+Source iOS: kepler-ios-main 4.zip (2026-10-09).
+
+Scope:
+- Flights storefront / two search modes / automatic global search / route, dates, travelers.
+- Data API fare listings, filters, price graph both directions, neighboring dates, favorites.
+- Published iumrah direct outbound+return recommendations and selection.
+- Full-screen fare details, refresh with fresh=1, original identity match, no fabricated stop/return airline data.
+- Flight First cart -> Primary Hotels -> Transfer -> server-side quote re-resolution.
+- Correct iOS partner art and local Cupertino icons in the new components.
+- No Android-bundled Travelpayouts token. No changes to Google Play billing, signing, app ID, Firebase, or build workflows.
+
+Important deployment dependency: the backend servicing https://iumrah.app/api/package/flights/data
+and /api/package/quote must support the new iOS v15 aviasales-data and package-search contracts
+(fresh=1 and aviasales:rt/pair identity tokens). Secret TRAVELPAYOUTS_API_TOKEN belongs in the
+Cloudflare Package Engine Worker environment, NEVER in the Android app/repository.
+
+Validation: cumulative patch over clean kepler-android-main 2(1) structure Stage 2-25 PASS.
+Static API contract and resource signature checks PASS. Real Gradle compile/build,
+emulator/device QA and visual pixel parity not verified here.

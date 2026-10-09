@@ -16,7 +16,13 @@ ZIYARATS=app/src/main/java/com/iumrah/beta/ui/ziyarats/ZiyaratJourneyScreen.kt
 if grep -A2 -F 'private val IumrahTypography = Typography(' "$THEME" | grep -Fq 'fontFamily = IumrahFontFamily'; then
   echo 'STOP: unsupported Typography(fontFamily=...) compile regression'; exit 1
 fi
-grep -Fq 'offer.returnAt?.let { returnAt ->' "$FLIGHTS" || { echo 'STOP: delegated returnAt smart-cast fix missing'; exit 1; }
+# The legacy bottom-sheet was removed in Flights v47. Assert that the current
+# full-screen detail is wired and that the old nullable returnAt expression
+# cannot regress through a dormant duplicate composable.
+if ! grep -Fq 'offer.returnAt?.let { returnAt ->' "$FLIGHTS"; then
+  grep -Fq 'FlightDiscoveryDetailSheetV46(' "$FLIGHTS" || { echo 'STOP: full-screen flight detail is not wired'; exit 1; }
+  test -s app/src/main/java/com/iumrah/beta/ui/flights/FlightDiscoveryDetailV46.kt || { echo 'STOP: full-screen flight detail missing'; exit 1; }
+fi
 grep -Fq '?: (if (origin != "TAS") candidates(returnOrigin, "TAS").firstOrNull() else null)' "$PAIR" || { echo 'STOP: nullable inbound flight-pair fix missing'; exit 1; }
 grep -Fq 'import androidx.compose.ui.graphics.graphicsLayer' "$HOTEL" || { echo 'STOP: correct graphicsLayer import missing'; exit 1; }
 if grep -Fq 'import androidx.compose.ui.draw.graphicsLayer' "$HOTEL"; then echo 'STOP: obsolete graphicsLayer import reintroduced'; exit 1; fi

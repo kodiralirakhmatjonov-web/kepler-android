@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 
 enum class PackageFlightPath(val wireValue: String) {
     PUBLISHED_DIRECT("publishedDirect"),
+    AVIASALES_SELECTED("aviasalesSelected"),
     FLEXIBLE_DATES("flexibleDates"),
     WEEKEND("weekend"),
 }

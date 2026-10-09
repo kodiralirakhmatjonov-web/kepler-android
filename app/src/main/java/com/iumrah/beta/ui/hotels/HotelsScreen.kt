@@ -325,15 +325,8 @@ fun HotelsScreen(
             }
 
             HotelsBoard.FLIGHTS -> {
-                item {
-                    ShowcaseHero(
-                        image = R.drawable.iumrah_flights_showcase,
-                        title = "iumrah Flights",
-                        description = hotelText(language, "flights_body"),
-                        note = hotelText(language, "flights_note"),
-                        imageBackground = Color.Black,
-                    )
-                }
+                // iOS Flights v15: single discovery surface (no duplicate showcase
+                // hero or competing published-flight filter below it).
                 item {
                     FlightDiscoveryPanel(
                         language = language,
@@ -343,43 +336,23 @@ fun HotelsScreen(
                         chrome = chrome,
                     )
                 }
-                if (flights.isNotEmpty()) {
+                // The second iOS section contains only ready, already-generated
+                // flight-first packages; unpriced catalogue rows stay in the
+                // iumrah-recommends carousel instead of pretending to be bookable.
+                val ready = flights.mapNotNull { option ->
+                    bestFlightPackage(option, flightPackages)?.let { preview -> option to preview }
+                }
+                if (ready.isNotEmpty()) {
                     item { StorefrontSectionHeader(hotelText(language, "published"), hotelText(language, "current")) }
-                    item {
-                        FlightFilters(
+                    items(ready, key = { "ready-flight-${it.first.id}" }) { (option, preview) ->
+                        StorefrontFlightCard(
+                            option = option,
+                            packageSnapshot = preview,
                             language = language,
-                            options = flights,
-                            origin = flightOriginFilter,
-                            destination = flightDestinationFilter,
-                            onOrigin = { flightOriginFilter = it },
-                            onDestination = { flightDestinationFilter = it },
+                            loading = loading,
+                            onClick = { chrome.openFlightPackage(preview.id) },
                         )
                     }
-                    val filtered = flights.filter { option ->
-                        buildList {
-                            add(option.outbound)
-                            option.inbound?.let(::add)
-                        }.any { leg ->
-                            (flightOriginFilter == null || leg.origin.equals(flightOriginFilter, true)) &&
-                                (flightDestinationFilter == null || leg.destination.equals(flightDestinationFilter, true))
-                        }
-                    }
-                    if (filtered.isEmpty()) {
-                        item { NoFlightsCard(language) }
-                    } else {
-                        items(filtered, key = { "f-${it.id}" }) { option ->
-                            val packageSnapshot = bestFlightPackage(option, flightPackages)
-                            StorefrontFlightCard(
-                                option = option,
-                                packageSnapshot = packageSnapshot,
-                                language = language,
-                                loading = loading,
-                                onClick = { packageSnapshot?.let { chrome.openFlightPackage(it.id) } },
-                            )
-                        }
-                    }
-                } else if (loading) {
-                    item { LoadingStorefront(language) }
                 }
             }
 

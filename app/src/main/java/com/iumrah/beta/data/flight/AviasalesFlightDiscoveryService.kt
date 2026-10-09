@@ -1,6 +1,9 @@
 package com.iumrah.beta.data.flight
 
 import com.iumrah.beta.core.network.APIClient
+import com.iumrah.beta.domain.trip.TripDraft
+import com.iumrah.beta.models.flight.CuratedFlightRecommendation
+import java.time.LocalDate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -21,9 +24,11 @@ data class FlightDiscoveryOffer(
     @SerialName("durationMinutes") val durationMinutes: Int = 0,
     @SerialName("returnDurationMinutes") val returnDurationMinutes: Int? = null,
     @SerialName("bookingUrl") val bookingUrl: String? = null,
+    @SerialName("returnAirlineCode") val returnAirlineCode: String? = null,
+    @SerialName("returnFlightNumber") val returnFlightNumber: String? = null,
 ) {
     val isRoundTrip: Boolean get() = !returnAt.isNullOrBlank()
-    val isDirect: Boolean get() = transfers == 0 && (returnTransfers ?: 0) == 0
+    val isDirect: Boolean get() = transfers == 0 && (!isRoundTrip || returnTransfers == 0)
     val routeTitle: String get() = "${originAirport.ifBlank { origin }} → ${destinationAirport.ifBlank { destination }}"
     val monitorKey: String get() = listOf(
         origin.uppercase(), destination.uppercase(), airlineCode.uppercase(), flightNumber.uppercase(),
@@ -49,10 +54,12 @@ data class FlightDiscoveryCalendarDay(
     @SerialName("durationMinutes") val durationMinutes: Int = 0,
     @SerialName("returnDurationMinutes") val returnDurationMinutes: Int? = null,
     @SerialName("bookingUrl") val bookingUrl: String? = null,
+    @SerialName("returnAirlineCode") val returnAirlineCode: String? = null,
+    @SerialName("returnFlightNumber") val returnFlightNumber: String? = null,
 ) {
     val offer: FlightDiscoveryOffer get() = FlightDiscoveryOffer(
         id, origin, destination, originAirport, destinationAirport, price, airlineCode, flightNumber,
-        departureAt, returnAt, transfers, returnTransfers, durationMinutes, returnDurationMinutes, bookingUrl,
+        departureAt, returnAt, transfers, returnTransfers, durationMinutes, returnDurationMinutes, bookingUrl, returnAirlineCode, returnFlightNumber,
     )
 }
 
@@ -85,6 +92,9 @@ data class FlightDiscoveryCalendarResult(
 )
 
 class AviasalesFlightDiscoveryService(private val api: APIClient) {
+    suspend fun recommendations(trip: TripDraft): List<CuratedFlightRecommendation> =
+        CuratedFlightRecommendationService(api).load(trip, from = LocalDate.now(), days = 365)
+
     suspend fun offers(
         origin: String,
         destination: String,
@@ -93,6 +103,7 @@ class AviasalesFlightDiscoveryService(private val api: APIClient) {
         direct: Boolean = false,
         limit: Int = 100,
         currency: String = "usd",
+        forceRefresh: Boolean = false,
     ): FlightDiscoveryOffersResult {
         val response = api.get<FlightDiscoveryOffersEnvelope>(
             "/api/package/flights/data",
@@ -104,6 +115,7 @@ class AviasalesFlightDiscoveryService(private val api: APIClient) {
                 "return" to returnAt?.takeIf { it.isNotBlank() },
                 "currency" to currency.lowercase(),
                 "limit" to limit.coerceIn(1, 100).toString(),
+                "fresh" to if (forceRefresh) "1" else null,
             ),
             timeoutSeconds = 15,
         )

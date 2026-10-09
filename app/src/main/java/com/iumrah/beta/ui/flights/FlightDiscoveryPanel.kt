@@ -67,8 +67,12 @@ import com.iumrah.beta.data.flight.FlightDiscoveryOffer
 import com.iumrah.beta.data.flight.FlightFavoriteRecord
 import com.iumrah.beta.data.flight.FlightFavoritesStore
 import com.iumrah.beta.data.flight.FlightReferenceCatalog
+import com.iumrah.beta.data.flight.FlightDataParity
+import com.iumrah.beta.models.flight.CuratedFlightRecommendation
 import com.iumrah.beta.domain.journey.JourneyStore
 import com.iumrah.beta.domain.trip.FlightTripType
+import com.iumrah.beta.domain.trip.JourneyScope
+import com.iumrah.beta.domain.trip.PackageFlightPath
 import com.iumrah.beta.domain.trip.SaudiArrivalAirport
 import com.iumrah.beta.models.flight.Airport
 import com.iumrah.beta.ui.components.IumrahPressable
@@ -82,6 +86,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -114,6 +120,7 @@ fun FlightDiscoveryPanel(
     var children by remember(trip.children) { mutableStateOf(maxOf(0, trip.children)) }
     var infants by remember(trip.infants) { mutableStateOf(maxOf(0, trip.infants)) }
     var directOnly by rememberSaveable { mutableStateOf(false) }
+    var mode by remember { mutableStateOf(FlightSearchMode.GLOBAL) }
     var selectedAirlines by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     var offers by remember { mutableStateOf<List<FlightDiscoveryOffer>>(emptyList()) }
@@ -122,6 +129,10 @@ fun FlightDiscoveryPanel(
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var favorites by remember { mutableStateOf(favoritesStore.records()) }
+    var recommended by remember { mutableStateOf<List<CuratedFlightRecommendation>>(emptyList()) }
+    var recommendedLoading by remember { mutableStateOf(false) }
+    var recommendedError by remember { mutableStateOf<String?>(null) }
+    var hasSearched by remember { mutableStateOf(false) }
 
     var airportPicker by remember { mutableStateOf<DiscoveryAirportRole?>(null) }
     var routeMap by remember { mutableStateOf(false) }
@@ -161,12 +172,36 @@ fun FlightDiscoveryPanel(
             offers = selectedDayRows.distinctBy { listOf(it.originAirport, it.destinationAirport, it.airlineCode, it.flightNumber, it.departureAt, it.price.toInt()).joinToString("|") }
             favorites = favoritesStore.reconcile(offers, currency, language)
         }.onFailure {
+            if (it is CancellationException) throw it
             error = discoveryText(language, "load_error")
         }
         loading = false
     }
 
-    LaunchedEffect(originCode, destinationCode, departureDate, returnDate, tripType, directOnly) { refresh() }
+    LaunchedEffect(mode, originCode, destinationCode, departureDate, returnDate, tripType, directOnly, adults, children, infants, trip.scope) {
+        if (mode == FlightSearchMode.GLOBAL) {
+            delay(320)
+            hasSearched = true
+            refresh()
+        }
+    }
+
+    LaunchedEffect(mode, originCode, destinationCode, departureDate, returnDate, trip.scope) {
+        if (mode == FlightSearchMode.IUMRAH) {
+            recommendedLoading = true
+            recommendedError = null
+            try {
+                recommended = service.recommendations(trip.copy(origin = originCode, originAirport = originAirport))
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                recommended = emptyList()
+                recommendedError = discoveryText(language, "load_error")
+            } finally {
+                recommendedLoading = false
+            }
+        }
+    }
 
     val filtered = remember(offers, selectedAirlines) {
         offers.filter { selectedAirlines.isEmpty() || it.airlineCode.uppercase() in selectedAirlines }
@@ -186,40 +221,49 @@ fun FlightDiscoveryPanel(
         }.thenBy { it.price }).take(12)
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        DiscoveryRouteCard(
+    Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
+        FlightSearchModeBar(language, mode) { mode = it }
+        FlightUnifiedConfigurationCard(
             language = language,
-            originCode = originCode,
-            originName = originAirport?.city ?: airportCity(originCode),
-            destinationCode = destinationCode,
-            destinationName = destinationAirport?.city ?: airportCity(destinationCode),
+            originCode = originCode, originName = originAirport?.city ?: airportCity(originCode),
+            destinationCode = destinationCode, destinationName = destinationAirport?.city ?: airportCity(destinationCode),
+            routeScope = trip.scope,
+            dateSummary = dateLabel(language, departureDate, if (mode == FlightSearchMode.IUMRAH || tripType == DiscoveryTripType.ROUND_TRIP) returnDate else null),
+            travelerSummary = passengerLabel(language, adults + children + infants),
             onOrigin = { airportPicker = DiscoveryAirportRole.ORIGIN },
             onDestination = { airportPicker = DiscoveryAirportRole.DESTINATION },
             onSwap = {
                 val oldAirport = originAirport; val oldCode = originCode
                 originAirport = destinationAirport; originCode = destinationCode
                 destinationAirport = oldAirport; destinationCode = oldCode
-                journey.updateTrip(trip.copy(origin = originCode, originAirport = originAirport))
+                // A user may swap the search to find the return flight. Preserve
+                // an already staged outbound ticket until a new offer is selected.
+                if (journeyState.stagedAviasalesOutbound == null && journeyState.stagedAviasalesRoundTrip == null)
+                    journey.updateTrip(trip.copy(origin = originCode, originAirport = originAirport))
             },
+            onScope = { selected ->
+                val newTrip = trip.copy(scope = selected,
+                    arrivalAirport = if (selected == JourneyScope.MAKKAH_ONLY) SaudiArrivalAirport.JEDDAH else trip.arrivalAirport)
+                if (journeyState.stagedAviasalesOutbound != null || journeyState.stagedAviasalesRoundTrip != null)
+                    journey.updateFlightScopePreservingSelection(selected)
+                else journey.updateTrip(newTrip)
+                if (selected == JourneyScope.MAKKAH_ONLY) { destinationCode = "JED"; destinationAirport = null }
+            },
+            onDates = { datePicker = true }, onTravelers = { passengerPicker = true }, onMap = { routeMap = true },
         )
 
-        DiscoverySegmented(language, tripType) { type ->
-            tripType = type
-            if (type == DiscoveryTripType.ROUND_TRIP && !returnDate.isAfter(departureDate)) returnDate = departureDate.plusDays(7)
-        }
-
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DiscoveryChip(CupertinoSymbol.Calendar, dateLabel(language, departureDate, if (tripType == DiscoveryTripType.ROUND_TRIP) returnDate else null), false) { datePicker = true }
-            DiscoveryChip(CupertinoSymbol.Person, passengerLabel(language, adults + children + infants), false) { passengerPicker = true }
-            DiscoveryChip(CupertinoSymbol.Map, discoveryText(language, "map"), false) { routeMap = true }
-            DiscoveryChip(CupertinoSymbol.Sliders, if (directOnly) discoveryText(language, "direct") else discoveryText(language, "filters"), directOnly) { directOnly = !directOnly }
-        }
-
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DiscoveryChip(CupertinoSymbol.SignalWave, discoveryText(language, "price_chart"), false) { priceChart = true }
-            DiscoveryChip(CupertinoSymbol.Airplane, if (selectedAirlines.isEmpty()) discoveryText(language, "airlines") else "${discoveryText(language, "airlines")} · ${selectedAirlines.size}", selectedAirlines.isNotEmpty()) { airlinePicker = true }
-            DiscoveryChip(CupertinoSymbol.Heart, "${discoveryText(language, "saved")} · ${favorites.size}", favorites.isNotEmpty()) { favoritesSheet = true }
-        }
+        if (mode == FlightSearchMode.GLOBAL) {
+            DiscoverySegmented(language, tripType) { type ->
+                tripType = type
+                if (type == DiscoveryTripType.ROUND_TRIP && !returnDate.isAfter(departureDate)) returnDate = departureDate.plusDays(7)
+            }
+            FlightDiscoveryActions(language, directOnly, selectedAirlines.isNotEmpty(),
+                onChart = { priceChart = true }, onDirect = { directOnly = !directOnly }, onAirlines = { airlinePicker = true })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(discoveryText(language, "saved"), Modifier.weight(1f), fontSize=12.sp,
+                    color=MaterialTheme.colorScheme.onSurface.copy(alpha=.55f))
+                DiscoveryChip(CupertinoSymbol.Heart, "${favorites.size}", favorites.isNotEmpty()) { favoritesSheet = true }
+            }
 
         if (loading && ranked.isEmpty()) {
             DiscoveryLoadingCard(language)
@@ -279,13 +323,66 @@ fun FlightDiscoveryPanel(
             Spacer(Modifier.width(8.dp))
             Text(discoveryText(language, "source_note"), fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f))
         }
+        if (hasSearched && !loading && ranked.size < 4) {
+            FlightPartnerGatewayCard(language) {
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.aviasales.com/"))) }
+            }
+        }
+        } else {
+            val outbound = recommended.filter { item ->
+                item.inbound == null && item.effectiveJourneyRole == "outbound" &&
+                    item.outbound.origin.equals(originCode, true) && item.outbound.destination.equals(destinationCode, true)
+            }.sortedBy { runCatching { kotlin.math.abs(LocalDate.parse(it.outboundDate).toEpochDay() - departureDate.toEpochDay()) }.getOrDefault(Long.MAX_VALUE) }
+            val inbound = recommended.filter { item ->
+                item.inbound == null && item.effectiveJourneyRole == "return" &&
+                    item.outbound.origin.uppercase() in (if (trip.scope == JourneyScope.MAKKAH_ONLY) setOf("JED") else setOf("JED", "MED")) &&
+                    item.outbound.destination.equals(originCode, true)
+            }.sortedBy { runCatching { kotlin.math.abs(LocalDate.parse(it.outboundDate).toEpochDay() - returnDate.toEpochDay()) }.getOrDefault(Long.MAX_VALUE) }
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(discoveryText(language, "recommended"), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text(when(language) {
+                    AppLanguage.RUSSIAN -> "Только опубликованные прямые рейсы из базы iumrah. Выберите туда и обратно отдельно."
+                    AppLanguage.ENGLISH -> "Published non-stop flights from iumrah. Select outbound and return separately."
+                    AppLanguage.UZBEK -> "iumrah bazasidan e’lon qilingan to‘g‘ri reyslar. Borish va qaytishni alohida tanlang."
+                    AppLanguage.UZBEK_CYRILLIC -> "iumrah базасидан эълон қилинган тўғри рейслар. Бориш ва қайтишни алоҳида танланг."
+                }, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha=.6f))
+            }
+            val publishedIDs = setOfNotNull(journeyState.selectedPublishedCompleteID,
+                journeyState.selectedPublishedOutboundID, journeyState.selectedPublishedReturnID)
+            FlightPublishedCarousel(language,
+                when(language) { AppLanguage.RUSSIAN -> "Рейсы туда"; AppLanguage.ENGLISH -> "Outbound flights"; AppLanguage.UZBEK -> "Borish reyslari"; AppLanguage.UZBEK_CYRILLIC -> "Бориш рейслари" },
+                "$originCode → $destinationCode · ${localizedDate(language, departureDate)}",
+                outbound, recommendedLoading, publishedIDs) { selection ->
+                val selectedTrip = trip.copy(origin = selection.outbound.origin.uppercase(),
+                    arrivalAirport = if (selection.outbound.destination.equals("MED",true)) SaudiArrivalAirport.MADINAH else SaudiArrivalAirport.JEDDAH,
+                    departureDate = parseIsoDate(selection.outbound.departureAt) ?: departureDate,
+                    adults=adults,children=children,infants=infants, flightTripType=FlightTripType.ROUND_TRIP)
+                journey.commitTripBuilder(selectedTrip, PackageFlightPath.PUBLISHED_DIRECT,
+                    outboundID = selection.id, returnID = journeyState.selectedPublishedReturnID)
+            }
+            FlightPublishedCarousel(language,
+                when(language) { AppLanguage.RUSSIAN -> "Обратные рейсы"; AppLanguage.ENGLISH -> "Return flights"; AppLanguage.UZBEK -> "Qaytish reyslari"; AppLanguage.UZBEK_CYRILLIC -> "Қайтиш рейслари" },
+                "${if (trip.scope == JourneyScope.MAKKAH_ONLY) "JED" else if (destinationCode == "MED") "JED" else "MED"} → $originCode · ${localizedDate(language, returnDate)}",
+                inbound, recommendedLoading, publishedIDs) { selection ->
+                val selectedTrip = trip.copy(returnDate = parseIsoDate(selection.outbound.departureAt) ?: returnDate,
+                    adults=adults,children=children,infants=infants, flightTripType=FlightTripType.ROUND_TRIP)
+                journey.commitTripBuilder(selectedTrip, PackageFlightPath.PUBLISHED_DIRECT,
+                    outboundID = journeyState.selectedPublishedOutboundID, returnID = selection.id)
+            }
+            if (recommendedError != null) Text(recommendedError!!, fontSize=12.sp, color=MaterialTheme.colorScheme.error)
+        }
+        FlightAssemblyCard(language, journeyState,
+            onContinue = { chrome.openHotelSelection() },
+            onClear = { journey.clearStagedAviasalesFlights(); journey.clearPublishedFlightSelection() })
     }
 
     if (airportPicker != null) {
         FlightAirportPickerSheet(language, airports, airportPicker!!, onDismiss = { airportPicker = null }) { airport ->
             if (airportPicker == DiscoveryAirportRole.ORIGIN) {
                 if (!airport.iata.equals(destinationCode, true)) {
-                    originAirport = airport; originCode = airport.iata.uppercase(); journey.updateTrip(trip.copy(origin = airport.iata.uppercase(), originAirport = airport))
+                    originAirport = airport; originCode = airport.iata.uppercase()
+                    if (journeyState.stagedAviasalesOutbound == null && journeyState.stagedAviasalesRoundTrip == null)
+                        journey.updateTrip(trip.copy(origin = airport.iata.uppercase(), originAirport = airport))
                 }
             } else if (!airport.iata.equals(originCode, true)) {
                 destinationAirport = airport; destinationCode = airport.iata.uppercase()
@@ -304,13 +401,14 @@ fun FlightDiscoveryPanel(
             onDismiss = { routeMap = false },
             onCommit = { from, to ->
                 originAirport = from; originCode = from.iata.uppercase(); destinationAirport = to; destinationCode = to.iata.uppercase()
-                journey.updateTrip(trip.copy(origin = from.iata.uppercase(), originAirport = from))
+                if (journeyState.stagedAviasalesOutbound == null && journeyState.stagedAviasalesRoundTrip == null)
+                    journey.updateTrip(trip.copy(origin = from.iata.uppercase(), originAirport = from))
                 routeMap = false
             },
         )
     }
     if (datePicker) {
-        FlightDiscoveryDateDialog(language, departureDate, returnDate, tripType, onDismiss = { datePicker = false }) { out, inbound ->
+        FlightDiscoveryDateDialog(language, departureDate, returnDate, if (mode == FlightSearchMode.IUMRAH) DiscoveryTripType.ROUND_TRIP else tripType, onDismiss = { datePicker = false }) { out, inbound ->
             departureDate = out
             if (inbound != null) returnDate = inbound
             datePicker = false
@@ -324,15 +422,18 @@ fun FlightDiscoveryPanel(
         AirlineFilterSheet(language, rows, selectedAirlines, onDismiss = { airlinePicker = false }) { selectedAirlines = it }
     }
     if (priceChart) {
-        FlightPriceChartSheet(language, calendar, currency, directOnly, onDismiss = { priceChart = false }, onSelect = { day ->
-            departureDate = runCatching { LocalDate.parse(day.date) }.getOrDefault(departureDate); priceChart = false
-        })
+        FlightPriceGraphV46(language, originCode, destinationCode, departureDate, returnDate,
+            tripType == DiscoveryTripType.ROUND_TRIP, service,
+            onDismiss = { priceChart = false }, onSelect = { out, inbound ->
+                departureDate = out
+                returnDate = inbound
+            })
     }
     if (favoritesSheet) {
         FavoriteFlightsSheet(language, favorites, onDismiss = { favoritesSheet = false }, onSelect = { selectedOffer = it.offer; favoritesSheet = false }, onRemove = { favorites = favoritesStore.remove(it.id) })
     }
     selectedOffer?.let { offer ->
-        FlightDiscoveryDetailSheet(
+        FlightDiscoveryDetailSheetV46(
             language = language,
             initialOffer = offer,
             service = service,
@@ -340,31 +441,15 @@ fun FlightDiscoveryPanel(
             adults = adults,
             children = children,
             infants = infants,
-            fallbackReturn = if (tripType == DiscoveryTripType.ROUND_TRIP) returnDate else null,
             favorite = favorites.any { it.offer.monitorKey == offer.monitorKey },
             onDismiss = { selectedOffer = null },
             onFavorite = { current -> favorites = favoritesStore.toggle(current, currency) },
             onBuildUmrah = { current ->
-                val destination = current.destination.uppercase()
-                if (destination == "JED" || destination == "MED") {
-                    val out = parseIsoDate(current.departureAt) ?: departureDate
-                    val inbound = current.returnAt?.let(::parseIsoDate) ?: returnDate
-                    journey.updateTrip(
-                        trip.copy(
-                            origin = current.origin.uppercase(),
-                            originAirport = if (trip.originCode.equals(current.origin, true)) trip.originAirport else null,
-                            arrivalAirport = if (destination == "MED") SaudiArrivalAirport.MADINAH else SaudiArrivalAirport.JEDDAH,
-                            departureDate = out,
-                            saudiArrivalDate = null,
-                            returnDate = maxOf(out.plusDays(1), inbound),
-                            adults = adults,
-                            children = children,
-                            infants = infants,
-                            flightTripType = FlightTripType.ROUND_TRIP,
-                        )
-                    )
+                if (current.destination.uppercase() in setOf("JED", "MED") || current.origin.uppercase() in setOf("JED", "MED")) {
+                    // Do not call updateTrip() here: it recreates JourneyState and
+                    // deletes the previously selected outbound when adding a return.
+                    journey.stageAviasalesFlight(current, adults = adults, children = children, infants = infants)
                     selectedOffer = null
-                    chrome.startNewTrip()
                 }
             },
         )
@@ -435,9 +520,10 @@ private fun FlightDiscoveryCard(language: AppLanguage, offer: FlightDiscoveryOff
             IumrahPressable(onClick = onFavorite, modifier = Modifier.size(40.dp), cornerRadius = 20.dp, background = MaterialTheme.colorScheme.surfaceVariant, shadowElevation = 0.dp) { Box(Modifier.fillMaxWidth().height(40.dp), contentAlignment = Alignment.Center) { Icon(if (favorite) CupertinoSymbol.HeartFill else CupertinoSymbol.Heart, null, Modifier.size(16.dp), if (favorite) Color(0xFFFF375F) else MaterialTheme.colorScheme.onSurface.copy(alpha=.6f)) } }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column { Text(offer.originAirport.ifBlank { offer.origin }, fontSize = 21.sp, fontWeight = FontWeight.Bold); Text(timeText(offer.departureAt), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha=.52f)) }
+            Column { Text(offer.originAirport.ifBlank { offer.origin }, fontSize = 21.sp, fontWeight = FontWeight.Bold); Text(FlightDataParity.localTime(offer.departureAt, offer.origin), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha=.52f)) }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) { Icon(CupertinoSymbol.Airplane, null, Modifier.size(17.dp), Color(0xFF007AFF)); Spacer(Modifier.height(4.dp)); Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp).height(1.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha=.12f))); Spacer(Modifier.height(4.dp)); Text(if (offer.isDirect) discoveryText(language, "nonstop") else transfersText(language, offer.transfers), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha=.52f)) }
-            Column(horizontalAlignment = Alignment.End) { Text(offer.destinationAirport.ifBlank { offer.destination }, fontSize = 21.sp, fontWeight = FontWeight.Bold); Text(durationText(offer.durationMinutes), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha=.52f)) }
+            Column(horizontalAlignment = Alignment.End) { Text(offer.destinationAirport.ifBlank { offer.destination }, fontSize = 21.sp, fontWeight = FontWeight.Bold); Text(FlightDataParity.arrivalTime(offer.departureAt, offer.durationMinutes, offer.destination),
+                fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha=.52f)) }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -518,8 +604,6 @@ private fun FlightPriceChartSheet(language:AppLanguage,days:List<FlightDiscovery
 private fun FavoriteFlightsSheet(language:AppLanguage,records:List<FlightFavoriteRecord>,onDismiss:()->Unit,onSelect:(FlightFavoriteRecord)->Unit,onRemove:(FlightFavoriteRecord)->Unit){ModalBottomSheet(onDismissRequest=onDismiss,containerColor=MaterialTheme.colorScheme.background,dragHandle=null,shape=RoundedCornerShape(topStart=34.dp,topEnd=34.dp)){Column(Modifier.fillMaxWidth().padding(20.dp).padding(bottom=26.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){Text(discoveryText(language,"saved"),fontSize=26.sp,fontWeight=FontWeight.Bold);if(records.isEmpty())Text(discoveryText(language,"no_saved"),color=MaterialTheme.colorScheme.onSurface.copy(alpha=.55f));records.forEach{r->Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surface).clickable{onSelect(r)}.padding(12.dp),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF007AFF).copy(alpha=.1f)),contentAlignment=Alignment.Center){Text(r.offer.airlineCode.ifBlank{"✈"},fontWeight=FontWeight.Bold,color=Color(0xFF007AFF),fontSize=12.sp)};Spacer(Modifier.width(10.dp));Column(Modifier.weight(1f)){Text(r.offer.routeTitle,fontWeight=FontWeight.Bold);Text("${r.offer.airlineCode} ${r.offer.flightNumber} · ${money(r.lastKnownPrice,r.currency)}",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.5f))};IumrahPressable(onClick={onRemove(r)},modifier=Modifier.size(38.dp),cornerRadius=19.dp,background=MaterialTheme.colorScheme.surfaceVariant,shadowElevation=0.dp){Box(Modifier.fillMaxWidth().height(38.dp),contentAlignment=Alignment.Center){Icon(CupertinoSymbol.Trash,null,Modifier.size(14.dp),Color(0xFFFF3B30))}}}}}}
 }
 
-@Composable
-private fun FlightDiscoveryDetailSheet(language:AppLanguage,initialOffer:FlightDiscoveryOffer,service:AviasalesFlightDiscoveryService,currency:String,adults:Int,children:Int,infants:Int,fallbackReturn:LocalDate?,favorite:Boolean,onDismiss:()->Unit,onFavorite:(FlightDiscoveryOffer)->Unit,onBuildUmrah:(FlightDiscoveryOffer)->Unit){val context=LocalContext.current;var offer by remember(initialOffer){mutableStateOf(initialOffer)};var oldPrice by remember{mutableStateOf<Double?>(null)};var refreshing by remember{mutableStateOf(true)};var isFavorite by remember(favorite){mutableStateOf(favorite)};LaunchedEffect(initialOffer.monitorKey){refreshing=true;val dep=initialOffer.departureAt.take(10);val result=runCatching{service.offers(initialOffer.origin,initialOffer.destination,dep,initialOffer.returnAt?.take(10),initialOffer.isDirect,100)}.getOrNull();val fresh=result?.offers?.firstOrNull{it.monitorKey==initialOffer.monitorKey};if(fresh!=null&&kotlin.math.abs(fresh.price-offer.price)>=.5){oldPrice=offer.price;offer=fresh};refreshing=false};ModalBottomSheet(onDismissRequest=onDismiss,containerColor=MaterialTheme.colorScheme.background,dragHandle=null,shape=RoundedCornerShape(topStart=34.dp,topEnd=34.dp)){Column(Modifier.fillMaxWidth().padding(20.dp).padding(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(if(offer.isRoundTrip)discoveryText(language,"round_trip")else discoveryText(language,"one_way"),fontSize=11.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.5f));Text(offer.routeTitle,fontSize=28.sp,lineHeight=31.sp,fontWeight=FontWeight.Bold)};IumrahPressable(onClick={isFavorite=!isFavorite;onFavorite(offer)},modifier=Modifier.size(44.dp),cornerRadius=22.dp,background=MaterialTheme.colorScheme.surfaceVariant,shadowElevation=0.dp){Box(Modifier.fillMaxWidth().height(44.dp),contentAlignment=Alignment.Center){Icon(if(isFavorite)CupertinoSymbol.HeartFill else CupertinoSymbol.Heart,null,Modifier.size(17.dp),if(isFavorite)Color(0xFFFF375F)else MaterialTheme.colorScheme.onSurface.copy(alpha=.6f))}}};Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surface).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){Text("${FlightReferenceCatalog.airlineName(offer.airlineCode,offer.airlineCode)} · ${offer.flightNumber}",fontWeight=FontWeight.Bold);Text("${localizedIsoDate(language,offer.departureAt)} · ${timeText(offer.departureAt)}",fontSize=13.sp);Text(if(offer.isDirect)discoveryText(language,"nonstop")else transfersText(language,offer.transfers),fontSize=12.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.55f));offer.returnAt?.let { returnAt -> Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha=.08f)));Text("${discoveryText(language,"return_date")}: ${localizedIsoDate(language,returnAt)} · ${timeText(returnAt)}",fontSize=13.sp);Text(if((offer.returnTransfers?:0)==0)discoveryText(language,"nonstop")else transfersText(language,offer.returnTransfers?:0),fontSize=12.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.55f)) }};Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(discoveryText(language,"fare"),fontSize=11.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.5f));Row(verticalAlignment=Alignment.Bottom){oldPrice?.let{Text(money(it,currency),fontSize=13.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.45f),textDecoration=TextDecoration.LineThrough);Spacer(Modifier.width(7.dp))};Text(money(offer.price,currency),fontSize=28.sp,fontWeight=FontWeight.Bold)}};if(refreshing)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp)};Text(discoveryText(language,"fare_conditions"),fontSize=12.sp,lineHeight=16.sp,color=MaterialTheme.colorScheme.onSurface.copy(alpha=.52f));IumrahPressable(onClick={openAviasales(context,offer,adults,children,infants,fallbackReturn)},modifier=Modifier.fillMaxWidth().height(54.dp),cornerRadius=18.dp,background=Color.Black){Row(Modifier.fillMaxWidth().height(54.dp).padding(horizontal=18.dp),verticalAlignment=Alignment.CenterVertically){Text(discoveryText(language,"buy_aviasales"),Modifier.weight(1f),color=Color.White,fontWeight=FontWeight.Bold);Icon(CupertinoSymbol.ArrowUpRight,null,Modifier.size(17.dp),Color.White)}};Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){IumrahPressable(onClick={shareFlight(context,offer,currency)},modifier=Modifier.weight(1f).height(48.dp),cornerRadius=16.dp,background=MaterialTheme.colorScheme.surfaceVariant,shadowElevation=0.dp){Row(Modifier.fillMaxWidth().height(48.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){Icon(CupertinoSymbol.Share,null,Modifier.size(15.dp));Spacer(Modifier.width(7.dp));Text(discoveryText(language,"share"),fontWeight=FontWeight.Bold)}};if(offer.destination.uppercase() in setOf("JED","MED")){IumrahPressable(onClick={onBuildUmrah(offer)},modifier=Modifier.weight(1f).height(48.dp),cornerRadius=16.dp,background=Color(0xFF007AFF),shadowElevation=0.dp){Box(Modifier.fillMaxWidth().height(48.dp),contentAlignment=Alignment.Center){Text(discoveryText(language,"build_umrah"),color=Color.White,fontWeight=FontWeight.Bold)}}}}}}
 }
 
 private fun airportCity(code:String):String=FlightReferenceCatalog.airport(code)?.city?:code.uppercase()

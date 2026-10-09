@@ -2,6 +2,7 @@ package com.iumrah.beta.ui.trip
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -123,6 +124,27 @@ fun HotelSelectionScreen(
     ) {
         item { GeneratorHeader(GeneratorStage.HOTEL, language, chrome) }
         item { HotelHeading(language) }
+        if (state.packageFlightPath == PackageFlightPath.AVIASALES_SELECTED) {
+            item {
+                FlightFirstHotelTierCard(language, state.trip.packageTier, onTier = {
+                    directQuoteError = null
+                    journey.setFlightFirstHotelTier(it)
+                })
+            }
+            item {
+                val outbound = state.stagedAviasalesRoundTrip ?: state.stagedAviasalesOutbound
+                val inbound = state.stagedAviasalesReturn
+                if (outbound != null) {
+                    Text(
+                        "✈  ${outbound.origin.uppercase()} → ${outbound.destination.uppercase()}" +
+                            "   ·   ${outbound.departureAt.take(10)}" +
+                            (inbound?.let { "   ·   ↩ ${it.departureAt.take(10)}" }
+                                ?: outbound.returnAt?.let { "   ·   ↩ ${it.take(10)}" }.orEmpty()),
+                        fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .72f),
+                    )
+                }
+            }
+        }
         if (loading && state.makkahHotel == null) {
             item { LoadingHotelCard(language) }
         } else {
@@ -169,24 +191,82 @@ fun HotelSelectionScreen(
         directQuoteError?.let { item { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp) } }
         item {
             val published = state.packageFlightPath == PackageFlightPath.PUBLISHED_DIRECT
+            val aviasales = state.packageFlightPath == PackageFlightPath.AVIASALES_SELECTED
             GeneratorPrimaryButton(
-                title = if (published) hotelTr(language, "Продолжить к трансферу", "Continue to transfer", "Transferga davom etish", "Трансферга давом этиш")
+                title = if (published || aviasales) hotelTr(language, "Продолжить к трансферу", "Continue to transfer", "Transferga davom etish", "Трансферга давом этиш")
                 else hotelTr(language, "Продолжить к перелёту", "Continue to flights", "Parvozga davom etish", "Парвозга давом этиш"),
-                enabled = canContinue && !loading && !preparingDirectQuote && (!published || state.hasCompletePublishedFlightSelection),
+                enabled = canContinue && !loading && !preparingDirectQuote && (!published || state.hasCompletePublishedFlightSelection) && (!aviasales || state.hasCompleteStagedFlightSelection),
                 onClick = {
-                    if (!published) chrome.openFlights()
+                    if (!published && !aviasales) chrome.openFlights()
                     else scope.launch {
                         preparingDirectQuote = true
                         directQuoteError = null
-                        journey.preparePublishedDirectPackage(curatedFlights, packageEngine)
-                            .onSuccess { chrome.openTransferSelection() }
-                            .onFailure { directQuoteError = it.message ?: publishedFallback(language) }
+                        val result = if (aviasales) journey.prepareAviasalesSelectedPackage(packageEngine)
+                            else journey.preparePublishedDirectPackage(curatedFlights, packageEngine)
+                        result.onSuccess { chrome.openTransferSelection() }
+                            .onFailure { failure ->
+                                directQuoteError = when (failure.message) {
+                                    "AVIASALES_UNVERIFIED_DURATION" -> hotelTr(language,
+                                        "Время этого рейса не подтверждено Data API. Проверьте маршрут у продавца или выберите другой рейс.",
+                                        "Data API has not confirmed this flight duration. Verify with the seller or choose another flight.",
+                                        "Data API reys davomiyligini tasdiqlamadi. Sotuvchidan tekshiring yoki boshqa reysni tanlang.",
+                                        "Data API рейс давомийлигини тасдиқламади. Сотувчидан текширинг ёки бошқа рейсни танланг.")
+                                    "AVIASALES_UNVERIFIED_RETURN_STOPS" -> hotelTr(language,
+                                        "Число пересадок обратного рейса не подтверждено. Проверьте билет на Aviasales.",
+                                        "The return flight's stops are unconfirmed. Verify the itinerary on Aviasales.",
+                                        "Qaytish reysining transferlari tasdiqlanmagan. Aviasales orqali tekshiring.",
+                                        "Қайтиш рейсининг трансферлари тасдиқланмаган. Aviasales орқали текширинг.")
+                                    "AVIASALES_INVALID_FARE" -> hotelTr(language,
+                                        "Данные тарифа устарели. Выберите билет заново.",
+                                        "The observed fare is invalid. Select a flight again.",
+                                        "Chipta narxi eskirgan. Qayta tanlang.",
+                                        "Чипта нархи эскирган. Қайта танланг.")
+                                    else -> failure.message ?: publishedFallback(language)
+                                }
+                            }
                         preparingDirectQuote = false
                     }
                 },
             )
         }
         item { Spacer(Modifier.height(34.dp)) }
+    }
+}
+
+/** The in-place Flight First tier selector, unlike the generic hotel-first screen.
+ * One tap invalidates stale primary hotel choices without changing selected flights. */
+@Composable
+private fun FlightFirstHotelTierCard(language: AppLanguage, selected: PackageTier, onTier: (PackageTier) -> Unit) {
+    val heading = hotelTr(language, "Выберите уровень отеля", "Choose hotel category", "Mehmonxona toifasini tanlang", "Меҳмонхона тоифасини танланг")
+    Column(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surface).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(heading, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            PackageTier.entries.forEach { tier ->
+                val active = tier == selected
+                val name = when (tier) {
+                    PackageTier.ECONOMY -> hotelTr(language, "Эконом", "Economy", "Ekonom", "Эконом")
+                    PackageTier.STANDARD -> hotelTr(language, "Стандарт", "Standard", "Standart", "Стандарт")
+                    PackageTier.COMFORT -> hotelTr(language, "Комфорт", "Comfort", "Komfort", "Комфорт")
+                    PackageTier.LUXURY -> hotelTr(language, "Люкс", "Luxury", "Lyuks", "Люкс")
+                }
+                Column(
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(17.dp))
+                        .background(if (active) Color(0xFF007AFF) else MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { onTier(tier) }.padding(vertical = 12.dp, horizontal = 3.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text("${tier.primaryHotelStars}★", color = if (active) Color.White else MaterialTheme.colorScheme.onSurface,
+                        fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                    Text(name, color = if (active) Color.White else MaterialTheme.colorScheme.onSurface,
+                        fontSize = 10.sp, maxLines = 1)
+                }
+            }
+        }
     }
 }
 
